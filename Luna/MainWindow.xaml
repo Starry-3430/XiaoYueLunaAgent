@@ -21,9 +21,9 @@
     </Window.InputBindings>
     <Border x:Name="IslandBorder"
             Background="#DD1E1E1E"
-            CornerRadius="20"
+            CornerRadius="32"
             Padding="12"
-            MinWidth="180" MinHeight="40">
+            MinWidth="360" MinHeight="64">
         <Grid>
 
         </Grid>
