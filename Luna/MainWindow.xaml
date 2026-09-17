@@ -1,24 +1,8 @@
-﻿<Window x:Class="SiriBlobDemo.MainWindow"
+﻿<Window x:Class="WpfApp1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
-        ShowInTaskbar="False"
-        Topmost="True"
-        ResizeMode="NoResize">
-
+        Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <Path x:Name="Blob"
-              Fill="Black"
-              SnapsToDevicePixels="True">
-            <Path.Effect>
-                <DropShadowEffect
-                    BlurRadius="18"
-                    ShadowDepth="8"
-                    Opacity="0.18"/>
-            </Path.Effect>
-        </Path>
-    </Grid>
 
+    </Grid>
 </Window>
