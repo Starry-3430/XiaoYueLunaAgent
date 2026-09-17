@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 
 namespace Luna.ViewModels;
 
-public class MainViewModel
+public partial class MainViewModel
 {
     private readonly ILogger<MainViewModel> _logger;
 
@@ -16,4 +17,12 @@ public class MainViewModel
     }
 
     public string InputText { get; set; } = string.Empty;
+
+    public event EventHandler? ToggleWindowRequested;
+
+    [RelayCommand]
+    private void ToggleWindow()
+    {
+        ToggleWindowRequested?.Invoke(this, EventArgs.Empty);
+    }
 }
