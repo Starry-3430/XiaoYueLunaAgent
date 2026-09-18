@@ -6,7 +6,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <dynamicAero2:Theme Color="Dark" />
-                <ResourceDictionary Source="Styles/Win11ScrollBar.xaml" />
+                <ResourceDictionary Source="Styles/ScrollBar.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

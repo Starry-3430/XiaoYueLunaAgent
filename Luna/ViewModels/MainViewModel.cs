@@ -62,7 +62,7 @@ public partial class MainViewModel : ObservableObject
             }
             // ===============================================
 
-            Status = "完成";
+            Status = "就绪";
         }
         catch (OperationCanceledException)
         {

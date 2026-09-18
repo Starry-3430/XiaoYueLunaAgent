@@ -105,7 +105,7 @@
 
             <!-- 展开态：完整交互 -->
             <Grid x:Name="ExpandedContent"
-                  Width="420" Height="420"
+                  Width="420" Height="840"
                   Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>

@@ -71,7 +71,7 @@ public partial class MainWindow : Window
     {
         if (IsVisible)
         {
-            WindowPositioner.PlaceTopCenter(this);
+            WindowPositioner.PlaceTopCenter(this, 40);
         }
     }
 
