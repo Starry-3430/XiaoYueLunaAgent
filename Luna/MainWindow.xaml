@@ -12,6 +12,8 @@
         Deactivated="Window_Deactivated"
         KeyDown="Window_KeyDown">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
         <!-- 圆角输入框 -->
         <Style x:Key="RoundedTextBox" TargetType="TextBox">
             <Setter Property="Background" Value="#2A2A2A"/>
@@ -30,6 +32,40 @@
                             <ScrollViewer x:Name="PART_ContentHost"
                                           VerticalAlignment="Top"/>
                         </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- 红色取消按钮 -->
+        <Style x:Key="CancelButton" TargetType="Button">
+            <Setter Property="Background" Value="#C0392B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#D64541"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#A93226"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -171,10 +207,27 @@
 
                     <Button Grid.Column="1"
                             Content="发送"
-                            Style="{StaticResource RoundedButton}"
                             Command="{Binding SendCommand}"
                             VerticalAlignment="Bottom"
-                            Margin="6,0,0,0"/>
+                            Margin="6,0,0,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource RoundedButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Button Grid.Column="1"
+                            Content="取消"
+                            Style="{StaticResource CancelButton}"
+                            Command="{Binding CancelCommand}"
+                            VerticalAlignment="Bottom"
+                            Margin="6,0,0,0"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     
                 </Grid>
