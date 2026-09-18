@@ -59,6 +59,7 @@ public static class WindowPositioner
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
+    // 顶部居中
     public static void PlaceTopCenter(Window window, double topMarginDip = 8)
     {
         if (!window.IsLoaded && new WindowInteropHelper(window).Handle == IntPtr.Zero)

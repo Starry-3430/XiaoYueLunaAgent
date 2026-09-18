@@ -57,18 +57,18 @@ public partial class MainWindow : Window
     }
     
     // 顶部居中
-    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
-    {
-        base.OnRenderSizeChanged(sizeInfo);
-        CenterOnScreen();
-    }
+    //protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    //{
+    //    base.OnRenderSizeChanged(sizeInfo);
+    //    CenterOnScreen();
+    //}
 
-    private void CenterOnScreen()
-    {
-        var screen = SystemParameters.WorkArea;
-        Left = screen.Left + (screen.Width - ActualWidth) / 2;
-        Top = screen.Top + 10; // 距离顶部 10px
-    }
+    //private void CenterOnScreen()
+    //{
+    //    var screen = SystemParameters.WorkArea;
+    //    Left = screen.Left + (screen.Width - ActualWidth) / 2;
+    //    Top = screen.Top + 15; // 距离顶部 10px
+    //}
     
     // 鼠标进出
     
