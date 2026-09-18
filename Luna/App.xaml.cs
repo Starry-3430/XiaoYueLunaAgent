@@ -14,6 +14,8 @@ public partial class App : Application
     private readonly IHost _host;
     private Mutex? _singleInstanceMutex;
     private EventWaitHandle? _showWindowEvent;
+    private Win32Icon? _trayIconImage;
+    private TrayIconHost? _trayIcon;
     private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
 
@@ -57,15 +59,15 @@ public partial class App : Application
         
         // 托盘图标
         var iconStream = File.OpenRead(@"C:\Users\Star_Clara\RiderProjects\Luna\Luna\iconStream\icon.ico"); // 替换为你的图标路径
-        var icon = new Win32Icon(iconStream)
+        _trayIconImage = new Win32Icon(iconStream)
         {
             ShowAsMonochrome = true, // 单色自适应
             ThemeMode = TrayThemeMode.System // 跟随系统
         };
 
-        var trayIcon = new TrayIconHost
+        _trayIcon = new TrayIconHost
         {
-            IconSource = icon,
+            IconSource = _trayIconImage,
             ToolTipText = "Luna",
             // 右击托盘图标显示菜单
             Menu = new TrayMenu
@@ -89,10 +91,8 @@ public partial class App : Application
             }
         };
         // 订阅左键单击事件
-        trayIcon.Click += (sender, e) =>
+        _trayIcon.Click += (sender, e) =>
         {
-            // 由于事件可能从非 UI 线程触发，需要通过 Dispatcher 调用
-            
             Dispatcher.Invoke(() =>
             { var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                     mainWindow.Show();

@@ -14,14 +14,14 @@ public static class WindowPositioner
     private const uint SwpNoActivate = 0x0010;
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct Point
+    private struct Point // 点坐标
     {
         public int X;
         public int Y;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct Rect
+    private struct Rect // 矩形区域
     {
         public int Left;
         public int Top;
@@ -33,7 +33,7 @@ public static class WindowPositioner
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MonitorInfo
+    private struct MonitorInfo // 检查显示器规格信息结构体
     {
         public int CbSize;
         public Rect RcMonitor;
@@ -59,8 +59,12 @@ public static class WindowPositioner
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
-    // 顶部居中
-    public static void PlaceTopCenter(Window window, double topMarginDip = 8)
+    /// <summary>
+    /// 顶部居中
+    /// </summary>
+    /// <param name="window">要居中的窗口</param>
+    /// <param name="topMarginDip">距离屏幕顶部距离，以DIP为单位，不填写则默认20</param>
+    public static void PlaceTopCenter(Window window, double topMarginDip = 20)
     {
         if (!window.IsLoaded && new WindowInteropHelper(window).Handle == IntPtr.Zero)
         {
@@ -119,7 +123,12 @@ public static class WindowPositioner
 
         return MonitorFromWindow(hwnd, MonitorDefaultToPrimary);
     }
-
+    
+    /// <summary>
+    /// 获取指定显示器的缩放比例
+    /// </summary>
+    /// <param name="hMonitor"></param>
+    /// <returns></returns>
     private static double GetScale(IntPtr hMonitor)
     {
         return GetDpiForMonitor(hMonitor, MdtEffectiveDpi, out var dpiX, out _) == 0 && dpiX > 0
