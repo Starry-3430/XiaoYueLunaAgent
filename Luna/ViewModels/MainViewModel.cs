@@ -5,11 +5,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
+using Luna.Services;
 
 namespace Luna.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private readonly IAiService _aiService;
     private readonly ILogger<MainViewModel> _logger;
     private CancellationTokenSource? _cts;
 
@@ -24,8 +26,9 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<ChatMessage> Messages { get; } = new();
 
-    public MainViewModel(ILogger<MainViewModel> logger)
+    public MainViewModel(IAiService aiService, ILogger<MainViewModel> logger)
     {
+        _aiService = aiService;
         _logger = logger;
         _logger.LogInformation("MainViewModel 已创建");
     }
@@ -52,16 +55,10 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            // TODO 先用模拟流式，后续替换为真实 AI 调用 ===========
-            var text = "这是模拟回复。后续接入 AI API 后，这里会逐字出现。";
-            foreach (var ch in text)
+            await foreach (var chunk in _aiService.ChatStreamAsync(Messages, _cts.Token))
             {
-                _cts.Token.ThrowIfCancellationRequested();
-                reply.Content += ch;
-                await Task.Delay(30, _cts.Token);
+                reply.Content += chunk;
             }
-            // ===============================================
-
             Status = "就绪";
         }
         catch (OperationCanceledException)
