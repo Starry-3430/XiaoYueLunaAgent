@@ -1,9 +1,12 @@
 ﻿using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Luna.Models;
+using Luna.Services;
 using Luna.ViewModels;
 using System.NativeTray;
 
@@ -108,6 +111,14 @@ public partial class App : Application
             {
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
+                services.AddSingleton(new AiSettings
+                {
+                    ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
+                    BaseUrl = "https://api.deepseek.com/v1",
+                    Model = "deepseek-chat",
+                });
+                services.AddSingleton<HttpClient>();
+                services.AddSingleton<IAiService, OpenAiService>();
             })
             .Build();
     }
