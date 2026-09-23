@@ -104,7 +104,8 @@ public partial class App : Application
                 });
             
         };
-
+        
+        // 实现AI服务和依赖注入
         _host = Host.CreateDefaultBuilder()
             .UseSerilog()
             .ConfigureServices((context, services) =>
