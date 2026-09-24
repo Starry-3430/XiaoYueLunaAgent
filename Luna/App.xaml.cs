@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
@@ -116,7 +116,7 @@ public partial class App : Application
                 {
                     ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
                     BaseUrl = "https://api.deepseek.com/v1",
-                    Model = "deepseek-chat",
+                    Model = "deepseek-flash",
                 });
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
