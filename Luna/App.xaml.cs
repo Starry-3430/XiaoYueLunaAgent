@@ -82,6 +82,7 @@ public partial class App : Application
                     {
                         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                         mainWindow.Show();
+                        mainWindow.ShowInternal();
                         mainWindow.WindowState = WindowState.Normal;
                         mainWindow.Activate();
                     }))
@@ -99,6 +100,7 @@ public partial class App : Application
             Dispatcher.Invoke(() =>
             { var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                     mainWindow.Show();
+                    mainWindow.ShowInternal();
                     mainWindow.WindowState = WindowState.Normal;
                     mainWindow.Activate();
                 });
@@ -136,6 +138,7 @@ public partial class App : Application
                 {
                     var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                     mainWindow.Show();
+                    mainWindow.ShowInternal();
                     mainWindow.WindowState = WindowState.Normal;
                     mainWindow.Activate();
                 });
@@ -180,6 +183,7 @@ public partial class App : Application
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
+        mainWindow.ShowInternal();
 
         base.OnStartup(e);
     }
