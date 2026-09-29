@@ -1,5 +1,6 @@
 ﻿using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +11,7 @@ using System.Windows.Threading;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
+using System.Runtime.InteropServices;
 
 namespace Luna;
 
@@ -17,6 +19,14 @@ public partial class MainWindow : Window
 {
     private const int WmDpiChanged = 0x02E0;
     private const int WmDisplayChange = 0x007E;
+    private const int GwExStyle = -20;
+    private const int WsExToolWindow = 0x00000080;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
     // 紧凑输入框尺寸约束
     private const double MinCompactWidth = 156;
@@ -26,6 +36,10 @@ public partial class MainWindow : Window
     private const double VerticalPadding = 12;
 
     private readonly MainViewModel _viewModel;
+    private readonly Stopwatch _animationStopwatch = new();
+    private bool _animating;
+    private bool _isShown;
+    private EventHandler? _renderingHandler;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -55,6 +69,11 @@ public partial class MainWindow : Window
         {
             source.AddHook(WndProc);
         }
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var exStyle = GetWindowLong(hwnd, GwExStyle);
+        SetWindowLong(hwnd, GwExStyle, exStyle | WsExToolWindow);
+
         Reposition();
     }
 
@@ -69,21 +88,45 @@ public partial class MainWindow : Window
 
     private void Reposition()
     {
-        if (IsVisible)
-        {
-            WindowPositioner.PlaceTopCenter(this, 40);
-        }
+        WindowPositioner.PlaceTopCenter(this, 40);
     }
 
     private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if ((bool)e.NewValue)
+        if (!(bool)e.NewValue)
         {
-            // 每次显示都回到紧凑模式
-            SwitchToCompact();
-            Reposition();
-            Dispatcher.BeginInvoke(() => CompactInputBox.Focus(), DispatcherPriority.Input);
+            StopAnimation();
+            return;
         }
+
+        // 同步设置初始状态，避免 HWND 重建后首帧闪现完整窗口
+        CompactContent.Opacity = 0;
+        IslandBorder.Clip = new RectangleGeometry
+        {
+            Rect = new Rect(0, 0, 0, 0),
+            RadiusX = 0,
+            RadiusY = 0
+        };
+
+        Reposition();
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            var targetW = IslandBorder.ActualWidth;
+            var targetH = IslandBorder.ActualHeight;
+
+            if (targetW > 0 && targetH > 0)
+            {
+                PlayShowAnimation(targetW, targetH);
+            }
+            else
+            {
+                CompactContent.Opacity = 1;
+                IslandBorder.Clip = null;
+            }
+
+            CompactInputBox.Focus();
+        }, DispatcherPriority.Loaded);
     }
 
     // ===== 紧凑模式：输入自适应 =====
@@ -250,20 +293,199 @@ public partial class MainWindow : Window
     
     
 
+    // ===== 唤起动画 =====
+    
+    // 预备
+    private void PrepareForShow()
+    {
+        // 强制内容透明 + 零尺寸裁剪，且不依赖布局尺寸
+        CompactContent.Opacity = 0;
+        IslandBorder.Clip = new RectangleGeometry
+        {
+            Rect = new Rect(0, 0, 0, 0),
+            RadiusX = 0,
+            RadiusY = 0
+        };
+    }
+    
+    // 隐藏时也调用
+    
+private void HideInternal()
+    {
+        StopAnimation();
+        PrepareForShow();
+        Opacity = 0;
+        Left = -32000;
+        Top = -32000;
+        _isShown = false;
+    }
+
+    public void ShowInternal()
+    {
+        PrepareForShow();
+        Opacity = 1;
+        Reposition();
+        _isShown = true;
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            var targetW = IslandBorder.ActualWidth;
+            var targetH = IslandBorder.ActualHeight;
+
+            if (targetW > 0 && targetH > 0)
+            {
+                PlayShowAnimation(targetW, targetH);
+            }
+            else
+            {
+                CompactContent.Opacity = 1;
+                IslandBorder.Clip = null;
+            }
+
+            CompactInputBox.Focus();
+        }, DispatcherPriority.Loaded);
+    }
+
+    public void ToggleVisibility()
+    {
+        if (_isShown)
+            HideInternal();
+        else
+            ShowInternal();
+    }
+
+    private void StopAnimation()
+    {
+        _animating = false;
+        _animationStopwatch.Reset();
+        if (_renderingHandler != null)
+        {
+            CompositionTarget.Rendering -= _renderingHandler;
+            _renderingHandler = null;
+        }
+        IslandBorder.Clip = null;
+    }
+
+    private void PlayShowAnimation(double targetW, double targetH)
+    {
+        if (_animating) return;
+        if (targetW <= 0 || targetH <= 0) return;
+
+        var clipRect = new RectangleGeometry
+        {
+            Rect = new Rect(targetW / 2, targetH / 2, 0, 0),
+            RadiusX = 0,
+            RadiusY = 0
+        };
+        IslandBorder.Clip = clipRect;
+
+        _animationStopwatch.Restart();
+        _animating = true;
+
+        _renderingHandler = (_, _) =>
+        {
+            var elapsed = _animationStopwatch.Elapsed.TotalSeconds;
+
+            double w, h;
+
+            if (elapsed < 0.2)
+            {
+                var t = elapsed / 0.2;
+                var eased = CircleEaseOut(t);
+                var size = targetH * 2.0 / 3.0 * eased;
+                w = size;
+                h = size;
+            }
+            else if (elapsed < 0.35)
+            {
+                var t = (elapsed - 0.2) / 0.15;
+                var eased = CubicEaseOut(t);
+                var startSize = targetH * 2.0 / 3.0;
+                w = startSize + (targetW - startSize) * eased;
+                h = startSize + (targetH - startSize) * eased;
+            }
+            else if (elapsed < 0.5)
+            {
+                var t = (elapsed - 0.35) / 0.15;
+                var bounce = Math.Sin(t * Math.PI * 2) * (1 - t) * 0.04;
+                w = targetW * (1 + bounce);
+                h = targetH * (1 + bounce);
+            }
+            else
+            {
+                w = targetW;
+                h = targetH;
+            }
+
+            w = Math.Max(w, 0);
+            h = Math.Max(h, 0);
+
+            if (clipRect != null)
+            {
+                var x = (targetW - w) / 2;
+                var y = (targetH - h) / 2;
+                clipRect.Rect = new Rect(x, y, w, h);
+                clipRect.RadiusX = h / 2;
+                clipRect.RadiusY = h / 2;
+            }
+
+            if (elapsed <= 0.3)
+            {
+                CompactContent.Opacity = 0;
+            }
+            else if (elapsed < 0.8)
+            {
+                CompactContent.Opacity = (elapsed - 0.3) / 0.5;
+            }
+            else
+            {
+                CompactContent.Opacity = 1;
+            }
+
+            if (elapsed >= 0.8)
+            {
+                StopAnimation();
+                IslandBorder.CornerRadius = new CornerRadius(IslandBorder.ActualHeight / 2.0);
+            }
+        };
+
+        CompositionTarget.Rendering += _renderingHandler;
+    }
+
+    private static double CircleEaseOut(double t)
+    {
+        t -= 1;
+        return Math.Sqrt(1 - t * t);
+    }
+
+    private static double CubicEaseOut(double t)
+    {
+        return 1 - Math.Pow(1 - t, 3);
+    }
+
     // ===== 模式切换 =====
 
     private void SwitchToCompact()
     {
+        StopAnimation();
         ExpandedContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Visible;
+        // CompactContent.Opacity = 1;
         UpdatePlaceholderVisibility();
         UpdateCompactInputSize();
+        Dispatcher.BeginInvoke(() =>
+        {
+            IslandBorder.CornerRadius = new CornerRadius(IslandBorder.ActualHeight / 2.0);
+        }, DispatcherPriority.Loaded);
     }
 
     private void SwitchToExpanded()
     {
+        StopAnimation();
         CompactContent.Visibility = Visibility.Collapsed;
+        // CompactContent.Opacity = 1;
         ExpandedContent.Visibility = Visibility.Visible;
+        IslandBorder.CornerRadius = new CornerRadius(25);
         InputBox.Focus();
         ScrollMessagesToEnd();
     }
@@ -297,14 +519,14 @@ public partial class MainWindow : Window
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
-        Hide();
+        HideInternal();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            Hide();
+            HideInternal();
             e.Handled = true;
         }
     }
