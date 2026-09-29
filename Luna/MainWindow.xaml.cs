@@ -404,13 +404,13 @@ private void HideInternal()
                 w = startSize + (targetW - startSize) * eased;
                 h = startSize + (targetH - startSize) * eased;
             }
-            else if (elapsed < 0.5)
-            {
-                var t = (elapsed - 0.35) / 0.15;
-                var bounce = Math.Sin(t * Math.PI * 2) * (1 - t) * 0.04;
-                w = targetW * (1 + bounce);
-                h = targetH * (1 + bounce);
-            }
+            // else if (elapsed < 0.5)
+            // {
+            //     var t = (elapsed - 0.35) / 0.15;
+            //     var bounce = Math.Sin(t * Math.PI * 2) * (1 - t) * 0.04;
+            //     w = targetW * (1 + bounce);
+            //     h = targetH * (1 + bounce);
+            // }
             else
             {
                 w = targetW;

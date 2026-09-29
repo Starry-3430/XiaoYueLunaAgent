@@ -7,6 +7,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <dynamicAero2:Theme Color="Dark" />
                 <ResourceDictionary Source="Styles/ScrollBar.xaml" />
+                <ResourceDictionary Source="Styles/Fonts.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
