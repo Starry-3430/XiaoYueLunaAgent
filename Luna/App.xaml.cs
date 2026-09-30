@@ -9,7 +9,6 @@ using Luna.Data;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
-using Microsoft.EntityFrameworkCore;
 using System.NativeTray;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -28,6 +27,8 @@ public partial class App : Application
     private TrayIconHost? _trayIcon;                    // 托盘图标宿主
     private HomeWindow? _homeWindow;                    // 主窗口实例
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
+    private DateTime _lastTrayClickTime;                // 上次托盘点击时间，用于判断双击间隔
+    private const int DoubleClickThresholdMs = 500;     // 双击判定阈值（毫秒）
     private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
 
@@ -73,8 +74,9 @@ public partial class App : Application
         };
         
         // ===== 托盘图标初始化 =====
-        // TODO 注意：此处图标路径为硬编码，实际使用建议改为资源或可配置路径
-        var iconStream = File.OpenRead(@"C:\Users\Star_Clara\RiderProjects\Luna\Luna\iconStream\icon.ico");
+        var iconUri = new Uri("pack://application:,,,/iconStream/icon.ico");
+        var streamInfo = Application.GetResourceStream(iconUri);
+        using var iconStream = streamInfo.Stream;
         _trayIconImage = new Win32Icon(iconStream)
         {
             ShowAsMonochrome = true, // 单色自适应
@@ -124,54 +126,62 @@ public partial class App : Application
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
-                // SQLite 数据库路径与 DbContext 注册
+                // SQLite 数据库路径与 DatabaseService 注册
                 var dbDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "Luna", "database");
                 Directory.CreateDirectory(dbDir);
                 var dbPath = Path.Combine(dbDir, "LunaData.db");
-                services.AddDbContext<LunaDbContext>(options =>
-                    options.UseSqlite($"Data Source={dbPath}"));
+                services.AddSingleton(new DatabaseService($"Data Source={dbPath}"));
+                services.AddSingleton<DatabaseInitializer>();
+                services.AddSingleton<SessionRepository>();
+                services.AddSingleton<MessageRepository>();
             })
             .Build();
     }
 
     /// <summary>
-    /// 托盘图标点击事件处理：通过短暂的延迟区分单击与双击。
-    /// 单击显示主窗口；双击时取消第一次的延迟并显示 HomeWindow。
+    /// 托盘图标点击事件处理：通过时间间隔区分单击与双击。
+    /// 两次点击间隔 &lt; 500ms 视为双击，打开 HomeWindow；
+    /// 单击则等待 500ms 确认无第二次点击后显示 MainWindow。
     /// </summary>
     private async void OnTrayClick()
     {
-        // 如果 HomeWindow 已经加载，直接显示并返回
+        var now = DateTime.UtcNow;
+        var elapsed = (now - _lastTrayClickTime).TotalMilliseconds;
+        _lastTrayClickTime = now;
+
+        // HomeWindow 已打开时，任何点击都激活它
         if (_homeWindow is { IsLoaded: true })
         {
             ShowHomeWindow();
             return;
         }
 
-        // 如果托盘点击事件已经在处理中，取消当前操作并显示 HomeWindow
-        if (_trayCts is { IsCancellationRequested: false })
+        // 间隔小于阈值 → 双击：打开 HomeWindow
+        if (elapsed < DoubleClickThresholdMs)
         {
-            _trayCts.Cancel();
+            _trayCts?.Cancel();
             ShowHomeWindow();
             return;
         }
 
-        // 第一次点击：启动延迟，如果在 180ms 内没有第二次点击，则显示 MainWindow
+        // 单击：启动阈值延迟，等待可能的第二次点击
+        _trayCts?.Cancel();
         _trayCts = new CancellationTokenSource();
         var cts = _trayCts;
 
         try
         {
-            await Task.Delay(180, cts.Token);
+            await Task.Delay(DoubleClickThresholdMs, cts.Token);
         }
         catch (TaskCanceledException)
         {
-            // 被第二次点击取消，直接返回
             return;
         }
 
-        // 显示 MainWindow（紧凑/悬浮输入窗口）
+        // 延迟结束未被取消 → 确认是单击，显示 MainWindow
+        if (cts.IsCancellationRequested) return;
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
         mainWindow.ShowInternal();
@@ -264,18 +274,7 @@ public partial class App : Application
         _host.Start();
 
         // 4. 数据库初始化与完整性检查
-        using (var scope = _host.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<LunaDbContext>();
-            db.Database.EnsureCreated();
-            db.InitializeFts();
-
-            var integrity = db.Database.SqlQueryRaw<string>("PRAGMA quick_check").FirstOrDefault();
-            if (integrity != "ok")
-                Log.Warning("数据库完整性检查异常: {Integrity}", integrity);
-            else
-                Log.Information("数据库完整性检查通过");
-        }
+        _host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 
         Log.Information("Luna 已启动");
 

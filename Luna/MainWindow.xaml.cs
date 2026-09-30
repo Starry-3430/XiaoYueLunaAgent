@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Luna.Controls;
 using Luna.Models;
+using Luna.ViewModels;
 using Luna.Services;
 using Luna.ViewModels;
 using System.Runtime.InteropServices;
@@ -79,6 +81,14 @@ public partial class MainWindow : Window
             UpdatePlaceholderVisibility();
             UpdateCompactInputSize();
         };
+
+        MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+    }
+
+    private void MessageText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+            _ = new BubbleContextMenu(tb);
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)

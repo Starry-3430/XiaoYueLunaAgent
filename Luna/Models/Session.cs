@@ -7,4 +7,5 @@ public class Session
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
     public bool IsArchived { get; set; }
+    public string? Preview { get; set; }
 }

@@ -2,11 +2,13 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Luna.Controls;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -31,6 +33,10 @@ public partial class HomeWindow : Window
     private const double SlideInDistance = 40;      // 通知滑入的距离
     private const double AnimDuration = 0.3;        // 动画持续时间
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
+    private Button? _activeSideButton;               // 当前激活的底部侧边按钮
+
+    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0x0D, 0xFF, 0xFF, 0xFF));
+    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列
@@ -79,13 +85,16 @@ public partial class HomeWindow : Window
                 MessageScrollViewer.ScrollToEnd());
         };
 
-        // 左侧底部按钮：切换右侧内容区
-        SettingsButton.Click += (_, _) => ShowSideContent(SettingsContent, "设置");
-        DiaryButton.Click += (_, _) => ShowSideContent(DiaryContent, "日记本");
-        ToolsButton.Click += (_, _) => ShowSideContent(ToolsContent, "工具");
+// 左侧底部按钮：切换右侧内容区
+        SettingsButton.Click += (_, _) => { ShowSideContent(SettingsContent, "设置"); SetActiveSideButton(SettingsButton); };
+        DiaryButton.Click += (_, _) => { ShowSideContent(DiaryContent, "日记本"); SetActiveSideButton(DiaryButton); };
+        ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
-        // “新对话”按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; };
+        // "新对话"按钮：回到聊天模式并重置标题
+        NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+
+        // 为输入框挂载自定义右键菜单
+        _ = new EditorContextMenu(InputBox);
 
         // 点击窗口任意位置时，关闭所有设置项中的下拉弹出层
         PreviewMouseDown += (_, _) =>
@@ -93,6 +102,9 @@ public partial class HomeWindow : Window
             foreach (var item in _viewModel.SettingsItems)
                 if (item is SelectSetting ss) ss.IsOpen = false;
         };
+
+        // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
+        MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
     }
 
     /// <summary>
@@ -111,6 +123,18 @@ public partial class HomeWindow : Window
         HistoryList.SelectedIndex = -1;
     }
 
+    private void SetActiveSideButton(Button? active)
+    {
+        foreach (var btn in new[] { DiaryButton, ToolsButton, SettingsButton })
+        {
+            if (btn == active)
+                btn.Background = ActiveSideBrush;
+            else
+                btn.Background = DefaultSideBrush;
+        }
+        _activeSideButton = active;
+    }
+
     /// <summary>
     /// 切换到聊天模式：显示消息列表、输入区，隐藏设置等页面。
     /// </summary>
@@ -123,7 +147,14 @@ public partial class HomeWindow : Window
         ToolsContent.Visibility = Visibility.Collapsed;
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
-        HistoryList.SelectedIndex = -1;
+        SetActiveSideButton(null);
+    }
+
+    // ===== 气泡右键菜单 =====
+    private void MessageText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+            _ = new BubbleContextMenu(tb);
     }
 
     // ===== 迷你 Toast 通知 =====

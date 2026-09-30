@@ -2,7 +2,7 @@
 
 public class Message
 {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public string SessionId { get; set; } = string.Empty;
     public string TurnId { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;

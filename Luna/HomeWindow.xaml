@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
+        
         Title="Luna"
-        Width="1600" Height="1000"
+        Width="1200" Height="850"
         MinWidth="720" MinHeight="550"
         Background="#1E1E1E"
         WindowState="Normal"
@@ -23,9 +24,11 @@
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
+        
+
         <Style x:Key="SideButton" TargetType="Button">
             <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="#0DFFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -46,6 +49,9 @@
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -121,6 +127,7 @@
                 <ListBox x:Name="HistoryList"
                          ItemsSource="{Binding ChatSessions}"
                          ItemContainerStyle="{StaticResource HistoryItemStyle}"
+                         SelectedItem="{Binding SelectedSession}"
                          Background="Transparent"
                          BorderThickness="0"
                          ScrollViewer.CanContentScroll="False"
@@ -134,9 +141,9 @@
             </Grid>
 
             <StackPanel Grid.Row="2" Margin="10,0,10,10">
-                <Rectangle Height="1" Fill="#2A2A2A" Margin="0,0,0,4"/>
-                <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本"/>
-                <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具"/>
+                <Rectangle Height="1" Fill="#2A2A2A" Margin="0,0,0,8"/>
+                <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本" Margin="0,0,0,5"/>
+                <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具" Margin="0,0,0,5"/>
                 <Button x:Name="SettingsButton" Style="{StaticResource SideButton}" Content="设置"/>
             </StackPanel>
         </Grid>
@@ -211,10 +218,15 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <TextBlock Text="{Binding Content}"
-                                           Foreground="White"
-                                           TextWrapping="Wrap"
-                                           FontSize="14"/>
+<TextBox Text="{Binding Content}"
+                                          TextWrapping="Wrap"
+                                          Foreground="White"
+                                          FontSize="15"
+                                          IsReadOnly="True"
+                                          BorderThickness="0"
+                                          Background="Transparent"
+                                          IsInactiveSelectionHighlightEnabled="True"
+                                          Loaded="MessageText_Loaded"/>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -432,7 +444,7 @@
                        Text="{Binding Status}"
                        Foreground="#88FFFFFF"
                        FontSize="12"
-                       Margin="24,0,0,8"/>
+                       Margin="24,0,0,12"/>
         </Grid>
 
     <!-- 通知浮层 -->
