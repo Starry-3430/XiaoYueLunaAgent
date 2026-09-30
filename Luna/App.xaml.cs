@@ -21,8 +21,12 @@ public partial class App : Application
     private EventWaitHandle? _showWindowEvent;
     private Win32Icon? _trayIconImage;
     private TrayIconHost? _trayIcon;
+    private HomeWindow? _homeWindow;
+    private DateTime _lastTrayClick = DateTime.MinValue;
+    private bool _trayHandled;
     private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
+    private const int DoubleClickThresholdMs = 350;
 
     public App()
     {
@@ -74,40 +78,23 @@ public partial class App : Application
         {
             IconSource = _trayIconImage,
             ToolTipText = "Luna",
-            // 右击托盘图标显示菜单
+// 右击托盘图标显示菜单
             Menu = new TrayMenu
             {
                 new TrayMenuItem
                 {
-                    Header = "显示窗口",
-                    Command = new TrayCommand(_ => Dispatcher.Invoke(() =>
-                    {
-                        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-                        mainWindow.Show();
-                        mainWindow.ShowInternal();
-                        mainWindow.WindowState = WindowState.Normal;
-                        mainWindow.Activate();
-                    }))
+                    Header = "主界面",
+                    Command = new TrayCommand(_ => Dispatcher.Invoke(ShowHomeWindow))
                 },
                 new TrayMenuItem
                 {
                     Header = "关闭",
                     Command = new TrayCommand(_ => Dispatcher.Invoke(Shutdown))
-                }
+}
             }
         };
-        // 订阅左键单击事件
-        _trayIcon.Click += (sender, e) =>
-        {
-            Dispatcher.Invoke(() =>
-            { var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-                    mainWindow.Show();
-                    mainWindow.ShowInternal();
-                    mainWindow.WindowState = WindowState.Normal;
-                    mainWindow.Activate();
-                });
-            
-        };
+        // 订阅托盘单击事件
+        _trayIcon.Click += (sender, e) => Dispatcher.Invoke(OnTrayClick);
         
         // 实现AI服务和依赖注入 + 数据库初始化
         _host = Host.CreateDefaultBuilder()
@@ -116,6 +103,8 @@ public partial class App : Application
             {
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
+                services.AddTransient<HomeWindow>();
+                services.AddSingleton<HomeViewModel>();
                 services.AddSingleton(new AiSettings
                 {
                     ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
@@ -134,6 +123,58 @@ public partial class App : Application
                     options.UseSqlite($"Data Source={dbPath}"));
             })
             .Build();
+    }
+
+    private async void OnTrayClick()
+    {
+        _trayHandled = false;
+
+        if (_homeWindow is { IsLoaded: true })
+        {
+            ShowHomeWindow();
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if ((now - _lastTrayClick).TotalMilliseconds < DoubleClickThresholdMs)
+        {
+            _trayHandled = true;
+            _lastTrayClick = DateTime.MinValue;
+            ShowHomeWindow();
+            return;
+        }
+
+        _lastTrayClick = now;
+        await Task.Delay(DoubleClickThresholdMs);
+
+        if (_trayHandled) return;
+
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+        mainWindow.ShowInternal();
+        mainWindow.WindowState = WindowState.Normal;
+        mainWindow.Activate();
+    }
+
+    private void ShowHomeWindow()
+    {
+        if (_homeWindow is { IsLoaded: true })
+        {
+            _homeWindow.WindowState = WindowState.Normal;
+            _homeWindow.Show();
+            _homeWindow.Activate();
+            return;
+        }
+
+        var window = _host.Services.GetRequiredService<HomeWindow>();
+        window.Closed += (_, _) =>
+        {
+            if (_homeWindow == window) _homeWindow = null;
+        };
+        _homeWindow = window;
+        _homeWindow.WindowState = WindowState.Normal;
+        _homeWindow.Show();
+        _homeWindow.Activate();
     }
 
     private void StartShowWindowListener()

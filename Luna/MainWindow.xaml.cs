@@ -375,9 +375,11 @@ private void HideInternal()
         if (_animating) return;
         if (targetW <= 0 || targetH <= 0) return;
 
+        var baseH = IslandBorder.MinHeight;
+
         var clipRect = new RectangleGeometry
         {
-            Rect = new Rect(targetW / 2, targetH / 2, 0, 0),
+            Rect = new Rect(targetW / 2, baseH / 2, 0, 0),
             RadiusX = 0,
             RadiusY = 0
         };
@@ -396,7 +398,7 @@ private void HideInternal()
             {
                 var t = elapsed / 0.2;
                 var eased = CircleEaseOut(t);
-                var size = targetH * 2.0 / 3.0 * eased;
+                var size = baseH * 2.0 / 3.0 * eased;
                 w = size;
                 h = size;
             }
@@ -404,17 +406,10 @@ private void HideInternal()
             {
                 var t = (elapsed - 0.2) / 0.15;
                 var eased = CubicEaseOut(t);
-                var startSize = targetH * 2.0 / 3.0;
+                var startSize = baseH * 2.0 / 3.0;
                 w = startSize + (targetW - startSize) * eased;
                 h = startSize + (targetH - startSize) * eased;
             }
-            // else if (elapsed < 0.5)
-            // {
-            //     var t = (elapsed - 0.35) / 0.15;
-            //     var bounce = Math.Sin(t * Math.PI * 2) * (1 - t) * 0.04;
-            //     w = targetW * (1 + bounce);
-            //     h = targetH * (1 + bounce);
-            // }
             else
             {
                 w = targetW;
@@ -426,8 +421,10 @@ private void HideInternal()
 
             if (clipRect != null)
             {
+                var animT = elapsed < 0.2 ? 0 : Math.Min((elapsed - 0.2) / 0.15, 1.0);
+                var refH = baseH + (targetH - baseH) * animT;
                 var x = (targetW - w) / 2;
-                var y = (targetH - h) / 2;
+                var y = (refH - h) / 2;
                 clipRect.Rect = new Rect(x, y, w, h);
                 var r = Math.Min(h / 2, 25);
                 clipRect.RadiusX = r;
