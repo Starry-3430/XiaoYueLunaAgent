@@ -15,7 +15,12 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/ToastStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
         <Style x:Key="SideButton" TargetType="Button">
             <Setter Property="Foreground" Value="#CCFFFFFF"/>
@@ -84,6 +89,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -101,7 +107,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Button Grid.Row="0"
+            <Button x:Name="NewChatButton" Grid.Row="0"
                     Style="{StaticResource SideButton}"
                     Margin="10,10,10,8"
                     Height="56"
@@ -116,20 +122,21 @@
                          ItemContainerStyle="{StaticResource HistoryItemStyle}"
                          Background="Transparent"
                          BorderThickness="0"
+                         ScrollViewer.CanContentScroll="False"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
                 <Rectangle VerticalAlignment="Bottom"
-                           Height="32"
+                           Height="5"
                            Fill="#1A1A1A"
                            IsHitTestVisible="False"/>
             </Grid>
 
             <StackPanel Grid.Row="2" Margin="10,0,10,10">
                 <Rectangle Height="1" Fill="#2A2A2A" Margin="0,0,0,4"/>
-                <Button Style="{StaticResource SideButton}" Content="日记本"/>
-                <Button Style="{StaticResource SideButton}" Content="工具"/>
-                <Button Style="{StaticResource SideButton}" Content="设置"/>
+                <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本"/>
+                <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具"/>
+                <Button x:Name="SettingsButton" Style="{StaticResource SideButton}" Content="设置"/>
             </StackPanel>
         </Grid>
 
@@ -213,8 +220,31 @@
                 </ItemsControl>
             </ScrollViewer>
 
+            <!-- 设置 / 日记本 / 工具 内容区 -->
+            <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
+                <TextBlock Text="设置页面"
+                           Foreground="#88FFFFFF"
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">
+                <TextBlock Text="日记本页面"
+                           Foreground="#88FFFFFF"
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+            <Grid x:Name="ToolsContent" Grid.Row="1" Visibility="Collapsed">
+                <TextBlock Text="工具页面"
+                           Foreground="#88FFFFFF"
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
             <!-- 输入区 -->
-            <Grid Grid.Row="2" Margin="20,0,20,12">
+            <Grid Grid.Row="2" x:Name="InputArea" Margin="20,0,20,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -297,11 +327,22 @@
                 </Button>
             </Grid>
 
-            <TextBlock Grid.Row="3"
+            <TextBlock x:Name="StatusText" Grid.Row="3"
                        Text="{Binding Status}"
                        Foreground="#88FFFFFF"
                        FontSize="12"
                        Margin="24,0,0,8"/>
         </Grid>
+
+    <!-- 通知浮层 -->
+    <Grid x:Name="ToastLayer"
+          Grid.ColumnSpan="3"
+          IsHitTestVisible="True"
+          Visibility="Visible">
+        <StackPanel x:Name="ToastStack"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,16,16"/>
     </Grid>
+</Grid>
 </Window>
