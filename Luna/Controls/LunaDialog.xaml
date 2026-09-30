@@ -1,0 +1,44 @@
+﻿<Window x:Class="Luna.Controls.LunaDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title=""
+        Width="350"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/DialogButtonStyles.xaml"/>
+                <ResourceDictionary Source="/Styles/LunaDialogStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border Style="{StaticResource DialogBorder}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="TitleBlock"
+                       Grid.Row="0"
+                       Style="{StaticResource DialogTitle}"
+                       Visibility="Collapsed"/>
+
+            <ContentPresenter x:Name="ContentArea"
+                              Grid.Row="1"
+                              Style="{StaticResource DialogBody}"/>
+
+            <StackPanel x:Name="ButtonsPanel"
+                        Grid.Row="2"
+                        HorizontalAlignment="Center"/>
+        </Grid>
+    </Border>
+</Window>

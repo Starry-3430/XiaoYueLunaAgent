@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Luna.Controls;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
@@ -56,6 +57,9 @@ public partial class MainWindow : Window
         SourceInitialized += OnSourceInitialized;
         SizeChanged += (_, _) => Reposition();
         IsVisibleChanged += OnIsVisibleChanged;
+        _ = new EditorContextMenu(CompactInputBox);
+        _ = new EditorContextMenu(InputBox);
+
         Loaded += (_, _) =>
         {
             UpdatePlaceholderVisibility();
