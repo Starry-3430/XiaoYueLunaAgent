@@ -109,7 +109,7 @@ public partial class App : Application
             
         };
         
-        // 实现AI服务和依赖注入
+        // 实现AI服务和依赖注入 + 数据库初始化
         _host = Host.CreateDefaultBuilder()
             .UseSerilog()
             .ConfigureServices((context, services) =>
@@ -126,10 +126,10 @@ public partial class App : Application
                 services.AddSingleton<IAiService, OpenAiService>();
 
                 var dbDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Luna");
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Luna", "database");
                 Directory.CreateDirectory(dbDir);
-                var dbPath = Path.Combine(dbDir, "luna.db");
+                var dbPath = Path.Combine(dbDir, "LunaData.db");
                 services.AddDbContext<LunaDbContext>(options =>
                     options.UseSqlite($"Data Source={dbPath}"));
             })
@@ -195,6 +195,12 @@ public partial class App : Application
             var db = scope.ServiceProvider.GetRequiredService<LunaDbContext>();
             db.Database.EnsureCreated();
             db.InitializeFts();
+
+            var integrity = db.Database.SqlQueryRaw<string>("PRAGMA quick_check").FirstOrDefault();
+            if (integrity != "ok")
+                Log.Warning("数据库完整性检查异常: {Integrity}", integrity);
+            else
+                Log.Information("数据库完整性检查通过");
         }
 
         Log.Information("Luna 已启动");
