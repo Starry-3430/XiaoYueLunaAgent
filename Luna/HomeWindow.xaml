@@ -18,6 +18,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Styles/ToastStyles.xaml"/>
+                <ResourceDictionary Source="/Styles/SettingsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -222,11 +223,110 @@
 
             <!-- 设置 / 日记本 / 工具 内容区 -->
             <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
-                <TextBlock Text="设置页面"
-                           Foreground="#88FFFFFF"
-                           FontSize="14"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Padding="20,16">
+                    <ItemsControl ItemsSource="{Binding SettingsItems}">
+                        <ItemsControl.Resources>
+                            <DataTemplate DataType="{x:Type models:ToggleSetting}">
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" Style="{StaticResource SettingsToggle}"
+                                                  IsChecked="{Binding Value}" VerticalAlignment="Top"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type models:NumberSetting}">
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                                        </StackPanel>
+                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecrementCommand}"/>
+                                            <TextBox Grid.Column="1" Text="{Binding DisplayText, UpdateSourceTrigger=LostFocus}"
+                                                     Style="{StaticResource SettingsInput}" Margin="6,0"
+                                                     PreviewKeyDown="NumberInput_KeyDown"/>
+                                            <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncrementCommand}" Margin="0,0,6,0"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding Unit}" Foreground="#88FFFFFF" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <Button Grid.Column="4" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+
+                            <DataTemplate DataType="{x:Type models:SelectSetting}">
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                                        </StackPanel>
+                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Grid.Column="0">
+<Border x:Name="SelectButton" Width="250" Height="34"
+                                                         Background="#333333" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                                         PreviewMouseLeftButtonDown="SelectToggle_Click" Tag="{Binding}">
+                                                    <TextBlock Text="{Binding SelectedLabel}" Foreground="White"
+                                                               FontSize="13" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Border>
+                                                <Popup x:Name="SelectPopup" IsOpen="{Binding IsOpen}"
+                                                       PlacementTarget="{Binding ElementName=SelectButton}"
+                                                       Placement="Bottom" StaysOpen="True"
+                                                       AllowsTransparency="True">
+                                                    <Border Background="#1A1A1A" CornerRadius="10" Padding="5" MaxWidth="350">
+                                                        <ItemsControl ItemsSource="{Binding Options}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="{x:Type models:SelectOption}">
+                                                                    <Border Padding="10,8" CornerRadius="6" Cursor="Hand"
+                                                                            Background="Transparent"
+                                                                            PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                                        <TextBlock Text="{Binding Label}" Foreground="White"
+                                                                                   FontSize="13" TextWrapping="Wrap"/>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Border>
+                                                </Popup>
+                                            </Grid>
+                                            <Button Grid.Column="1" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}" Margin="4,0,0,0"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.Resources>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
             <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">
                 <TextBlock Text="日记本页面"

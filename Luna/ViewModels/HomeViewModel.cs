@@ -28,6 +28,8 @@ public partial class HomeViewModel : ObservableObject
 
     public ObservableCollection<ChatSessionItem> ChatSessions { get; } = new();
 
+    public ObservableCollection<SettingsItem> SettingsItems { get; } = new();
+
     public HomeViewModel(IAiService aiService, ILogger<HomeViewModel> logger)
     {
         _aiService = aiService;
@@ -42,6 +44,33 @@ public partial class HomeViewModel : ObservableObject
                 Preview = $"这是第 {i + 1} 个历史对话的预览内容..."
             });
         }
+
+        SettingsItems.Add(new ToggleSetting
+        {
+            Key = "streamOutput", Title = "流式输出",
+            Description = "启用后 AI 回复将逐字显示。",
+            Value = true,
+        });
+        SettingsItems.Add(new NumberSetting
+        {
+            Key = "timeout", Title = "超时时间",
+            Description = "模型请求的超时时间（毫秒）。",
+            DisplayText = "300000", DefaultValue = 300000,
+            Min = 1000, Max = 3600000, Step = 1000, Unit = "ms",
+        });
+        SettingsItems.Add(new SelectSetting
+        {
+            Key = "proxyMode", Title = "代理模式",
+            Description = "当前插件的代理设置模式。",
+            DefaultValue = "global",
+            Options =
+            [
+                new SelectOption { Value = "global", Label = "遵循 ChatLuna 主插件的全局代理设置" },
+                new SelectOption { Value = "disabled", Label = "禁用代理" },
+                new SelectOption { Value = "custom", Label = "使用自定义代理设置" },
+            ],
+        });
+        ((SelectSetting)SettingsItems[^1]).ResetCommand.Execute(null);
     }
 
     [RelayCommand]

@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Luna.Models;
 using Luna.ViewModels;
 
 namespace Luna;
@@ -74,6 +75,12 @@ public partial class HomeWindow : Window
         DiaryButton.Click += (_, _) => ShowSideContent(DiaryContent, "日记本");
         ToolsButton.Click += (_, _) => ShowSideContent(ToolsContent, "工具");
         NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; };
+
+        PreviewMouseDown += (_, _) =>
+        {
+            foreach (var item in _viewModel.SettingsItems)
+                if (item is SelectSetting ss) ss.IsOpen = false;
+        };
     }
 
     private void ShowSideContent(Grid contentGrid, string title)
@@ -334,6 +341,39 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
         }
 
         DragMove();
+    }
+
+    private void SelectToggle_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not SelectSetting setting) return;
+        e.Handled = true;
+        setting.ToggleOpenCommand.Execute(null);
+    }
+
+    private void SelectOption_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not SelectOption option) return;
+        e.Handled = true;
+        var parent = fe;
+        while (parent != null)
+        {
+            if (parent.DataContext is SelectSetting setting)
+            {
+                setting.SelectOptionCommand.Execute(option);
+                break;
+            }
+            parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
+        }
+    }
+
+    private void NumberInput_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is TextBox textBox)
+        {
+            var expr = textBox.GetBindingExpression(TextBox.TextProperty);
+            expr?.UpdateSource();
+            e.Handled = true;
+        }
     }
 
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
