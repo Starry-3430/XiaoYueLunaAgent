@@ -11,6 +11,8 @@ using Luna.Services;
 using Luna.ViewModels;
 using Microsoft.EntityFrameworkCore;
 using System.NativeTray;
+using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace Luna;
 
@@ -22,16 +24,16 @@ public partial class App : Application
     private Win32Icon? _trayIconImage;
     private TrayIconHost? _trayIcon;
     private HomeWindow? _homeWindow;
-    private DateTime _lastTrayClick = DateTime.MinValue;
-    private bool _trayHandled;
+    private CancellationTokenSource? _trayCts;
     private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
-    private const int DoubleClickThresholdMs = 350;
 
     public App()
     {
-        // 日志位置
+        // 强制使用软件渲染，避免硬件加速导致的兼容性问题
+        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
         
+        // 日志
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Luna", "logs");
@@ -127,27 +129,30 @@ public partial class App : Application
 
     private async void OnTrayClick()
     {
-        _trayHandled = false;
-
         if (_homeWindow is { IsLoaded: true })
         {
             ShowHomeWindow();
             return;
         }
 
-        var now = DateTime.UtcNow;
-        if ((now - _lastTrayClick).TotalMilliseconds < DoubleClickThresholdMs)
+        if (_trayCts is { IsCancellationRequested: false })
         {
-            _trayHandled = true;
-            _lastTrayClick = DateTime.MinValue;
+            _trayCts.Cancel();
             ShowHomeWindow();
             return;
         }
 
-        _lastTrayClick = now;
-        await Task.Delay(DoubleClickThresholdMs);
+        _trayCts = new CancellationTokenSource();
+        var cts = _trayCts;
 
-        if (_trayHandled) return;
+        try
+        {
+            await Task.Delay(180, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();

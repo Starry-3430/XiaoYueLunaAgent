@@ -1,11 +1,20 @@
-﻿using System.Windows;
+﻿using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using Luna.ViewModels;
 
 namespace Luna;
 
 public partial class HomeWindow : Window
 {
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
+    private const int DWMWCP_ROUNDSMALL = 3;
+
     private readonly HomeViewModel _viewModel;
     private const int ResizeBorder = 6;
 
@@ -14,6 +23,13 @@ public partial class HomeWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var preference = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+        };
 
         HistoryList.SelectionChanged += (_, _) =>
         {
