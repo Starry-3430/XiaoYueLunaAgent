@@ -16,16 +16,26 @@ using System.Runtime.InteropServices;
 
 namespace Luna;
 
+/// <summary>
+/// 主窗口：负责紧凑/展开两种形态、显示/隐藏动画、输入框自适应和消息滚动。
+/// </summary>
 public partial class MainWindow : Window
 {
+    // Windows 消息：DPI 改变、显示设置改变
     private const int WmDpiChanged = 0x02E0;
     private const int WmDisplayChange = 0x007E;
+    
+    // GetWindowLong/SetWindowLong 的索引：扩展窗口样式
     private const int GwExStyle = -20;
+    
+    // WS_EX_TOOLWINDOW：工具窗口样式，避免出现在 Alt+Tab / 任务栏
     private const int WsExToolWindow = 0x00000080;
 
+    // 从 user32.dll 获取窗口扩展样式
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
+    // 从 user32.dll 设置窗口扩展样式
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
@@ -38,9 +48,9 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel _viewModel;
     private readonly Stopwatch _animationStopwatch = new();
-    private bool _animating;
-    private bool _isShown;
-    private EventHandler? _renderingHandler;
+    private bool _animating; // 是否正在播放显示动画
+    private bool _isShown; // 当前窗口是否处于“已显示”状态
+    private EventHandler? _renderingHandler; // CompositionTarget.Rendering 的回调，用于逐帧动画
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -48,15 +58,19 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         _viewModel = viewModel;
 
+        // 监听消息集合变化，并为已有消息挂上属性变化监听
         _viewModel.Messages.CollectionChanged += OnMessagesChanged;
         foreach (var message in _viewModel.Messages)
         {
             message.PropertyChanged += OnMessagePropertyChanged;
         }
 
+        // 窗口初始化完成后设置 Hook、尺寸变化、可见性变化等
         SourceInitialized += OnSourceInitialized;
         SizeChanged += (_, _) => Reposition();
         IsVisibleChanged += OnIsVisibleChanged;
+        
+        // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(CompactInputBox);
         _ = new EditorContextMenu(InputBox);
 
@@ -74,6 +88,7 @@ public partial class MainWindow : Window
             source.AddHook(WndProc);
         }
 
+        // 让窗口不显示在任务栏和 Alt+Tab 中
         var hwnd = new WindowInteropHelper(this).Handle;
         var exStyle = GetWindowLong(hwnd, GwExStyle);
         SetWindowLong(hwnd, GwExStyle, exStyle | WsExToolWindow);
@@ -83,6 +98,7 @@ public partial class MainWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // DPI 或显示器布局变化时重新计算窗口位置
         if (msg is WmDpiChanged or WmDisplayChange)
         {
             Reposition();
@@ -92,6 +108,7 @@ public partial class MainWindow : Window
 
     private void Reposition()
     {
+        // 顶部居中，距屏幕顶部 40px
         WindowPositioner.PlaceTopCenter(this, 40);
     }
 
@@ -99,6 +116,7 @@ public partial class MainWindow : Window
     {
         if (!(bool)e.NewValue)
         {
+            // 隐藏时停止动画，避免后台继续渲染
             StopAnimation();
             return;
         }
@@ -114,6 +132,7 @@ public partial class MainWindow : Window
 
         Reposition();
 
+        // 等布局完成后再播放显示动画，并聚焦紧凑输入框
         Dispatcher.BeginInvoke(() =>
         {
             var targetW = IslandBorder.ActualWidth;
@@ -125,6 +144,7 @@ public partial class MainWindow : Window
             }
             else
             {
+                // 布局尺寸不可用时直接显示，避免窗口卡在透明/裁剪状态
                 CompactContent.Opacity = 1;
                 IslandBorder.Clip = null;
             }
@@ -138,6 +158,7 @@ public partial class MainWindow : Window
 
     private void CompactInputBox_TextChanged(object sender, TextChangedEventArgs e)
     {
+        // 文本变化时：更新占位符、输入框尺寸，并保证光标可见
         UpdatePlaceholderVisibility();
         UpdateCompactInputSize();
         EnsureCaretVisible();
@@ -145,6 +166,7 @@ public partial class MainWindow : Window
 
     private void UpdatePlaceholderVisibility()
     {
+        // 输入为空时显示占位符
         var isEmpty = string.IsNullOrEmpty(CompactInputBox.Text);
         Placeholder.Visibility = isEmpty ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -154,6 +176,7 @@ public partial class MainWindow : Window
         var text = CompactInputBox.Text;
         var displayText = string.IsNullOrEmpty(text) ? Placeholder.Text : text;
 
+        // 使用当前输入框字体测量显示文本宽度
         var typeface = new Typeface(
             CompactInputBox.FontFamily,
             CompactInputBox.FontStyle,
@@ -171,6 +194,7 @@ public partial class MainWindow : Window
             Brushes.White,
             dpi);
 
+        // 预留左右各 12px 的空间
         double desiredWidth = ft.Width + 24;
         var hasNewLine = text.Contains('\r') || text.Contains('\n');
         var multiLine = hasNewLine || desiredWidth > MaxCompactWidth;
@@ -198,12 +222,13 @@ public partial class MainWindow : Window
             CompactInputBox.VerticalContentAlignment = VerticalAlignment.Top;
             CompactInputBox.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             CompactInputBox.MaxHeight = LineHeight * MaxLines + VerticalPadding;
-            CompactInputBox.Height = double.NaN;
+            CompactInputBox.Height = double.NaN; // 高度由内容自适应
         }
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        // 新消息加入时订阅属性变化，旧消息移除时取消订阅
         if (e.NewItems != null)
         {
             foreach (ChatMessage message in e.NewItems)
@@ -223,6 +248,7 @@ public partial class MainWindow : Window
         ScrollMessagesToEnd();
     }
 
+    // 保持视图滚动到底部
     private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ChatMessage.Content) or nameof(ChatMessage.Role))
@@ -235,11 +261,13 @@ public partial class MainWindow : Window
     // 发送消息的时候消息区滚动到最底部
     private void ScrollMessagesToEnd()
     {
+        // 延迟到布局完成后滚动
         Dispatcher.BeginInvoke(() => MessageScrollViewer.ScrollToEnd(), DispatcherPriority.Background);
     }
 
     private void EnsureCaretVisible()
     {
+        // 仅在输入框有键盘焦点时处理
         if (!CompactInputBox.IsKeyboardFocusWithin)
         {
             return;
@@ -253,6 +281,7 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // 如果光标在最后一行或不在可见范围内，则滚动到对应行
             if (caretLine >= CompactInputBox.LineCount - 1)
             {
                 CompactInputBox.ScrollToEnd();
@@ -331,6 +360,7 @@ private void HideInternal()
         Reposition();
         _isShown = true;
 
+        // 等布局完成后再播放动画，并聚焦输入框
         Dispatcher.BeginInvoke(() =>
         {
             var targetW = IslandBorder.ActualWidth;
@@ -350,16 +380,18 @@ private void HideInternal()
         }, DispatcherPriority.Loaded);
     }
 
-    public void ToggleVisibility()
-    {
-        if (_isShown)
-            HideInternal();
-        else
-            ShowInternal();
-    }
+    // public void ToggleVisibility()
+    // {
+    //     // 已显示则隐藏，否则显示
+    //     if (_isShown)
+    //         HideInternal();
+    //     else
+    //         ShowInternal();
+    // }
 
     private void StopAnimation()
     {
+        // 停止逐帧动画并清理裁剪，避免影响后续布局
         _animating = false;
         _animationStopwatch.Reset();
         if (_renderingHandler != null)
@@ -377,6 +409,7 @@ private void HideInternal()
 
         var baseH = IslandBorder.MinHeight;
 
+        // 从中心点、零尺寸开始裁剪，后续逐帧扩展
         var clipRect = new RectangleGeometry
         {
             Rect = new Rect(targetW / 2, baseH / 2, 0, 0),
@@ -394,6 +427,7 @@ private void HideInternal()
 
             double w, h;
 
+            // 第一阶段：从中心扩张到约 2/3 基础高度，圆形缓动
             if (elapsed < 0.2)
             {
                 var t = elapsed / 0.2;
@@ -402,6 +436,7 @@ private void HideInternal()
                 w = size;
                 h = size;
             }
+            // 第二阶段：从初始尺寸扩展到目标宽高
             else if (elapsed < 0.35)
             {
                 var t = (elapsed - 0.2) / 0.15;
@@ -410,6 +445,7 @@ private void HideInternal()
                 w = startSize + (targetW - startSize) * eased;
                 h = startSize + (targetH - startSize) * eased;
             }
+            // 结束阶段：固定为目标尺寸
             else
             {
                 w = targetW;
@@ -419,6 +455,7 @@ private void HideInternal()
             w = Math.Max(w, 0);
             h = Math.Max(h, 0);
 
+            // 根据动画进度计算裁剪矩形，并让圆角随高度变化，最大 25px
             if (clipRect != null)
             {
                 var animT = elapsed < 0.2 ? 0 : Math.Min((elapsed - 0.2) / 0.15, 1.0);
@@ -431,6 +468,7 @@ private void HideInternal()
                 clipRect.RadiusY = r;
             }
 
+            // 透明度：前 0.3 秒隐藏，0.3~0.8 秒渐显，之后完全显示
             if (elapsed <= 0.3)
             {
                 CompactContent.Opacity = 0;
@@ -444,6 +482,7 @@ private void HideInternal()
                 CompactContent.Opacity = 1;
             }
 
+            // 动画结束：停止逐帧回调，并设置最终圆角
             if (elapsed >= 0.8)
             {
                 StopAnimation();
@@ -456,12 +495,14 @@ private void HideInternal()
 
     private static double CircleEaseOut(double t)
     {
+        // 圆形缓出：先快后慢
         t -= 1;
         return Math.Sqrt(1 - t * t);
     }
 
     private static double CubicEaseOut(double t)
     {
+        // 三次缓出：1 - (1 - t)^3
         return 1 - Math.Pow(1 - t, 3);
     }
 
@@ -469,6 +510,7 @@ private void HideInternal()
 
     private void SwitchToCompact()
     {
+        // 重新计算占位符与输入框尺寸
         StopAnimation();
         ExpandedContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Visible;
@@ -477,12 +519,14 @@ private void HideInternal()
         UpdateCompactInputSize();
         Dispatcher.BeginInvoke(() =>
         {
+            // 等布局完成后根据实际高度设置胶囊圆角
             IslandBorder.CornerRadius = new CornerRadius(Math.Min(IslandBorder.ActualHeight / 2.0, 25));
         }, DispatcherPriority.Loaded);
     }
 
     private void SwitchToExpanded()
     {
+        // 切换到展开内容，固定 25 圆角，聚焦展开输入框并滚动消息到底部
         StopAnimation();
         CompactContent.Visibility = Visibility.Collapsed;
         // CompactContent.Opacity = 1;
@@ -496,6 +540,7 @@ private void HideInternal()
 
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        // Enter 发送，Shift+Enter 换行
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0)
         {
             if (DataContext is MainViewModel vm && vm.SendCommand.CanExecute(null))
@@ -506,7 +551,7 @@ private void HideInternal()
         }
     }
 
-    // ===== 隐藏逻辑 =====
+    // ===== 隐藏逻辑 ===== （弃用）
 
     // private void Window_MouseLeave(object sender, MouseEventArgs e)
     // {
@@ -521,11 +566,13 @@ private void HideInternal()
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        // 胶囊窗口失去激活状态时自动隐藏
         HideInternal();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        // Esc 隐藏窗口
         if (e.Key == Key.Escape)
         {
             HideInternal();

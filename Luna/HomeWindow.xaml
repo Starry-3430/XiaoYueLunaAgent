@@ -291,16 +291,16 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Grid Grid.Column="0">
-<Border x:Name="SelectButton" Width="250" Height="34"
-                                                         Background="#333333" CornerRadius="6" Padding="10,0" Cursor="Hand"
-                                                         PreviewMouseLeftButtonDown="SelectToggle_Click" Tag="{Binding}">
+<Grid Grid.Column="0">
+                                                <Border Width="250" Height="34"
+                                                        Background="#333333" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                                        PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                                        Tag="{Binding .}">
                                                     <TextBlock Text="{Binding SelectedLabel}" Foreground="White"
                                                                FontSize="13" VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </Border>
-                                                <Popup x:Name="SelectPopup" IsOpen="{Binding IsOpen}"
-                                                       PlacementTarget="{Binding ElementName=SelectButton}"
+                                                <Popup IsOpen="{Binding IsOpen}"
                                                        Placement="Bottom" StaysOpen="True"
                                                        AllowsTransparency="True">
                                                     <Border Background="#1A1A1A" CornerRadius="10" Padding="5" MaxWidth="350">
@@ -309,7 +309,8 @@
                                                                 <DataTemplate DataType="{x:Type models:SelectOption}">
                                                                     <Border Padding="10,8" CornerRadius="6" Cursor="Hand"
                                                                             Background="Transparent"
-                                                                            PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                                            PreviewMouseLeftButtonDown="SelectOption_Click"
+                                                                            Tag="{Binding .}">
                                                                         <TextBlock Text="{Binding Label}" Foreground="White"
                                                                                    FontSize="13" TextWrapping="Wrap"/>
                                                                     </Border>
