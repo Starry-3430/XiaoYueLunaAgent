@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
+        xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
         Width="1200" Height="850"
@@ -34,7 +35,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Height" Value="48"/>
+            <Setter Property="Height" Value="55"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -198,35 +199,97 @@
                           Grid.Row="1"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"
+                          ScrollViewer.CanContentScroll="False"
                           Padding="20,16">
                 <ItemsControl ItemsSource="{Binding Messages}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="models:ChatMessage">
-                            <Border Margin="0,0,0,8"
-                                    MaxWidth="600"
-                                    Padding="14,10"
-                                    CornerRadius="12">
+                            <Border MaxWidth="600"
+                                    CornerRadius="8">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="HorizontalAlignment" Value="Left"/>
-                                        <Setter Property="Background" Value="#2A2A2A"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Margin" Value="0,0,0,16"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Role}" Value="user">
                                                 <Setter Property="HorizontalAlignment" Value="Right"/>
                                                 <Setter Property="Background" Value="#0A84FF"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="Margin" Value="0,0,10,16"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-<TextBox Text="{Binding Content}"
-                                          TextWrapping="Wrap"
-                                          Foreground="White"
-                                          FontSize="15"
-                                          IsReadOnly="True"
-                                          BorderThickness="0"
-                                          Background="Transparent"
-                                          IsInactiveSelectionHighlightEnabled="True"
-                                          Loaded="MessageText_Loaded"/>
+<Grid>
+                                <!-- 用户消息：纯文本 -->
+                                <TextBox Text="{Binding Content}"
+                                            TextWrapping="Wrap"
+                                            Foreground="White"
+                                            FontSize="15"
+                                            HorizontalAlignment="Left"
+                                            Margin="10,6"
+                                            IsReadOnly="True"
+                                            BorderThickness="0"
+                                            Background="Transparent"
+                                            IsInactiveSelectionHighlightEnabled="True"
+                                            Loaded="MessageText_Loaded">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Role}" Value="user">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                                <!-- AI 消息：Markdown 阅读器 -->
+<StackPanel>
+                                        <md:MarkdownDocumentView SelectionEnabled="True"
+                                                                 Background="Transparent"
+                                                                 HorizontalAlignment="Left"
+                                                                 VirtualizationEnabled="False"
+                                                                 Margin="10,6"
+                                                                 Loaded="MessageViewer_Loaded">
+                                            <md:MarkdownDocumentView.Style>
+                                                <Style TargetType="md:MarkdownDocumentView">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </md:MarkdownDocumentView.Style>
+                                        </md:MarkdownDocumentView>
+                                        <!-- AI 操作按钮 -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Left"
+                                                    Margin="10,0,0,4">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Button Content="复制" FontSize="12" Height="26" Width="50"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
+                                                    Background="#333333" Margin="0,0,6,0"
+                                                    Click="CopyMessage_Click"/>
+                                            <Button Content="重写" FontSize="12" Height="26" Width="50"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
+                                                    Background="#333333"
+                                                    Click="RewriteMessage_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                            </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

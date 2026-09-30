@@ -277,6 +277,79 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _cts?.Cancel();
     }
 
+    [RelayCommand]
+    private async Task RewriteMessageAsync(ChatMessage msg)
+    {
+        if (IsBusy) return;
+
+        var index = Messages.IndexOf(msg);
+        if (index < 0) return;
+
+        while (Messages.Count > index)
+            Messages.RemoveAt(index);
+
+        string userText = "";
+        for (var i = Messages.Count - 1; i >= 0; i--)
+        {
+            if (Messages[i].Role == "user")
+            {
+                userText = Messages[i].Content;
+                break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(userText)) return;
+
+        IsBusy = true;
+        Status = "思考中…";
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            var replyContent = string.Empty;
+            var uiReply = new ChatMessage { Role = "assistant", Content = "" };
+            Messages.Add(uiReply);
+
+            var buffer = new StringBuilder();
+            var lastFlush = DateTime.UtcNow;
+
+            await foreach (var chunk in _aiService.ChatStreamAsync(Messages, _cts.Token))
+            {
+                buffer.Append(chunk);
+                if ((DateTime.UtcNow - lastFlush).TotalMilliseconds > 100 || buffer.Length >= 80)
+                {
+                    replyContent += buffer.ToString();
+                    uiReply.Content = replyContent;
+                    lastFlush = DateTime.UtcNow;
+                    buffer.Clear();
+                }
+            }
+
+            if (buffer.Length > 0)
+            {
+                replyContent += buffer.ToString();
+                uiReply.Content = replyContent;
+            }
+
+            Status = "就绪";
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "就绪（已取消）";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重写失败");
+            Status = "出错：" + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
     public void Receive(SessionUpdateMessage message)
     {
         _ = LoadSessionsAsync();

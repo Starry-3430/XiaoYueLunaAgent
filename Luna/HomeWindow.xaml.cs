@@ -1,8 +1,8 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -150,11 +150,70 @@ public partial class HomeWindow : Window
         SetActiveSideButton(null);
     }
 
+    // ===== 气泡 Markdown 渲染 =====
+    private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+
+        _ = new BubbleContextMenu(viewer);
+
+        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
+        {
+            BaseTypeface = new Typeface("Cascadia Mono"),
+            Background = System.Windows.Media.Brushes.Transparent,
+            EmSize = 16,
+            ParagraphLineHeight = 1.4,
+            HeadingScales = new[] { 1.4, 1.25, 1.15, 1.08, 1.04, 1.0 },
+        });
+
+        if (viewer.DataContext is not ChatMessage msg) return;
+
+        viewer.SetMarkdown(msg.Content);
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        var dirty = false;
+
+        timer.Tick += (_, _) =>
+        {
+            if (!dirty) return;
+            dirty = false;
+            viewer.SetMarkdown(msg.Content);
+        };
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(ChatMessage.Content)) return;
+            dirty = true;
+            if (!timer.IsEnabled) timer.Start();
+        };
+
+        msg.PropertyChanged += handler;
+
+        viewer.Unloaded += (_, _) =>
+        {
+            msg.PropertyChanged -= handler;
+            timer.Stop();
+        };
+    }
+
     // ===== 气泡右键菜单 =====
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is TextBox tb)
             _ = new BubbleContextMenu(tb);
+    }
+
+    // ===== AI 操作按钮 =====
+    private void CopyMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            Clipboard.SetText(msg.Content);
+    }
+
+    private void RewriteMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            _viewModel.RewriteMessageCommand.Execute(msg);
     }
 
     // ===== 迷你 Toast 通知 =====

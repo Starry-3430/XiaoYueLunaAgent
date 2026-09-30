@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using WpfMarkdownViewer;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Luna.Data;
@@ -270,7 +271,10 @@ public partial class App : Application
         _showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         StartShowWindowListener();
 
-        // 3. 启动 Host
+        // 3. 注册 WpfMarkdownViewer 插件（语法高亮、数学、SVG、Mermaid）
+        DefaultCapabilities.RegisterAll();
+
+        // 4. 启动 Host
         _host.Start();
 
         // 4. 数据库初始化与完整性检查

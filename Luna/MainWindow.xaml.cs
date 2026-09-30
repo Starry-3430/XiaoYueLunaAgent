@@ -91,6 +91,51 @@ public partial class MainWindow : Window
             _ = new BubbleContextMenu(tb);
     }
 
+    private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+
+        _ = new BubbleContextMenu(viewer);
+
+        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
+        {
+            BaseTypeface = new Typeface("Cascadia Mono"),
+            Background = System.Windows.Media.Brushes.Transparent,
+            EmSize = 15,
+            ParagraphLineHeight = 1.4,
+            HeadingScales = new[] { 1.5, 1.3, 1.2, 1.1, 1.05, 1.0 },
+        });
+
+        if (viewer.DataContext is not ChatMessage msg) return;
+
+        viewer.SetMarkdown(msg.Content);
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        var dirty = false;
+
+        timer.Tick += (_, _) =>
+        {
+            if (!dirty) return;
+            dirty = false;
+            viewer.SetMarkdown(msg.Content);
+        };
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(ChatMessage.Content)) return;
+            dirty = true;
+            if (!timer.IsEnabled) timer.Start();
+        };
+
+        msg.PropertyChanged += handler;
+
+        viewer.Unloaded += (_, _) =>
+        {
+            msg.PropertyChanged -= handler;
+            timer.Stop();
+        };
+    }
+
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         if (PresentationSource.FromVisual(this) is HwndSource source)

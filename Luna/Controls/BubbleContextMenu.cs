@@ -3,17 +3,18 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Luna.Models;
 
 namespace Luna.Controls;
 
 public class BubbleContextMenu
 {
     private readonly Popup _popup;
-    private readonly TextBox _target;
+    private readonly FrameworkElement _target;
     private bool _isOpen;
     private bool _windowEventsAttached;
 
-    public BubbleContextMenu(TextBox target)
+    public BubbleContextMenu(FrameworkElement target)
     {
         _target = target;
 
@@ -130,10 +131,17 @@ public class BubbleContextMenu
 
     private void CopyContent()
     {
-        if (_target.SelectionLength > 0)
-            Clipboard.SetText(_target.SelectedText);
-        else
-            Clipboard.SetText(_target.Text);
+        if (_target is TextBox tb)
+        {
+            if (tb.SelectionLength > 0)
+                Clipboard.SetText(tb.SelectedText);
+            else
+                Clipboard.SetText(tb.Text);
+            return;
+        }
+
+        if (_target.DataContext is ChatMessage msg)
+            Clipboard.SetText(msg.Content);
     }
 
     private void Cleanup()
