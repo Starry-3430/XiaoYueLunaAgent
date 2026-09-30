@@ -5,9 +5,11 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Luna.Data;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
+using Microsoft.EntityFrameworkCore;
 using System.NativeTray;
 
 namespace Luna;
@@ -107,7 +109,7 @@ public partial class App : Application
             
         };
         
-        // 实现AI服务和依赖注入
+        // 实现AI服务和依赖注入 + 数据库初始化
         _host = Host.CreateDefaultBuilder()
             .UseSerilog()
             .ConfigureServices((context, services) =>
@@ -122,6 +124,14 @@ public partial class App : Application
                 });
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
+
+                var dbDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Luna", "database");
+                Directory.CreateDirectory(dbDir);
+                var dbPath = Path.Combine(dbDir, "LunaData.db");
+                services.AddDbContext<LunaDbContext>(options =>
+                    options.UseSqlite($"Data Source={dbPath}"));
             })
             .Build();
     }
@@ -179,6 +189,20 @@ public partial class App : Application
 
         // 3. 启动 Host
         _host.Start();
+
+        using (var scope = _host.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LunaDbContext>();
+            db.Database.EnsureCreated();
+            db.InitializeFts();
+
+            var integrity = db.Database.SqlQueryRaw<string>("PRAGMA quick_check").FirstOrDefault();
+            if (integrity != "ok")
+                Log.Warning("数据库完整性检查异常: {Integrity}", integrity);
+            else
+                Log.Information("数据库完整性检查通过");
+        }
+
         Log.Information("Luna 已启动");
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();

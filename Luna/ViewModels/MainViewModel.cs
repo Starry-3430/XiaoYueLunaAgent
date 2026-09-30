@@ -63,7 +63,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            Status = "已取消";
+            Status = "就绪（已取消）";
             _logger.LogInformation("请求被取消");
         }
         catch (Exception ex)

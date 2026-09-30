@@ -425,8 +425,9 @@ private void HideInternal()
                 var x = (targetW - w) / 2;
                 var y = (targetH - h) / 2;
                 clipRect.Rect = new Rect(x, y, w, h);
-                clipRect.RadiusX = h / 2;
-                clipRect.RadiusY = h / 2;
+                var r = Math.Min(h / 2, 25);
+                clipRect.RadiusX = r;
+                clipRect.RadiusY = r;
             }
 
             if (elapsed <= 0.3)
@@ -445,7 +446,7 @@ private void HideInternal()
             if (elapsed >= 0.8)
             {
                 StopAnimation();
-                IslandBorder.CornerRadius = new CornerRadius(IslandBorder.ActualHeight / 2.0);
+                IslandBorder.CornerRadius = new CornerRadius(Math.Min(IslandBorder.ActualHeight / 2.0, 25));
             }
         };
 
@@ -475,7 +476,7 @@ private void HideInternal()
         UpdateCompactInputSize();
         Dispatcher.BeginInvoke(() =>
         {
-            IslandBorder.CornerRadius = new CornerRadius(IslandBorder.ActualHeight / 2.0);
+            IslandBorder.CornerRadius = new CornerRadius(Math.Min(IslandBorder.ActualHeight / 2.0, 25));
         }, DispatcherPriority.Loaded);
     }
 
