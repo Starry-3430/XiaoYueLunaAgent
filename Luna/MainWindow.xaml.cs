@@ -708,14 +708,19 @@ private void HideInternal()
 
     private void SwitchToExpanded()
     {
-        // 切换到展开内容，固定 25 圆角，聚焦展开输入框并滚动消息到底部
         StopAnimation();
         CompactContent.Visibility = Visibility.Collapsed;
-        // CompactContent.Opacity = 1;
+        ExpandedContent.Opacity = 0;
         ExpandedContent.Visibility = Visibility.Visible;
-        IslandBorder.CornerRadius = new CornerRadius(25);
-        InputBox.Focus();
-        ScrollMessagesToEnd();
+        IslandBorder.UpdateLayout();
+        Dispatcher.BeginInvoke(() =>
+        {
+            ExpandedContent.Opacity = 1;
+            CompactContent.Opacity = 1;
+            IslandBorder.CornerRadius = new CornerRadius(25);
+            InputBox.Focus();
+            ScrollMessagesToEnd();
+        }, DispatcherPriority.Loaded);
     }
 
     // ===== 展开模式的输入框 =====
