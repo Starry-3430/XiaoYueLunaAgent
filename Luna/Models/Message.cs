@@ -7,6 +7,7 @@ public class Message
     public string TurnId { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public string ReasoningContent { get; set; } = string.Empty;
     public string ContentType { get; set; } = "text";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string LogicalDate { get; set; } = string.Empty;

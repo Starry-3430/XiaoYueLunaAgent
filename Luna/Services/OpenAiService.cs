@@ -58,7 +58,7 @@ public class OpenAiService : IAiService
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
-    public async IAsyncEnumerable<string> ChatStreamAsync(
+    public async IAsyncEnumerable<StreamChunk> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -102,19 +102,26 @@ public class OpenAiService : IAiService
             if (string.IsNullOrWhiteSpace(data))
                 continue;
 
-            string? delta = null;
+            StreamChunk? chunk = null;
             try
             {
-                var chunk = JsonSerializer.Deserialize<ChatCompletionResponse>(data, JsonOptions);
-                delta = chunk?.Choices?.FirstOrDefault()?.Delta?.Content;
+                var chatChunk = JsonSerializer.Deserialize<ChatCompletionResponse>(data, JsonOptions);
+                var delta = chatChunk?.Choices?.FirstOrDefault()?.Delta;
+                if (delta is not null)
+                {
+                    var content = !string.IsNullOrEmpty(delta.Content) ? delta.Content : null;
+                    var reasoning = !string.IsNullOrEmpty(delta.ReasoningContent) ? delta.ReasoningContent : null;
+                    if (content is not null || reasoning is not null)
+                        chunk = new StreamChunk(content, reasoning);
+                }
             }
             catch (JsonException ex)
             {
                 _logger.LogWarning(ex, "SSE 解析跳过: {Line}", line);
             }
 
-            if (!string.IsNullOrEmpty(delta))
-                yield return delta;
+            if (chunk is not null)
+                yield return chunk.Value;
         }
     }
 }

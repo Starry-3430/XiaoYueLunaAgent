@@ -105,7 +105,6 @@ private readonly MainViewModel _viewModel;
 
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
-            BaseTypeface = new Typeface("Cascadia Mono"),
             Background = System.Windows.Media.Brushes.Transparent,
             SubtleForeground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
             EmSize = 15,
@@ -152,6 +151,20 @@ private readonly MainViewModel _viewModel;
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ScrollViewer sv) return;
+        if (sv.DataContext is not ChatMessage msg) return;
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatMessage.ReasoningContent))
+                sv.ScrollToBottom();
+        };
+        msg.PropertyChanged += handler;
+        sv.Unloaded += (_, _) => msg.PropertyChanged -= handler;
     }
 
     private static void ApplyLightScrollBarStyle(WpfMarkdownViewer.Controls.MarkdownDocumentView viewer)

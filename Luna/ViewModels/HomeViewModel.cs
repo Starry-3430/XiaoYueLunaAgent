@@ -135,7 +135,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             var msgs = await _messageRepo.GetBySessionAsync(session.Id);
             foreach (var m in msgs)
             {
-                Messages.Add(new ChatMessage { Role = m.Role, Content = m.Content });
+                Messages.Add(new ChatMessage { Role = m.Role, Content = m.Content, ReasoningContent = m.ReasoningContent });
             }
             Status = "就绪";
         }
@@ -216,6 +216,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                     TurnId = turnId,
                     Role = "assistant",
                     Content = replyContent,
+                    ReasoningContent = uiReply.ReasoningContent,
                     CreatedAtUtc = DateTime.UtcNow,
                     LogicalDate = logicalDate,
                 };
@@ -253,13 +254,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private async Task<string> StreamIntoAsync(ChatMessage uiReply, CancellationToken ct)
     {
         var lockObj = new object();
-        var buffer = new List<string>();
+        var buffer = new List<StreamChunk>();
         var sb = new StringBuilder();
+        var reasoningSb = new StringBuilder();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
 
         timer.Tick += (_, _) =>
         {
-            string[] batch;
+            StreamChunk[] batch;
             lock (lockObj)
             {
                 if (buffer.Count == 0) return;
@@ -267,8 +269,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 buffer.Clear();
             }
             foreach (var c in batch)
-                sb.Append(c);
+            {
+                if (c.Content is not null)
+                    sb.Append(c.Content);
+                if (c.ReasoningContent is not null)
+                    reasoningSb.Append(c.ReasoningContent);
+            }
             uiReply.Content = sb.ToString();
+            uiReply.ReasoningContent = reasoningSb.ToString();
         };
 
         try
@@ -287,16 +295,24 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             timer.Start();
             await consumeTask;
 
-            string[] remaining;
+            StreamChunk[] remaining;
             lock (lockObj)
             {
                 remaining = buffer.ToArray();
                 buffer.Clear();
             }
             foreach (var c in remaining)
-                sb.Append(c);
+            {
+                if (c.Content is not null)
+                    sb.Append(c.Content);
+                if (c.ReasoningContent is not null)
+                    reasoningSb.Append(c.ReasoningContent);
+            }
             if (remaining.Length > 0)
+            {
                 uiReply.Content = sb.ToString();
+                uiReply.ReasoningContent = reasoningSb.ToString();
+            }
 
             return uiReply.Content;
         }

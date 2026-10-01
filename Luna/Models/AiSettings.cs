@@ -28,6 +28,9 @@ public class ChatCompletionMessage
 
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("reasoning_content")]
+    public string? ReasoningContent { get; set; }
 }
 
 public class ChatCompletionResponse
