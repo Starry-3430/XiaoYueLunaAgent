@@ -142,6 +142,34 @@ private readonly MainViewModel _viewModel;
         };
     }
 
+    private void MarkdownViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0) return;
+
+        e.Handled = true;
+
+        if (sender is not DependencyObject element) return;
+        var scrollViewer = FindChildScrollViewer(element);
+        if (scrollViewer == null) return;
+
+        var offset = scrollViewer.HorizontalOffset - e.Delta;
+        offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
+        scrollViewer.ScrollToHorizontalOffset(offset);
+    }
+
+    private static ScrollViewer? FindChildScrollViewer(DependencyObject parent)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer sv) return sv;
+            var result = FindChildScrollViewer(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
     private void CopyMessage_Click(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)

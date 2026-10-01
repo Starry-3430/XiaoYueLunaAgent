@@ -260,12 +260,13 @@ Background="#E4E0CA"
 <StackPanel>
                                         <Grid>
 <md:MarkdownDocumentView SelectionEnabled="True"
-                                                                             Background="Transparent"
-                                                                             HorizontalAlignment="Left"
-                                                                             VirtualizationEnabled="False"
-                                                                             MaxWidth="600"
-                                                                             Margin="0,6"
-                                                                             Loaded="MessageViewer_Loaded">
+                                                                              Background="Transparent"
+                                                                              HorizontalAlignment="Left"
+                                                                              VirtualizationEnabled="False"
+                                                                              MaxWidth="600"
+                                                                              Margin="0,6"
+                                                                              Loaded="MessageViewer_Loaded"
+                                                                              PreviewMouseWheel="MarkdownViewer_PreviewMouseWheel">
                                                     <md:MarkdownDocumentView.Style>
                                                         <Style TargetType="md:MarkdownDocumentView">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
