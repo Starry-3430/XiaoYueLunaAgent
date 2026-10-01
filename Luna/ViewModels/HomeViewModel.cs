@@ -1,19 +1,26 @@
 ﻿using System.Collections.ObjectModel;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
 using Luna.Services;
 
 namespace Luna.ViewModels;
 
-public partial class HomeViewModel : ObservableObject
+public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateMessage>
 {
     private readonly IAiService _aiService;
+    private readonly SessionRepository _sessionRepo;
+    private readonly MessageRepository _messageRepo;
     private readonly ILogger<HomeViewModel> _logger;
     private CancellationTokenSource? _cts;
+    private string? _currentSessionId;
+    private readonly Dictionary<string, string> _sessionDrafts = new();
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -24,26 +31,23 @@ public partial class HomeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
+    [ObservableProperty]
+    private ChatSessionItem? _selectedSession;
+
     public ObservableCollection<ChatMessage> Messages { get; } = new();
-
     public ObservableCollection<ChatSessionItem> ChatSessions { get; } = new();
-
     public ObservableCollection<SettingsItem> SettingsItems { get; } = new();
 
-    public HomeViewModel(IAiService aiService, ILogger<HomeViewModel> logger)
+    public HomeViewModel(IAiService aiService, SessionRepository sessionRepo,
+        MessageRepository messageRepo, ILogger<HomeViewModel> logger)
     {
         _aiService = aiService;
+        _sessionRepo = sessionRepo;
+        _messageRepo = messageRepo;
         _logger = logger;
 
-        for (var i = 0; i < 10; i++)
-        {
-            ChatSessions.Add(new ChatSessionItem
-            {
-                Id = i.ToString(),
-                Title = $"标题标题标题 {i + 1}",
-                Preview = $"这是第 {i + 1} 个历史对话的预览内容..."
-            });
-        }
+        WeakReferenceMessenger.Default.Register<SessionUpdateMessage>(this);
+        _ = LoadSessionsAsync();
 
         SettingsItems.Add(new ToggleSetting
         {
@@ -73,22 +77,79 @@ public partial class HomeViewModel : ObservableObject
         ((SelectSetting)SettingsItems[^1]).ResetCommand.Execute(null);
     }
 
-    [RelayCommand]
-    private void NewChat()
+    private async Task LoadSessionsAsync()
     {
-        Messages.Clear();
-        InputText = string.Empty;
-        Status = "就绪";
+        try
+        {
+            var sessions = await _sessionRepo.GetAllAsync();
+            var selectedId = SelectedSession?.Id;
+            ChatSessions.Clear();
+            foreach (var s in sessions)
+            {
+                var item = new ChatSessionItem
+                {
+                    Id = s.Id,
+                    Title = s.Title ?? "新对话",
+                    Preview = s.Preview ?? "",
+                };
+                ChatSessions.Add(item);
+                if (item.Id == selectedId)
+                    SelectedSession = item;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "加载会话列表失败");
+        }
     }
 
     [RelayCommand]
-    private void SelectSession(ChatSessionItem? session)
+    private void NewChat()
+    {
+        SaveCurrentDraft();
+        Messages.Clear();
+        InputText = string.Empty;
+        Status = "就绪";
+        _currentSessionId = null;
+        SelectedSession = null;
+    }
+
+    [RelayCommand]
+    private async Task SelectSession(ChatSessionItem? session)
     {
         if (session is null) return;
+
+        SaveCurrentDraft();
+
+        _currentSessionId = session.Id;
+        SelectedSession = session;
         Messages.Clear();
-        Messages.Add(new ChatMessage { Role = "user", Content = $"进入对话: {session.Title}" });
-        Messages.Add(new ChatMessage { Role = "assistant", Content = "这是一个历史对话的模拟回复。" });
-        Status = "就绪";
+
+        if (_sessionDrafts.TryGetValue(session.Id, out var draft))
+            InputText = draft;
+        else
+            InputText = string.Empty;
+
+        try
+        {
+            var msgs = await _messageRepo.GetBySessionAsync(session.Id);
+            foreach (var m in msgs)
+            {
+                Messages.Add(new ChatMessage { Role = m.Role, Content = m.Content });
+            }
+            Status = "就绪";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "加载会话消息失败");
+            Status = "加载失败";
+        }
+    }
+
+    private void SaveCurrentDraft()
+    {
+        if (_currentSessionId is not null)
+            _sessionDrafts[_currentSessionId] = InputText;
     }
 
     [RelayCommand]
@@ -99,30 +160,86 @@ public partial class HomeViewModel : ObservableObject
         var userText = InputText.Trim();
         InputText = string.Empty;
 
-        Messages.Add(new ChatMessage { Role = "user", Content = userText });
-
-        var reply = new ChatMessage { Role = "assistant", Content = string.Empty };
-        Messages.Add(reply);
-
-        IsBusy = true;
-        Status = "思考中…";
-        _cts = new CancellationTokenSource();
-
         try
         {
-            await foreach (var chunk in _aiService.ChatStreamAsync(Messages, _cts.Token))
+            // 1. 创建会话（如无）
+            if (_currentSessionId is null)
             {
-                reply.Content += chunk;
+                var session = new Session();
+                await _sessionRepo.InsertAsync(session);
+                _currentSessionId = session.Id;
+
+                ChatSessions.Insert(0, new ChatSessionItem
+                {
+                    Id = session.Id,
+                    Title = "新对话",
+                    Preview = userText,
+                });
             }
-            Status = "就绪";
-        }
-        catch (OperationCanceledException)
-        {
-            Status = "就绪（已取消）";
+
+            // 2. 生成 TurnId
+            var turnId = Guid.NewGuid().ToString("N");
+            var now = DateTime.UtcNow;
+            var logicalDate = now.ToString("yyyy-MM-dd");
+
+            // 3. 写 user 消息
+            var userMsg = new Message
+            {
+                SessionId = _currentSessionId,
+                TurnId = turnId,
+                Role = "user",
+                Content = userText,
+                CreatedAtUtc = now,
+                LogicalDate = logicalDate,
+            };
+            await _messageRepo.InsertAsync(userMsg);
+
+            var uiUserMsg = new ChatMessage { Role = "user", Content = userText };
+            Messages.Add(uiUserMsg);
+
+            IsBusy = true;
+            Status = "思考中…";
+            _cts = new CancellationTokenSource();
+
+            // 4. 调用 AI 流式回复
+            var uiReply = new ChatMessage { Role = "assistant", Content = "" };
+            Messages.Add(uiReply);
+
+            try
+            {
+                var replyContent = await StreamIntoAsync(uiReply, _cts.Token);
+
+                // 5. 写 assistant 消息
+                var assistantMsg = new Message
+                {
+                    SessionId = _currentSessionId,
+                    TurnId = turnId,
+                    Role = "assistant",
+                    Content = replyContent,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    LogicalDate = logicalDate,
+                };
+                await _messageRepo.InsertAsync(assistantMsg);
+
+                // 6. 刷新会话时间并重新加载列表（保证 DB 中的 UpdatedAtUtc 排序）
+                await _sessionRepo.TouchAsync(_currentSessionId);
+                await LoadSessionsAsync();
+
+                Status = "就绪";
+            }
+            catch (OperationCanceledException)
+            {
+                Status = "就绪（已取消）";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI 回复失败");
+                Status = "出错：" + ex.Message;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送失败");
+            _logger.LogError(ex, "发送消息失败");
             Status = "出错：" + ex.Message;
         }
         finally
@@ -133,10 +250,125 @@ public partial class HomeViewModel : ObservableObject
         }
     }
 
+    private async Task<string> StreamIntoAsync(ChatMessage uiReply, CancellationToken ct)
+    {
+        var lockObj = new object();
+        var buffer = new List<string>();
+        var sb = new StringBuilder();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+
+        timer.Tick += (_, _) =>
+        {
+            string[] batch;
+            lock (lockObj)
+            {
+                if (buffer.Count == 0) return;
+                batch = buffer.ToArray();
+                buffer.Clear();
+            }
+            foreach (var c in batch)
+                sb.Append(c);
+            uiReply.Content = sb.ToString();
+        };
+
+        try
+        {
+            uiReply.IsStreaming = true;
+
+            var consumeTask = Task.Run(async () =>
+            {
+                await foreach (var chunk in _aiService.ChatStreamAsync(Messages, ct))
+                {
+                    lock (lockObj)
+                        buffer.Add(chunk);
+                }
+            }, ct);
+
+            timer.Start();
+            await consumeTask;
+
+            string[] remaining;
+            lock (lockObj)
+            {
+                remaining = buffer.ToArray();
+                buffer.Clear();
+            }
+            foreach (var c in remaining)
+                sb.Append(c);
+            if (remaining.Length > 0)
+                uiReply.Content = sb.ToString();
+
+            return uiReply.Content;
+        }
+        finally
+        {
+            uiReply.IsStreaming = false;
+            timer.Stop();
+        }
+    }
+
     [RelayCommand]
     private void Cancel()
     {
         _cts?.Cancel();
+    }
+
+    [RelayCommand]
+    private async Task RewriteMessageAsync(ChatMessage msg)
+    {
+        if (IsBusy) return;
+
+        var index = Messages.IndexOf(msg);
+        if (index < 0) return;
+
+        while (Messages.Count > index)
+            Messages.RemoveAt(index);
+
+        string userText = "";
+        for (var i = Messages.Count - 1; i >= 0; i--)
+        {
+            if (Messages[i].Role == "user")
+            {
+                userText = Messages[i].Content;
+                break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(userText)) return;
+
+        IsBusy = true;
+        Status = "思考中…";
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            var uiReply = new ChatMessage { Role = "assistant", Content = "" };
+            Messages.Add(uiReply);
+
+            await StreamIntoAsync(uiReply, _cts.Token);
+
+            Status = "就绪";
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "就绪（已取消）";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重写失败");
+            Status = "出错：" + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    public void Receive(SessionUpdateMessage message)
+    {
+        _ = LoadSessionsAsync();
     }
 }
 

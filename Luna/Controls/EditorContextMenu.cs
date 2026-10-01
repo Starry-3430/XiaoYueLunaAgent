@@ -49,7 +49,7 @@ public class EditorContextMenu
 
         var container = new Border
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)),
+            Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x43, 0x3D)),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(5),
             Child = panel,
@@ -62,9 +62,6 @@ public class EditorContextMenu
             StaysOpen = true,          // 改为 true，避免右键事件序列导致立即关闭
             AllowsTransparency = true,
         };
-        _popup.Closed += (_, _) => _isOpen = false;
-
-        
         _popup.Closed += (_, _) => _isOpen = false;
 
         target.ContextMenu = null;
@@ -207,14 +204,14 @@ public class EditorContextMenu
         var button = new Button
         {
             Content = text,
-            Width = 60,
-            Height = 20,
+            Width = 80,
+            Height = 28,
             Margin = new Thickness(0, 0, 0, 2),
             Cursor = Cursors.Hand,
-            Foreground = Brushes.White,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xFE, 0xFA, 0xE1)),
             FontSize = 12,
             BorderThickness = new Thickness(0),
-            Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A)),
+            Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x43, 0x3D)),
             Template = CreateButtonTemplate(),
         };
 
@@ -243,7 +240,7 @@ public class EditorContextMenu
             Property = UIElement.IsMouseOverProperty,
             Value = true,
         };
-        hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x4A, 0x4A, 0x4A)), "Bg"));
+        hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x3D, 0x36, 0x2F)), "Bg"));
         template.Triggers.Add(hoverTrigger);
 
         return template;

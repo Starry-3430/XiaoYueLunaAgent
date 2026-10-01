@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -7,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Luna.Controls;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -20,9 +22,14 @@ public partial class HomeWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
     private const int DWMWCP_ROUNDSMALL = 3;
+    private const int WM_NCLBUTTONDOWN = 0xA1;
+    private const int HT_CAPTION = 2;
 
     private readonly HomeViewModel _viewModel;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
@@ -31,6 +38,10 @@ public partial class HomeWindow : Window
     private const double SlideInDistance = 40;      // 通知滑入的距离
     private const double AnimDuration = 0.3;        // 动画持续时间
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
+    private Button? _activeSideButton;               // 当前激活的底部侧边按钮
+
+    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
+    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列
@@ -79,13 +90,16 @@ public partial class HomeWindow : Window
                 MessageScrollViewer.ScrollToEnd());
         };
 
-        // 左侧底部按钮：切换右侧内容区
-        SettingsButton.Click += (_, _) => ShowSideContent(SettingsContent, "设置");
-        DiaryButton.Click += (_, _) => ShowSideContent(DiaryContent, "日记本");
-        ToolsButton.Click += (_, _) => ShowSideContent(ToolsContent, "工具");
+// 左侧底部按钮：切换右侧内容区
+        SettingsButton.Click += (_, _) => { ShowSideContent(SettingsContent, "设置"); SetActiveSideButton(SettingsButton); };
+        DiaryButton.Click += (_, _) => { ShowSideContent(DiaryContent, "日记本"); SetActiveSideButton(DiaryButton); };
+        ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
-        // “新对话”按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; };
+        // "新对话"按钮：回到聊天模式并重置标题
+        NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+
+        // 为输入框挂载自定义右键菜单
+        _ = new EditorContextMenu(InputBox);
 
         // 点击窗口任意位置时，关闭所有设置项中的下拉弹出层
         PreviewMouseDown += (_, _) =>
@@ -93,6 +107,9 @@ public partial class HomeWindow : Window
             foreach (var item in _viewModel.SettingsItems)
                 if (item is SelectSetting ss) ss.IsOpen = false;
         };
+
+        // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
+        MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
     }
 
     /// <summary>
@@ -111,6 +128,18 @@ public partial class HomeWindow : Window
         HistoryList.SelectedIndex = -1;
     }
 
+    private void SetActiveSideButton(Button? active)
+    {
+        foreach (var btn in new[] { DiaryButton, ToolsButton, SettingsButton })
+        {
+            if (btn == active)
+                btn.Background = ActiveSideBrush;
+            else
+                btn.Background = DefaultSideBrush;
+        }
+        _activeSideButton = active;
+    }
+
     /// <summary>
     /// 切换到聊天模式：显示消息列表、输入区，隐藏设置等页面。
     /// </summary>
@@ -123,7 +152,79 @@ public partial class HomeWindow : Window
         ToolsContent.Visibility = Visibility.Collapsed;
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
-        HistoryList.SelectedIndex = -1;
+        SetActiveSideButton(null);
+    }
+
+    // ===== 气泡 Markdown 渲染 =====
+    private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+
+        _ = new BubbleContextMenu(viewer);
+
+        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
+        {
+            BaseTypeface = new Typeface("Cascadia Mono"),
+            Background = System.Windows.Media.Brushes.Transparent,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            SubtleForeground = new SolidColorBrush(Color.FromRgb(0x36, 0x2F, 0x2B)),
+            EmSize = 16,
+            ParagraphLineHeight = 1.4,
+            HeadingScales = new[] { 1.4, 1.25, 1.15, 1.08, 1.04, 1.0 },
+            QuoteBar = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+            Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+        });
+
+        if (viewer.DataContext is not ChatMessage msg) return;
+
+        viewer.SetMarkdown(msg.Content);
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        var dirty = false;
+
+        timer.Tick += (_, _) =>
+        {
+            if (!dirty) return;
+            dirty = false;
+            viewer.SetMarkdown(msg.Content);
+        };
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(ChatMessage.Content)) return;
+            dirty = true;
+            if (!timer.IsEnabled) timer.Start();
+        };
+
+        msg.PropertyChanged += handler;
+
+        viewer.Unloaded += (_, _) =>
+        {
+            msg.PropertyChanged -= handler;
+            timer.Stop();
+        };
+    }
+
+    // ===== 气泡右键菜单 =====
+    private void MessageText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+            _ = new BubbleContextMenu(tb);
+    }
+
+    // ===== AI 操作按钮 =====
+    private void CopyMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            Clipboard.SetText(msg.Content);
+    }
+
+    private void RewriteMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            _viewModel.RewriteMessageCommand.Execute(msg);
     }
 
     // ===== 迷你 Toast 通知 =====
@@ -385,35 +486,54 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
             : WindowState.Maximized;
     }
 
-    /// <summary>
-    /// 顶部标题区鼠标按下：双击切换最大化，按住左键拖拽窗口。
-    /// </summary>
+    private Point? _headerDragStart;
+
     private void HeaderArea_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        // 双击标题栏切换最大化
         if (e.ClickCount == 2)
         {
             ToggleMaximize();
             return;
         }
 
-        // 按住左键拖拽窗口
         if (e.LeftButton != MouseButtonState.Pressed)
             return;
 
-        // 如果当前是最大化状态，先还原，并保持鼠标相对位置
+        _headerDragStart = e.GetPosition(this);
+    }
+
+    private void HeaderArea_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _headerDragStart is null)
+            return;
+
+        var pos = e.GetPosition(this);
+        var diff = pos - _headerDragStart.Value;
+
+        if (Math.Abs(diff.X) < 4 && Math.Abs(diff.Y) < 4)
+            return;
+
+        _headerDragStart = null;
+
         if (WindowState == WindowState.Maximized)
         {
-            var mousePos = e.GetPosition(this);
-            var screenPoint = PointToScreen(mousePos);
-
+            var mousePos = PointToScreen(pos);
             WindowState = WindowState.Normal;
-
-            Left = screenPoint.X - mousePos.X;
+            Left = mousePos.X - pos.X;
             Top = 0;
-        }
 
-        DragMove();
+            var hwnd = new WindowInteropHelper(this).Handle;
+            SendMessage(hwnd, WM_NCLBUTTONDOWN, (IntPtr)HT_CAPTION, (IntPtr)(((int)pos.Y << 16) | (int)pos.X));
+        }
+        else
+        {
+            DragMove();
+        }
+    }
+
+    private void HeaderArea_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _headerDragStart = null;
     }
 
     // ===== 设置项交互 =====

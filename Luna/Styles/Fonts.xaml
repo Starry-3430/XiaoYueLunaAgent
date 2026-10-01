@@ -2,6 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <FontFamily x:Key="DefaultFont">pack://application:,,,/Assets/#Alibaba PuHuiTi 3.0</FontFamily>
+    <FontFamily x:Key="CodeFont">pack://application:,,,/Assets/#Cascadia Mono</FontFamily>
 
     <Style TargetType="{x:Type TextElement}">
         <Setter Property="FontFamily" Value="{StaticResource DefaultFont}" />

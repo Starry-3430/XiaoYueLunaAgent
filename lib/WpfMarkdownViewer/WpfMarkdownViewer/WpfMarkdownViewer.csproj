@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Native WPF Markdown renderer optimized for incremental AI/LLM streaming.</Description>
+    <PackageTags>$(PackageTags);renderer;virtualization</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="1.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WpfMarkdownViewer.Tests" />
+    <InternalsVisibleTo Include="WpfMarkdownViewer.Mermaid" />
+  </ItemGroup>
+
+</Project>

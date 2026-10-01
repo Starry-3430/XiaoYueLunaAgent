@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Pure-.NET Mermaid diagram rendering plugin for WpfMarkdownViewer.</Description>
+    <PackageTags>$(PackageTags);mermaid;diagram</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mermaider" Version="0.8.0" />
+    <PackageReference Include="Mostlylucid.Dagre" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Mermaid renders to SVG, so it needs the SVG capability assembly at runtime. -->
+    <ProjectReference Include="..\WpfMarkdownViewer\WpfMarkdownViewer.csproj" />
+    <ProjectReference Include="..\WpfMarkdownViewer.Svg\WpfMarkdownViewer.Svg.csproj" />
+  </ItemGroup>
+
+</Project>

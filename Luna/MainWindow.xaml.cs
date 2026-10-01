@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Luna.Controls;
 using Luna.Models;
+using Luna.ViewModels;
 using Luna.Services;
 using Luna.ViewModels;
 using System.Runtime.InteropServices;
@@ -46,11 +48,12 @@ public partial class MainWindow : Window
     private const int MaxLines = 5;
     private const double VerticalPadding = 12;
 
-    private readonly MainViewModel _viewModel;
+private readonly MainViewModel _viewModel;
     private readonly Stopwatch _animationStopwatch = new();
-    private bool _animating; // 是否正在播放显示动画
-    private bool _isShown; // 当前窗口是否处于“已显示”状态
-    private EventHandler? _renderingHandler; // CompositionTarget.Rendering 的回调，用于逐帧动画
+    private bool _animating;
+    private bool _isShown;
+    private bool _hadConversation;
+    private EventHandler? _renderingHandler;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -79,6 +82,76 @@ public partial class MainWindow : Window
             UpdatePlaceholderVisibility();
             UpdateCompactInputSize();
         };
+
+        MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+    }
+
+    private void MessageText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+            _ = new BubbleContextMenu(tb);
+    }
+
+    private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+
+        _ = new BubbleContextMenu(viewer);
+
+        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
+        {
+            BaseTypeface = new Typeface("Cascadia Mono"),
+            Background = System.Windows.Media.Brushes.Transparent,
+            SubtleForeground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
+            EmSize = 15,
+            ParagraphLineHeight = 1.4,
+            HeadingScales = new[] { 1.5, 1.3, 1.2, 1.1, 1.05, 1.0 },
+            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            Border = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            QuoteBar = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+        });
+
+        if (viewer.DataContext is not ChatMessage msg) return;
+
+        viewer.SetMarkdown(msg.Content);
+
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        var dirty = false;
+
+        timer.Tick += (_, _) =>
+        {
+            if (!dirty) return;
+            dirty = false;
+            viewer.SetMarkdown(msg.Content);
+        };
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(ChatMessage.Content)) return;
+            dirty = true;
+            if (!timer.IsEnabled) timer.Start();
+        };
+
+        msg.PropertyChanged += handler;
+
+        viewer.Unloaded += (_, _) =>
+        {
+            msg.PropertyChanged -= handler;
+            timer.Stop();
+        };
+    }
+
+    private void CopyMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            Clipboard.SetText(msg.Content);
+    }
+
+    private async void RewriteMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            await _viewModel.RewriteMessageAsync(msg);
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -345,6 +418,7 @@ public partial class MainWindow : Window
     
 private void HideInternal()
     {
+        _hadConversation = _viewModel.Messages.Count > 0;
         StopAnimation();
         PrepareForShow();
         Opacity = 0;
@@ -355,6 +429,13 @@ private void HideInternal()
 
     public void ShowInternal()
     {
+        if (_hadConversation)
+        {
+            _viewModel.NewChat();
+            SwitchToCompact();
+            _hadConversation = false;
+        }
+
         PrepareForShow();
         Opacity = 1;
         Reposition();

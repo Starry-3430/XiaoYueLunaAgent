@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Meta-package containing WpfMarkdownViewer and all built-in rendering plugins.</Description>
+    <PackageTags>$(PackageTags);syntax-highlighting;latex;svg;mermaid</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Meta-package: pulls in every built-in capability (and its dependencies). -->
+    <ProjectReference Include="..\WpfMarkdownViewer\WpfMarkdownViewer.csproj" />
+    <ProjectReference Include="..\WpfMarkdownViewer.Highlighting\WpfMarkdownViewer.Highlighting.csproj" />
+    <ProjectReference Include="..\WpfMarkdownViewer.Math\WpfMarkdownViewer.Math.csproj" />
+    <ProjectReference Include="..\WpfMarkdownViewer.Svg\WpfMarkdownViewer.Svg.csproj" />
+    <ProjectReference Include="..\WpfMarkdownViewer.Mermaid\WpfMarkdownViewer.Mermaid.csproj" />
+  </ItemGroup>
+
+</Project>

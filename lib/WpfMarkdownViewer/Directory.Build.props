@@ -1,0 +1,29 @@
+<Project>
+
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Authors>CuiLiang; QuickerOrg contributors</Authors>
+    <Company>QuickerOrg</Company>
+    <Copyright>Copyright © 2026 CuiLiang and QuickerOrg contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/QuickerOrg/WpfMarkdownViewer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/QuickerOrg/WpfMarkdownViewer.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>wpf;markdown;streaming;ai;llm</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="\" Link="README.md" />
+    <None Include="$(MSBuildThisFileDirectory)..\LICENSE" Pack="true" PackagePath="\" Link="LICENSE" />
+    <None Include="$(MSBuildThisFileDirectory)..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Link="THIRD-PARTY-NOTICES.md" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
