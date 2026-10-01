@@ -162,6 +162,9 @@ public partial class HomeWindow : Window
 
         _ = new BubbleContextMenu(viewer);
 
+        viewer.LinkClicked += (_, args) =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
             BaseTypeface = new Typeface("Cascadia Mono"),
@@ -183,12 +186,16 @@ public partial class HomeWindow : Window
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         var dirty = false;
+        var rendering = false;
 
         timer.Tick += (_, _) =>
         {
-            if (!dirty) return;
+            if (!dirty || rendering) return;
+            rendering = true;
             dirty = false;
-            viewer.SetMarkdown(msg.Content);
+            try { viewer.SetMarkdown(msg.Content); }
+            catch { dirty = true; }
+            finally { rendering = false; }
         };
 
         PropertyChangedEventHandler handler = (_, args) =>
@@ -205,6 +212,65 @@ public partial class HomeWindow : Window
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    // ===== Shift+滚轮水平滚动 =====
+    private void MarkdownViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+        {
+            if (IsInsideCodeBlock(e.OriginalSource as DependencyObject))
+                return;
+
+            e.Handled = true;
+
+            if (sender is not DependencyObject element) return;
+            var scrollViewer = FindChildScrollViewer(element);
+            if (scrollViewer == null) return;
+
+            var offset = scrollViewer.HorizontalOffset - e.Delta;
+            offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
+            scrollViewer.ScrollToHorizontalOffset(offset);
+        }
+        else
+        {
+            e.Handled = true;
+            var parentSv = FindAncestorScrollViewer(sender as DependencyObject);
+            parentSv?.ScrollToVerticalOffset(parentSv.VerticalOffset - e.Delta);
+        }
+    }
+
+    private static bool IsInsideCodeBlock(DependencyObject? element)
+    {
+        while (element != null)
+        {
+            if (element.GetType().Name == "CodeBlockView") return true;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return false;
+    }
+
+    private static ScrollViewer? FindChildScrollViewer(DependencyObject parent)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer sv) return sv;
+            var result = FindChildScrollViewer(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private static ScrollViewer? FindAncestorScrollViewer(DependencyObject? child)
+    {
+        while (child != null)
+        {
+            child = VisualTreeHelper.GetParent(child);
+            if (child is ScrollViewer sv) return sv;
+        }
+        return null;
     }
 
     // ===== 气泡右键菜单 =====

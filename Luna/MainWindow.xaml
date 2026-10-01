@@ -218,7 +218,8 @@
                                                                                 HorizontalAlignment="Left"
                                                                                 VirtualizationEnabled="False"
                                                                                 MaxWidth="520"
-                                                                                Loaded="MessageViewer_Loaded">
+                                                                                Loaded="MessageViewer_Loaded"
+                                                                                PreviewMouseWheel="MarkdownViewer_PreviewMouseWheel">
                                                     <md:MarkdownDocumentView.Style>
                                                         <Style TargetType="md:MarkdownDocumentView">
                                                             <Setter Property="Visibility" Value="Collapsed"/>

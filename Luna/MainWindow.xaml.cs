@@ -1,9 +1,11 @@
-﻿using System.Collections.Specialized;
+﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -98,6 +100,9 @@ private readonly MainViewModel _viewModel;
 
         _ = new BubbleContextMenu(viewer);
 
+        viewer.LinkClicked += (_, args) =>
+            Process.Start(new ProcessStartInfo(args.Url) { UseShellExecute = true });
+
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
             BaseTypeface = new Typeface("Cascadia Mono"),
@@ -112,18 +117,25 @@ private readonly MainViewModel _viewModel;
             QuoteBar = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
         });
 
+        ApplyLightScrollBarStyle(viewer);
+
         if (viewer.DataContext is not ChatMessage msg) return;
 
         viewer.SetMarkdown(msg.Content);
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         var dirty = false;
+        var rendering = false;
 
         timer.Tick += (_, _) =>
         {
-            if (!dirty) return;
+            if (!dirty || rendering) return;
+            rendering = true;
             dirty = false;
-            viewer.SetMarkdown(msg.Content);
+            try { viewer.SetMarkdown(msg.Content); }
+            catch { dirty = true; }
+            finally { rendering = false; }
+            ApplyLightScrollBarStyle(viewer);
         };
 
         PropertyChangedEventHandler handler = (_, args) =>
@@ -140,6 +152,95 @@ private readonly MainViewModel _viewModel;
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    private static void ApplyLightScrollBarStyle(WpfMarkdownViewer.Controls.MarkdownDocumentView viewer)
+    {
+        viewer.Dispatcher.BeginInvoke(() =>
+        {
+            foreach (var sb in FindVisualChildren<ScrollBar>(viewer))
+                ApplyScrollBarThumbBrush(sb, new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)));
+        }, DispatcherPriority.Loaded);
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T t)
+                yield return t;
+            foreach (var grandchild in FindVisualChildren<T>(child))
+                yield return grandchild;
+        }
+    }
+
+    private static void ApplyScrollBarThumbBrush(ScrollBar scrollBar, Brush brush)
+    {
+        scrollBar.ApplyTemplate();
+        var thumb = scrollBar.Template?.FindName("Thumb", scrollBar) as Thumb;
+        if (thumb == null) return;
+        thumb.ApplyTemplate();
+        if (thumb.Template.FindName("ThumbBorder", thumb) is Border border)
+            border.Background = brush;
+    }
+
+    private void MarkdownViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+        {
+            if (IsInsideCodeBlock(e.OriginalSource as DependencyObject))
+                return;
+
+            e.Handled = true;
+
+            if (sender is not DependencyObject element) return;
+            var scrollViewer = FindChildScrollViewer(element);
+            if (scrollViewer == null) return;
+
+            var offset = scrollViewer.HorizontalOffset - e.Delta;
+            offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
+            scrollViewer.ScrollToHorizontalOffset(offset);
+        }
+        else
+        {
+            e.Handled = true;
+            var parentSv = FindAncestorScrollViewer(sender as DependencyObject);
+            parentSv?.ScrollToVerticalOffset(parentSv.VerticalOffset - e.Delta);
+        }
+    }
+
+    private static bool IsInsideCodeBlock(DependencyObject? element)
+    {
+        while (element != null)
+        {
+            if (element.GetType().Name == "CodeBlockView") return true;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return false;
+    }
+
+    private static ScrollViewer? FindChildScrollViewer(DependencyObject parent)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer sv) return sv;
+            var result = FindChildScrollViewer(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private static ScrollViewer? FindAncestorScrollViewer(DependencyObject? child)
+    {
+        while (child != null)
+        {
+            child = VisualTreeHelper.GetParent(child);
+            if (child is ScrollViewer sv) return sv;
+        }
+        return null;
     }
 
     private void CopyMessage_Click(object sender, RoutedEventArgs e)
