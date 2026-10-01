@@ -8,14 +8,14 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
                     <Border x:Name="ThumbBorder"
-                            Background="#66FFFFFF"
+                            Background="#A0362F2B"
                             CornerRadius="2"/>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ThumbBorder" Property="Background" Value="#99FFFFFF"/>
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="#362F2B"/>
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbBorder" Property="Background" Value="#CCFFFFFF"/>
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="#362F2B"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
