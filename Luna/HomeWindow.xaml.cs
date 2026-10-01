@@ -162,6 +162,9 @@ public partial class HomeWindow : Window
 
         _ = new BubbleContextMenu(viewer);
 
+        viewer.LinkClicked += (_, args) =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
             BaseTypeface = new Typeface("Cascadia Mono"),

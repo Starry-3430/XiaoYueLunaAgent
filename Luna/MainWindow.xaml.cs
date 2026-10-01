@@ -100,6 +100,9 @@ private readonly MainViewModel _viewModel;
 
         _ = new BubbleContextMenu(viewer);
 
+        viewer.LinkClicked += (_, args) =>
+            Process.Start(new ProcessStartInfo(args.Url) { UseShellExecute = true });
+
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
             BaseTypeface = new Typeface("Cascadia Mono"),
