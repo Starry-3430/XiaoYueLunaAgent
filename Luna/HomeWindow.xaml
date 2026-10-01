@@ -19,6 +19,7 @@ Background="#E4E0CA"
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/ScrollBar.xaml"/>
                 <ResourceDictionary Source="/Styles/ToastStyles.xaml"/>
                 <ResourceDictionary Source="/Styles/SettingsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
@@ -60,38 +61,6 @@ Background="#E4E0CA"
             </Setter>
         </Style>
 
-        <Style x:Key="TransparentRepeat" TargetType="RepeatButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style x:Key="HomeScrollBar" TargetType="ScrollBar">
-            <Setter Property="Width" Value="8"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid Background="Transparent">
-                            <Track x:Name="PART_Track" IsDirectionReversed="true">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Style="{StaticResource TransparentRepeat}" Command="ScrollBar.PageUpCommand"/>
-                                </Track.DecreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Border CornerRadius="4" Background="#362F2B" Margin="0,2"/>
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Style="{StaticResource TransparentRepeat}" Command="ScrollBar.PageDownCommand"/>
-                                </Track.IncreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
         <Style x:Key="HistoryItemStyle" TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -133,6 +102,7 @@ Background="#E4E0CA"
                 </Setter.Value>
             </Setter>
         </Style>
+
         </ResourceDictionary>
     </Window.Resources>
 
@@ -236,9 +206,6 @@ Background="#E4E0CA"
 
             <!-- 消息列表 -->
             <Grid Grid.Row="1">
-                <Grid.Resources>
-                    <Style TargetType="ScrollBar" BasedOn="{StaticResource HomeScrollBar}"/>
-                </Grid.Resources>
                 <ScrollViewer x:Name="MessageScrollViewer"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
