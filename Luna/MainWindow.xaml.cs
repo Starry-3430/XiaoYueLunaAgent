@@ -48,11 +48,12 @@ public partial class MainWindow : Window
     private const int MaxLines = 5;
     private const double VerticalPadding = 12;
 
-    private readonly MainViewModel _viewModel;
+private readonly MainViewModel _viewModel;
     private readonly Stopwatch _animationStopwatch = new();
-    private bool _animating; // 是否正在播放显示动画
-    private bool _isShown; // 当前窗口是否处于“已显示”状态
-    private EventHandler? _renderingHandler; // CompositionTarget.Rendering 的回调，用于逐帧动画
+    private bool _animating;
+    private bool _isShown;
+    private bool _hadConversation;
+    private EventHandler? _renderingHandler;
 
     public MainWindow(MainViewModel viewModel)
     {
@@ -110,7 +111,7 @@ public partial class MainWindow : Window
 
         viewer.SetMarkdown(msg.Content);
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         var dirty = false;
 
         timer.Tick += (_, _) =>
@@ -134,6 +135,18 @@ public partial class MainWindow : Window
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    private void CopyMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            Clipboard.SetText(msg.Content);
+    }
+
+    private async void RewriteMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
+            await _viewModel.RewriteMessageAsync(msg);
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -400,6 +413,7 @@ public partial class MainWindow : Window
     
 private void HideInternal()
     {
+        _hadConversation = _viewModel.Messages.Count > 0;
         StopAnimation();
         PrepareForShow();
         Opacity = 0;
@@ -410,6 +424,13 @@ private void HideInternal()
 
     public void ShowInternal()
     {
+        if (_hadConversation)
+        {
+            _viewModel.NewChat();
+            SwitchToCompact();
+            _hadConversation = false;
+        }
+
         PrepareForShow();
         Opacity = 1;
         Reposition();

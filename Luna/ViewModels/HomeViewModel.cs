@@ -2,6 +2,7 @@
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -201,34 +202,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             _cts = new CancellationTokenSource();
 
             // 4. 调用 AI 流式回复
-            var replyContent = string.Empty;
             var uiReply = new ChatMessage { Role = "assistant", Content = "" };
             Messages.Add(uiReply);
 
             try
             {
-                var buffer = new StringBuilder();
-                var lastFlush = DateTime.UtcNow;
-
-                await foreach (var chunk in _aiService.ChatStreamAsync(Messages, _cts.Token))
-                {
-                    buffer.Append(chunk);
-
-                    if ((DateTime.UtcNow - lastFlush).TotalMilliseconds > 100 ||
-                        buffer.Length >= 80)
-                    {
-                        replyContent += buffer.ToString();
-                        uiReply.Content = replyContent;
-                        lastFlush = DateTime.UtcNow;
-                        buffer.Clear();
-                    }
-                }
-
-                if (buffer.Length > 0)
-                {
-                    replyContent += buffer.ToString();
-                    uiReply.Content = replyContent;
-                }
+                var replyContent = await StreamIntoAsync(uiReply, _cts.Token);
 
                 // 5. 写 assistant 消息
                 var assistantMsg = new Message
@@ -271,6 +250,63 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         }
     }
 
+    private async Task<string> StreamIntoAsync(ChatMessage uiReply, CancellationToken ct)
+    {
+        var lockObj = new object();
+        var buffer = new List<string>();
+        var sb = new StringBuilder();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+
+        timer.Tick += (_, _) =>
+        {
+            string[] batch;
+            lock (lockObj)
+            {
+                if (buffer.Count == 0) return;
+                batch = buffer.ToArray();
+                buffer.Clear();
+            }
+            foreach (var c in batch)
+                sb.Append(c);
+            uiReply.Content = sb.ToString();
+        };
+
+        try
+        {
+            uiReply.IsStreaming = true;
+
+            var consumeTask = Task.Run(async () =>
+            {
+                await foreach (var chunk in _aiService.ChatStreamAsync(Messages, ct))
+                {
+                    lock (lockObj)
+                        buffer.Add(chunk);
+                }
+            }, ct);
+
+            timer.Start();
+            await consumeTask;
+
+            string[] remaining;
+            lock (lockObj)
+            {
+                remaining = buffer.ToArray();
+                buffer.Clear();
+            }
+            foreach (var c in remaining)
+                sb.Append(c);
+            if (remaining.Length > 0)
+                uiReply.Content = sb.ToString();
+
+            return uiReply.Content;
+        }
+        finally
+        {
+            uiReply.IsStreaming = false;
+            timer.Stop();
+        }
+    }
+
     [RelayCommand]
     private void Cancel()
     {
@@ -306,30 +342,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
         try
         {
-            var replyContent = string.Empty;
             var uiReply = new ChatMessage { Role = "assistant", Content = "" };
             Messages.Add(uiReply);
 
-            var buffer = new StringBuilder();
-            var lastFlush = DateTime.UtcNow;
-
-            await foreach (var chunk in _aiService.ChatStreamAsync(Messages, _cts.Token))
-            {
-                buffer.Append(chunk);
-                if ((DateTime.UtcNow - lastFlush).TotalMilliseconds > 100 || buffer.Length >= 80)
-                {
-                    replyContent += buffer.ToString();
-                    uiReply.Content = replyContent;
-                    lastFlush = DateTime.UtcNow;
-                    buffer.Clear();
-                }
-            }
-
-            if (buffer.Length > 0)
-            {
-                replyContent += buffer.ToString();
-                uiReply.Content = replyContent;
-            }
+            await StreamIntoAsync(uiReply, _cts.Token);
 
             Status = "就绪";
         }

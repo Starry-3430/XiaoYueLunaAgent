@@ -170,7 +170,7 @@ public partial class HomeWindow : Window
 
         viewer.SetMarkdown(msg.Content);
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         var dirty = false;
 
         timer.Tick += (_, _) =>

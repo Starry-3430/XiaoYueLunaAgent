@@ -210,24 +210,92 @@
                                                 </Style>
                                             </TextBox.Style>
                                         </TextBox>
-                                        <!-- AI 消息：Markdown 阅读器 -->
-<md:MarkdownDocumentView SelectionEnabled="True"
-                                                                   Background="Transparent"
-                                                                   HorizontalAlignment="Left"
-                                                                   VirtualizationEnabled="False"
-                                                                   MaxWidth="520"
-                                                                   Loaded="MessageViewer_Loaded">
-                                            <md:MarkdownDocumentView.Style>
-                                                <Style TargetType="md:MarkdownDocumentView">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Role}" Value="assistant">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </md:MarkdownDocumentView.Style>
-                                        </md:MarkdownDocumentView>
+<!-- AI 消息：Markdown 阅读器 + 思考指示 + 操作按钮 -->
+<StackPanel>
+                                            <Grid>
+                                                <md:MarkdownDocumentView SelectionEnabled="True"
+                                                                            Background="Transparent"
+                                                                            HorizontalAlignment="Left"
+                                                                            VirtualizationEnabled="False"
+                                                                            MaxWidth="520"
+                                                                            Loaded="MessageViewer_Loaded">
+                                                    <md:MarkdownDocumentView.Style>
+                                                        <Style TargetType="md:MarkdownDocumentView">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </md:MarkdownDocumentView.Style>
+                                                </md:MarkdownDocumentView>
+                                                <StackPanel Orientation="Horizontal" Margin="8,4"
+                                                            IsHitTestVisible="False"
+                                                            Visibility="{Binding IsThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="正在思考" Foreground="#88FFFFFF" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
+                                                        <TextBlock.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                            From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.0"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </TextBlock.Triggers>
+                                                    </TextBlock>
+                                                    <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="0">
+                                                        <TextBlock.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                            From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.2"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </TextBlock.Triggers>
+                                                    </TextBlock>
+                                                    <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="0">
+                                                        <TextBlock.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                            From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.4"/>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </TextBlock.Triggers>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal" Margin="8,0,0,4">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <Button Content="复制" FontSize="12" Height="26" Width="50"
+                                                        Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
+                                                        Background="#333333" Margin="0,0,6,0"
+                                                        Click="CopyMessage_Click"/>
+                                                <Button Content="重写" FontSize="12" Height="26" Width="50"
+                                                        Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
+                                                        Background="#333333"
+                                                        Click="RewriteMessage_Click"/>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
