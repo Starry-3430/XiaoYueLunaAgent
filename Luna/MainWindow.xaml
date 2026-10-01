@@ -17,7 +17,21 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:SubtractConverter x:Key="SubtractConverter"/>
 
-        
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="MinWidth" Value="12"/>
+            <Setter Property="Template" Value="{StaticResource Win11VerticalScrollBarLight}"/>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Height" Value="12"/>
+                    <Setter Property="MinHeight" Value="12"/>
+                    <Setter Property="Template" Value="{StaticResource Win11HorizontalScrollBar}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
 
         <!-- 圆角输入框 -->
         <Style x:Key="RoundedTextBox" TargetType="TextBox">
