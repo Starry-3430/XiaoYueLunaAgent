@@ -102,9 +102,14 @@ private readonly MainViewModel _viewModel;
         {
             BaseTypeface = new Typeface("Cascadia Mono"),
             Background = System.Windows.Media.Brushes.Transparent,
+            SubtleForeground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
             EmSize = 15,
             ParagraphLineHeight = 1.4,
             HeadingScales = new[] { 1.5, 1.3, 1.2, 1.1, 1.05, 1.0 },
+            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            Border = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
+            QuoteBar = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
         });
 
         if (viewer.DataContext is not ChatMessage msg) return;

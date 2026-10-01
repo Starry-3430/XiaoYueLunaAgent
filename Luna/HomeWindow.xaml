@@ -8,7 +8,7 @@
         Title="Luna"
         Width="1200" Height="850"
         MinWidth="720" MinHeight="550"
-        Background="#1E1E1E"
+Background="#E4E0CA"
         WindowState="Normal"
         ResizeMode="CanResize"
         StateChanged="Window_StateChanged">
@@ -28,8 +28,8 @@
         
 
         <Style x:Key="SideButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="Background" Value="#0DFFFFFF"/>
+            <Setter Property="Foreground" Value="#5B4833"/>
+            <Setter Property="Background" Value="#E4E0CA"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -46,10 +46,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#22FFFFFF"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#F5F2E0"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#EDE9D5"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
@@ -60,6 +60,38 @@
             </Setter>
         </Style>
 
+        <Style x:Key="TransparentRepeat" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style x:Key="HomeScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="true">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource TransparentRepeat}" Command="ScrollBar.PageUpCommand"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border CornerRadius="4" Background="#362F2B" Margin="0,2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource TransparentRepeat}" Command="ScrollBar.PageDownCommand"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="HistoryItemStyle" TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -74,12 +106,14 @@
                                 CornerRadius="8"
                                 Padding="12,8">
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Title}"
-                                           Foreground="White"
+                                <TextBlock x:Name="TitleText"
+                                           Text="{Binding Title}"
+                                           Foreground="#FEFAE1"
                                            FontSize="13"
                                            TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Preview}"
-                                           Foreground="#66FFFFFF"
+                                <TextBlock x:Name="PreviewText"
+                                           Text="{Binding Preview}"
+                                           Foreground="#B0A090"
                                            FontSize="11"
                                            TextTrimming="CharacterEllipsis"
                                            Margin="0,2,0,0"/>
@@ -87,10 +121,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#22FFFFFF"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#3D362F"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#0A84FF33"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#F1E8B2"/>
+                                <Setter TargetName="TitleText" Property="Foreground" Value="#5B4833"/>
+                                <Setter TargetName="PreviewText" Property="Foreground" Value="#8B7B6B"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,52 +144,54 @@
         </Grid.ColumnDefinitions>
 
         <!-- 左侧面板 -->
-        <Grid Grid.Column="0" Background="#1A1A1A" Margin="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Border Grid.Column="0" CornerRadius="0,8,8,0" ClipToBounds="True" Background="#4A433D">
+            <Grid Margin="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <Button x:Name="NewChatButton" Grid.Row="0"
-                    Style="{StaticResource SideButton}"
-                    Margin="10,10,10,8"
-                    Height="56"
-                    FontSize="16"
-                    FontWeight="Bold"
-                    Content="新对话"
-                    Command="{Binding NewChatCommand}"/>
+                <Button x:Name="NewChatButton" Grid.Row="0"
+                        Style="{StaticResource SideButton}"
+                        Margin="10,10,10,8"
+                        Height="56"
+                        FontSize="16"
+                        FontWeight="Bold"
+                        Content="新对话"
+                        Command="{Binding NewChatCommand}"/>
 
-            <Grid Grid.Row="1">
-                <ListBox x:Name="HistoryList"
-                         ItemsSource="{Binding ChatSessions}"
-                         ItemContainerStyle="{StaticResource HistoryItemStyle}"
-                         SelectedItem="{Binding SelectedSession}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         ScrollViewer.CanContentScroll="False"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                <Grid Grid.Row="1">
+                    <ListBox x:Name="HistoryList"
+                             ItemsSource="{Binding ChatSessions}"
+                             ItemContainerStyle="{StaticResource HistoryItemStyle}"
+                             SelectedItem="{Binding SelectedSession}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.CanContentScroll="False"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
-                <Rectangle VerticalAlignment="Bottom"
-                           Height="5"
-                           Fill="#1A1A1A"
-                           IsHitTestVisible="False"/>
+                    <Rectangle VerticalAlignment="Bottom"
+                               Height="5"
+                               Fill="#4A433D"
+                               IsHitTestVisible="False"/>
+                </Grid>
+
+                <StackPanel Grid.Row="2" Margin="10,0,10,10">
+                    <!-- <Rectangle Height="1" Fill="#E4E0CA" Margin="0,0,0,8"/> -->
+                    <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本" Margin="0,0,0,5"/>
+                    <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具" Margin="0,0,0,5"/>
+                    <Button x:Name="SettingsButton" Style="{StaticResource SideButton}" Content="设置"/>
+                </StackPanel>
             </Grid>
-
-            <StackPanel Grid.Row="2" Margin="10,0,10,10">
-                <Rectangle Height="1" Fill="#2A2A2A" Margin="0,0,0,8"/>
-                <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本" Margin="0,0,0,5"/>
-                <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具" Margin="0,0,0,5"/>
-                <Button x:Name="SettingsButton" Style="{StaticResource SideButton}" Content="设置"/>
-            </StackPanel>
-        </Grid>
+        </Border>
 
         <!-- 分割线 -->
-        <Rectangle Grid.Column="1" Width="1" Fill="#2A2A2A" HorizontalAlignment="Left"/>
+        <Rectangle Grid.Column="1" Width="1" Fill="#E4E0CA" HorizontalAlignment="Left"/>
 
         <!-- 右侧聊天区 -->
-        <Grid Grid.Column="2" Background="#1E1E1E">
+        <Grid Grid.Column="2" Background="#E4E0CA">
             <Grid.RowDefinitions>
                 <RowDefinition Height="70"/>
                 <RowDefinition Height="*"/>
@@ -163,7 +201,9 @@
 
             <!-- 顶部标题区：可拖拽 + 双击最大化 -->
             <Grid x:Name="HeaderDragArea" Grid.Row="0" Background="Transparent"
-                  MouseLeftButtonDown="HeaderArea_MouseDown">
+                  MouseLeftButtonDown="HeaderArea_MouseDown"
+                  MouseMove="HeaderArea_MouseMove"
+                  MouseUp="HeaderArea_MouseUp">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -172,7 +212,7 @@
                 <TextBlock x:Name="ChatTitle"
                            Grid.Column="0"
                            Text="新聊天"
-                           Foreground="White"
+                           Foreground="#5B4833"
                            FontSize="16"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"
@@ -180,27 +220,30 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                     <Button x:Name="MinButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#88FFFFFF" FontSize="12"
+                            BorderThickness="0" Foreground="#5B4833" FontSize="12"
                             Content="─" Click="MinButton_Click" Cursor="Hand"/>
                     <Button x:Name="MaxButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#88FFFFFF" FontSize="11"
+                            BorderThickness="0" Foreground="#5B4833" FontSize="11"
                             Content="□" Click="MaxButton_Click" Cursor="Hand"/>
                     <Button x:Name="CloseButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#88FFFFFF" FontSize="12"
+                            BorderThickness="0" Foreground="#5B4833" FontSize="12"
                             Content="✕" Click="CloseButton_Click" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
 
             <!-- 分割线 -->
-            <Rectangle Grid.Row="0" Height="1" Fill="#2A2A2A" VerticalAlignment="Bottom"/>
+            <Rectangle Grid.Row="0" Height="1" Fill="#E4E0CA" VerticalAlignment="Bottom"/>
 
             <!-- 消息列表 -->
-            <ScrollViewer x:Name="MessageScrollViewer"
-                          Grid.Row="1"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
-                          ScrollViewer.CanContentScroll="False"
-                          Padding="20,16">
+            <Grid Grid.Row="1">
+                <Grid.Resources>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource HomeScrollBar}"/>
+                </Grid.Resources>
+                <ScrollViewer x:Name="MessageScrollViewer"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.CanContentScroll="False"
+                              Padding="20,16">
                 <ItemsControl ItemsSource="{Binding Messages}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="models:ChatMessage">
@@ -215,7 +258,7 @@
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Role}" Value="user">
                                                 <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                <Setter Property="Background" Value="#0A84FF"/>
+                                                <Setter Property="Background" Value="#78ACAD"/>
                                                 <Setter Property="Padding" Value="0"/>
                                                 <Setter Property="Margin" Value="0,0,10,16"/>
                                             </DataTrigger>
@@ -226,7 +269,7 @@
                                 <!-- 用户消息：纯文本 -->
                                 <TextBox Text="{Binding Content}"
                                             TextWrapping="Wrap"
-                                            Foreground="White"
+                                            Foreground="#FEFAE1"
                                             FontSize="15"
                                             HorizontalAlignment="Left"
                                             Margin="10,6"
@@ -249,28 +292,29 @@
 <!-- AI 消息：Markdown 阅读器 + 思考指示 -->
 <StackPanel>
                                         <Grid>
-                                            <md:MarkdownDocumentView SelectionEnabled="True"
-                                                                      Background="Transparent"
-                                                                      HorizontalAlignment="Left"
-                                                                      VirtualizationEnabled="False"
-                                                                      Margin="10,6"
-                                                                      Loaded="MessageViewer_Loaded">
-                                                <md:MarkdownDocumentView.Style>
-                                                    <Style TargetType="md:MarkdownDocumentView">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Role}" Value="assistant">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </md:MarkdownDocumentView.Style>
-                                            </md:MarkdownDocumentView>
+<md:MarkdownDocumentView SelectionEnabled="True"
+                                                                             Background="Transparent"
+                                                                             HorizontalAlignment="Left"
+                                                                             VirtualizationEnabled="False"
+                                                                             MaxWidth="600"
+                                                                             Margin="0,6"
+                                                                             Loaded="MessageViewer_Loaded">
+                                                    <md:MarkdownDocumentView.Style>
+                                                        <Style TargetType="md:MarkdownDocumentView">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </md:MarkdownDocumentView.Style>
+                                                </md:MarkdownDocumentView>
                                             <StackPanel Orientation="Horizontal" Margin="10,6"
                                                         IsHitTestVisible="False"
                                                         Visibility="{Binding IsThinking, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <TextBlock Text="正在思考" Foreground="#88FFFFFF" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
-                                                <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
+                                                <TextBlock Text="正在思考" Foreground="#8B7B6B" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
                                                     <TextBlock.Triggers>
                                                         <EventTrigger RoutedEvent="Loaded">
                                                             <BeginStoryboard>
@@ -282,7 +326,7 @@
                                                         </EventTrigger>
                                                     </TextBlock.Triggers>
                                                 </TextBlock>
-                                                <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="0">
+                                                <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
                                                     <TextBlock.Triggers>
                                                         <EventTrigger RoutedEvent="Loaded">
                                                             <BeginStoryboard>
@@ -294,7 +338,7 @@
                                                         </EventTrigger>
                                                     </TextBlock.Triggers>
                                                 </TextBlock>
-                                                <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="0">
+                                                <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
                                                     <TextBlock.Triggers>
                                                         <EventTrigger RoutedEvent="Loaded">
                                                             <BeginStoryboard>
@@ -326,12 +370,12 @@
                                                 </Style>
                                             </StackPanel.Style>
                                             <Button Content="复制" FontSize="12" Height="26" Width="50"
-                                                    Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
-                                                    Background="#333333" Margin="0,0,6,0"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
+                                                    Background="#D4D0BA" Margin="0,0,6,0"
                                                     Click="CopyMessage_Click"/>
                                             <Button Content="重写" FontSize="12" Height="26" Width="50"
-                                                    Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
-                                                    Background="#333333"
+                                                    Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
+                                                    Background="#D4D0BA"
                                                     Click="RewriteMessage_Click"/>
                                         </StackPanel>
                                     </StackPanel>
@@ -341,6 +385,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+            </Grid>
 
             <!-- 设置 / 日记本 / 工具 内容区 -->
             <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
@@ -413,18 +458,18 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 <Grid Grid.Column="0">
-                                                <Border Width="250" Height="34"
-                                                        Background="#333333" CornerRadius="6" Padding="10,0" Cursor="Hand"
-                                                        PreviewMouseLeftButtonDown="SelectToggle_Click"
-                                                        Tag="{Binding .}">
-                                                    <TextBlock Text="{Binding SelectedLabel}" Foreground="White"
+<Border Width="250" Height="34"
+                                                         Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                                         PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                                         Tag="{Binding .}">
+                                                    <TextBlock Text="{Binding SelectedLabel}" Foreground="#5B4833"
                                                                FontSize="13" VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </Border>
                                                 <Popup IsOpen="{Binding IsOpen}"
                                                        Placement="Bottom" StaysOpen="True"
                                                        AllowsTransparency="True">
-                                                    <Border Background="#1A1A1A" CornerRadius="10" Padding="5" MaxWidth="350">
+                                                    <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
                                                         <ItemsControl ItemsSource="{Binding Options}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="{x:Type models:SelectOption}">
@@ -432,8 +477,8 @@
                                                                             Background="Transparent"
                                                                             PreviewMouseLeftButtonDown="SelectOption_Click"
                                                                             Tag="{Binding .}">
-                                                                        <TextBlock Text="{Binding Label}" Foreground="White"
-                                                                                   FontSize="13" TextWrapping="Wrap"/>
+<TextBlock Text="{Binding Label}" Foreground="#5B4833"
+                                                                           FontSize="13" TextWrapping="Wrap"/>
                                                                     </Border>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
@@ -452,14 +497,14 @@
             </Grid>
             <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">
                 <TextBlock Text="日记本页面"
-                           Foreground="#88FFFFFF"
+                           Foreground="#8B7B6B"
                            FontSize="14"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
             </Grid>
             <Grid x:Name="ToolsContent" Grid.Row="1" Visibility="Collapsed">
                 <TextBlock Text="工具页面"
-                           Foreground="#88FFFFFF"
+                           Foreground="#8B7B6B"
                            FontSize="14"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
@@ -473,7 +518,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0"
-                        Background="#2A2A2A"
+                        Background="#CC372F29"
                         CornerRadius="10"
                         Padding="12,8"
                         Margin="0,0,8,0">
@@ -485,8 +530,8 @@
                              VerticalContentAlignment="Center"
                              Background="Transparent"
                              BorderThickness="0"
-                             Foreground="White"
-                             CaretBrush="White"
+                             Foreground="#FEFAE1"
+                             CaretBrush="#FEFAE1"
                              FontSize="14"
                              Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
                              PreviewKeyDown="InputBox_KeyDown"/>
@@ -496,8 +541,8 @@
                         Content="发送"
                         Command="{Binding SendCommand}"
                         Width="64" Height="36"
-                        Background="#0A84FF"
-                        Foreground="White"
+                        Background="#85B2AF"
+                        Foreground="#FEFAE1"
                         BorderThickness="0"
                         Cursor="Hand"
                         VerticalAlignment="Bottom"
@@ -508,8 +553,8 @@
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#3399FF"/></Trigger>
-                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#0074E0"/></Trigger>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#96C2BF"/></Trigger>
+                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#78A29F"/></Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Button.Template>
@@ -526,7 +571,7 @@
 
                 <Button Grid.Column="1"
                         Content="取消"
-                        Background="#C0392B"
+                        Background="#FD7956"
                         Foreground="White"
                         BorderThickness="0"
                         Cursor="Hand"
@@ -551,7 +596,7 @@
 
             <TextBlock x:Name="StatusText" Grid.Row="3"
                        Text="{Binding Status}"
-                       Foreground="#88FFFFFF"
+                       Foreground="#5B4833"
                        FontSize="12"
                        Margin="24,0,0,12"/>
         </Grid>

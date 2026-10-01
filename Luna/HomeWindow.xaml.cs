@@ -22,9 +22,14 @@ public partial class HomeWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
     private const int DWMWCP_ROUNDSMALL = 3;
+    private const int WM_NCLBUTTONDOWN = 0xA1;
+    private const int HT_CAPTION = 2;
 
     private readonly HomeViewModel _viewModel;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
@@ -35,8 +40,8 @@ public partial class HomeWindow : Window
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
 
-    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0x0D, 0xFF, 0xFF, 0xFF));
-    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
+    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
+    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列
@@ -157,13 +162,19 @@ public partial class HomeWindow : Window
 
         _ = new BubbleContextMenu(viewer);
 
-        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
+        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
             BaseTypeface = new Typeface("Cascadia Mono"),
             Background = System.Windows.Media.Brushes.Transparent,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            SubtleForeground = new SolidColorBrush(Color.FromRgb(0x36, 0x2F, 0x2B)),
             EmSize = 16,
             ParagraphLineHeight = 1.4,
             HeadingScales = new[] { 1.4, 1.25, 1.15, 1.08, 1.04, 1.0 },
+            QuoteBar = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+            Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
         });
 
         if (viewer.DataContext is not ChatMessage msg) return;
@@ -475,35 +486,54 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
             : WindowState.Maximized;
     }
 
-    /// <summary>
-    /// 顶部标题区鼠标按下：双击切换最大化，按住左键拖拽窗口。
-    /// </summary>
+    private Point? _headerDragStart;
+
     private void HeaderArea_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        // 双击标题栏切换最大化
         if (e.ClickCount == 2)
         {
             ToggleMaximize();
             return;
         }
 
-        // 按住左键拖拽窗口
         if (e.LeftButton != MouseButtonState.Pressed)
             return;
 
-        // 如果当前是最大化状态，先还原，并保持鼠标相对位置
+        _headerDragStart = e.GetPosition(this);
+    }
+
+    private void HeaderArea_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _headerDragStart is null)
+            return;
+
+        var pos = e.GetPosition(this);
+        var diff = pos - _headerDragStart.Value;
+
+        if (Math.Abs(diff.X) < 4 && Math.Abs(diff.Y) < 4)
+            return;
+
+        _headerDragStart = null;
+
         if (WindowState == WindowState.Maximized)
         {
-            var mousePos = e.GetPosition(this);
-            var screenPoint = PointToScreen(mousePos);
-
+            var mousePos = PointToScreen(pos);
             WindowState = WindowState.Normal;
-
-            Left = screenPoint.X - mousePos.X;
+            Left = mousePos.X - pos.X;
             Top = 0;
-        }
 
-        DragMove();
+            var hwnd = new WindowInteropHelper(this).Handle;
+            SendMessage(hwnd, WM_NCLBUTTONDOWN, (IntPtr)HT_CAPTION, (IntPtr)(((int)pos.Y << 16) | (int)pos.X));
+        }
+        else
+        {
+            DragMove();
+        }
+    }
+
+    private void HeaderArea_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _headerDragStart = null;
     }
 
     // ===== 设置项交互 =====

@@ -44,7 +44,7 @@
         
         <!-- 红色取消按钮 -->
         <Style x:Key="CancelButton" TargetType="Button">
-            <Setter Property="Background" Value="#C0392B"/>
+            <Setter Property="Background" Value="#FD7956"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="14,12"/>
@@ -112,7 +112,7 @@
         
     </Window.Resources>
     <Border x:Name="IslandBorder"
-            Background="#1E1E1E"
+            Background="#362F2B"
             CornerRadius="25"
             Padding="12"
             MinWidth="280" MinHeight="50">
@@ -180,7 +180,7 @@
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Role}" Value="user">
                                                     <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                    <Setter Property="Background" Value="#2A2A2A"/>
+                                                    <Setter Property="Background" Value="#E4E0CA"/>
                                                     <Setter Property="MaxWidth" Value="500"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -190,7 +190,7 @@
                                         <!-- 用户消息：纯文本 -->
                                         <TextBox Text="{Binding Content}"
                                                    TextWrapping="Wrap"
-                                                   Foreground="White"
+                                                   Foreground="#5B4833"
                                                    FontSize="15"
                                                    HorizontalAlignment="Left"
                                                    Margin="8,4"
@@ -214,11 +214,11 @@
 <StackPanel>
                                             <Grid>
                                                 <md:MarkdownDocumentView SelectionEnabled="True"
-                                                                            Background="Transparent"
-                                                                            HorizontalAlignment="Left"
-                                                                            VirtualizationEnabled="False"
-                                                                            MaxWidth="520"
-                                                                            Loaded="MessageViewer_Loaded">
+                                                                                Background="Transparent"
+                                                                                HorizontalAlignment="Left"
+                                                                                VirtualizationEnabled="False"
+                                                                                MaxWidth="520"
+                                                                                Loaded="MessageViewer_Loaded">
                                                     <md:MarkdownDocumentView.Style>
                                                         <Style TargetType="md:MarkdownDocumentView">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
