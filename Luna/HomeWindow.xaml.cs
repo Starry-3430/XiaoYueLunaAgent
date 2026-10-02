@@ -167,7 +167,6 @@ public partial class HomeWindow : Window
 
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
-            BaseTypeface = new Typeface("Cascadia Mono"),
             Background = System.Windows.Media.Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
             SubtleForeground = new SolidColorBrush(Color.FromRgb(0x36, 0x2F, 0x2B)),
@@ -212,6 +211,20 @@ public partial class HomeWindow : Window
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ScrollViewer sv) return;
+        if (sv.DataContext is not ChatMessage msg) return;
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatMessage.Reasoning))
+                sv.ScrollToBottom();
+        };
+        msg.PropertyChanged += handler;
+        sv.Unloaded += (_, _) => msg.PropertyChanged -= handler;
     }
 
     // ===== Shift+滚轮水平滚动 =====

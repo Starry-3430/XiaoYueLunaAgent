@@ -105,7 +105,6 @@ private readonly MainViewModel _viewModel;
 
         viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
-            BaseTypeface = new Typeface("Cascadia Mono"),
             Background = System.Windows.Media.Brushes.Transparent,
             SubtleForeground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
             EmSize = 15,
@@ -152,6 +151,20 @@ private readonly MainViewModel _viewModel;
             msg.PropertyChanged -= handler;
             timer.Stop();
         };
+    }
+
+    private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ScrollViewer sv) return;
+        if (sv.DataContext is not ChatMessage msg) return;
+
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatMessage.Reasoning))
+                sv.ScrollToBottom();
+        };
+        msg.PropertyChanged += handler;
+        sv.Unloaded += (_, _) => msg.PropertyChanged -= handler;
     }
 
     private static void ApplyLightScrollBarStyle(WpfMarkdownViewer.Controls.MarkdownDocumentView viewer)
@@ -708,14 +721,19 @@ private void HideInternal()
 
     private void SwitchToExpanded()
     {
-        // 切换到展开内容，固定 25 圆角，聚焦展开输入框并滚动消息到底部
         StopAnimation();
         CompactContent.Visibility = Visibility.Collapsed;
-        // CompactContent.Opacity = 1;
+        ExpandedContent.Opacity = 0;
         ExpandedContent.Visibility = Visibility.Visible;
-        IslandBorder.CornerRadius = new CornerRadius(25);
-        InputBox.Focus();
-        ScrollMessagesToEnd();
+        IslandBorder.UpdateLayout();
+        Dispatcher.BeginInvoke(() =>
+        {
+            ExpandedContent.Opacity = 1;
+            CompactContent.Opacity = 1;
+            IslandBorder.CornerRadius = new CornerRadius(25);
+            InputBox.Focus();
+            ScrollMessagesToEnd();
+        }, DispatcherPriority.Loaded);
     }
 
     // ===== 展开模式的输入框 =====

@@ -73,6 +73,53 @@
         </ControlTemplate.Triggers>
     </ControlTemplate>
 
+    <Style x:Key="ScrollBarThumbLight" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="ThumbBorder"
+                            Background="#44E4E0CA"
+                            CornerRadius="2"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="#88E4E0CA"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="ThumbBorder" Property="Background" Value="#88E4E0CA"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <ControlTemplate x:Key="Win11VerticalScrollBarLight" TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.Thumb>
+                    <Thumb x:Name="Thumb"
+                           Style="{StaticResource ScrollBarThumbLight}"
+                           Width="3"
+                           HorizontalAlignment="Center"
+                           Margin="0,2"/>
+                </Track.Thumb>
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0"/>
+                </Track.DecreaseRepeatButton>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Thumb" Property="Width" Value="8"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
     <Style TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Width" Value="12"/>
