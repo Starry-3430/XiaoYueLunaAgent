@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -21,6 +22,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly MessageRepository _messageRepo;
     private readonly AiSettings _aiSettings;
     private readonly ToolRegistry _toolRegistry;
+    private readonly ToolSettingsService _toolSettings;
     private readonly ILogger<HomeViewModel> _logger;
     private CancellationTokenSource? _cts;
     private string? _currentSessionId;
@@ -44,13 +46,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public HomeViewModel(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AiSettings aiSettings, ToolRegistry toolRegistry,
-        ILogger<HomeViewModel> logger)
+        ToolSettingsService toolSettings, ILogger<HomeViewModel> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
         _aiSettings = aiSettings;
         _toolRegistry = toolRegistry;
+        _toolSettings = toolSettings;
         _logger = logger;
 
         WeakReferenceMessenger.Default.Register<SessionUpdateMessage>(this);
@@ -157,18 +160,39 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 tool.StatusText = "未实现";
         }
 
+        // 载入用户保存的启用状态
+        foreach (var cat in ToolCategories)
+        foreach (var tool in cat.Tools)
+        {
+            tool.IsEnabled = _toolSettings.IsEnabled(tool.Id);
+        }
+
         foreach (var cat in ToolCategories)
         foreach (var tool in cat.Tools)
         {
             if (tool.Id == "web_search")
             {
                 var hasKey = !string.IsNullOrEmpty(_aiSettings.TavilyApiKey);
-                tool.IsEnabled = hasKey;
+                tool.IsEnabled = hasKey && tool.IsEnabled;
                 tool.StatusText = hasKey ? "" : "未配置 API Key";
             }
             if (tool.Id == "read_clipboard")
                 tool.StatusText = "";
         }
+
+        // 用户切换开关时持久化，并即时影响暴露给 AI 的工具集合
+        foreach (var cat in ToolCategories)
+        foreach (var tool in cat.Tools)
+        {
+            tool.PropertyChanged += Tool_PropertyChanged;
+        }
+    }
+
+    private void Tool_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ToolDefinition.IsEnabled)) return;
+        if (sender is ToolDefinition tool)
+            _toolSettings.SetEnabled(tool.Id, tool.IsEnabled);
     }
 
     private async Task LoadSessionsAsync()
@@ -392,11 +416,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                         if (_cts.IsCancellationRequested) break;
 
                         var tool = _toolRegistry.GetTool(entry.ToolName);
-                        if (tool is null)
+                        if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
                         {
                             entry.Status = ToolCallStatus.Failed;
-                            entry.ResultJson = "工具未注册";
-                            _logger.LogWarning("未注册的工具: {Name}", entry.ToolName);
+                            entry.ResultJson = "工具未启用";
+                            _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
                             continue;
                         }
 

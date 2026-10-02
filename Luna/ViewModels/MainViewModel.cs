@@ -41,7 +41,8 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ChatMessage> Messages { get; } = new();
 
     public MainViewModel(IAiService aiService, SessionRepository sessionRepo,
-        MessageRepository messageRepo, ToolRegistry toolRegistry, ILogger<MainViewModel> logger)
+        MessageRepository messageRepo, ToolRegistry toolRegistry,
+        ILogger<MainViewModel> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
@@ -141,11 +142,11 @@ public partial class MainViewModel : ObservableObject
                     if (_cts.IsCancellationRequested) break;
 
                     var tool = _toolRegistry.GetTool(entry.ToolName);
-                    if (tool is null)
+                    if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
                     {
                         entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = "工具未注册";
-                        _logger.LogWarning("未注册的工具: {Name}", entry.ToolName);
+                        entry.ResultJson = "工具未启用";
+                        _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
                         continue;
                     }
 

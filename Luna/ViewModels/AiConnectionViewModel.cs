@@ -25,6 +25,7 @@ public partial class AiConnectionViewModel : ObservableObject
 
     public SelectSetting ProviderSetting { get; } = new();
     public SelectSetting ModelSetting { get; } = new();
+    public SelectSetting ResponseLanguageSetting { get; } = new();
 
     [ObservableProperty]
     private string _baseUrl = string.Empty;
@@ -40,6 +41,27 @@ public partial class AiConnectionViewModel : ObservableObject
 
     [ObservableProperty]
     private string _temperatureText = "1.0";
+
+    [ObservableProperty]
+    private double _topP = AiSettings.DefaultTopP;
+
+    [ObservableProperty]
+    private string _topPText = "0.9";
+
+    [ObservableProperty]
+    private double _frequencyPenalty = AiSettings.DefaultFrequencyPenalty;
+
+    [ObservableProperty]
+    private string _frequencyPenaltyText = "0.1";
+
+    [ObservableProperty]
+    private double _presencePenalty = AiSettings.DefaultPresencePenalty;
+
+    [ObservableProperty]
+    private string _presencePenaltyText = "0.2";
+
+    [ObservableProperty]
+    private bool _deepThinking;
 
     [ObservableProperty]
     private string _systemPrompt = string.Empty;
@@ -81,6 +103,10 @@ public partial class AiConnectionViewModel : ObservableObject
         foreach (var preset in AiProviderCatalog.Presets)
             ProviderSetting.Options.Add(new SelectOption { Value = preset.Id, Label = preset.Name });
 
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "auto", Label = "跟随用户" });
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "zh", Label = "简体中文" });
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "en", Label = "English" });
+
         ProviderSetting.PropertyChanged += OnProviderSettingChanged;
         ModelSetting.PropertyChanged += OnModelSettingChanged;
 
@@ -103,10 +129,18 @@ public partial class AiConnectionViewModel : ObservableObject
             ApiKey = _settings.ApiKey;
             MaxTokens = _settings.MaxTokens;
             Temperature = _settings.Temperature;
+            TopP = _settings.TopP;
+            FrequencyPenalty = _settings.FrequencyPenalty;
+            PresencePenalty = _settings.PresencePenalty;
+            DeepThinking = _settings.DeepThinking;
             SystemPrompt = _settings.SystemPrompt;
             Nickname = _settings.Nickname;
             UserName = _settings.UserName;
             Model = _settings.Model;
+
+            ResponseLanguageSetting.SelectedOption =
+                ResponseLanguageSetting.Options.FirstOrDefault(o => o.Value == _settings.ResponseLanguage)
+                ?? ResponseLanguageSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultResponseLanguage);
 
             var provider = ProviderSetting.Options.FirstOrDefault(o => o.Value == _settings.Provider)
                            ?? ProviderSetting.Options.FirstOrDefault(o => o.Value == "custom");
@@ -199,17 +233,47 @@ public partial class AiConnectionViewModel : ObservableObject
         _syncingTemperature = false;
     }
 
+    partial void OnTopPChanged(double value) => TopPText = FormatValue(value);
+    partial void OnFrequencyPenaltyChanged(double value) => FrequencyPenaltyText = FormatValue(value);
+    partial void OnPresencePenaltyChanged(double value) => PresencePenaltyText = FormatValue(value);
+
+    private static string FormatValue(double value) => value.ToString("0.0", CultureInfo.InvariantCulture);
+
+    private static double ParseClamped(string text, double fallback, double min, double max)
+    {
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            parsed = fallback;
+        return Math.Round(Math.Clamp(parsed, min, max), 1);
+    }
+
     /// <summary>
     /// 提交温度输入框：解析并在回车/失焦时把数值夹紧到 [0, 2]，同时回写规范化后的文本。
     /// </summary>
     public void CommitTemperature()
     {
-        if (!double.TryParse(TemperatureText, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-            parsed = Temperature;
+        Temperature = ParseClamped(TemperatureText, Temperature, 0.0, 2.0);
+        TemperatureText = FormatValue(Temperature);
+    }
 
-        var clamped = Math.Round(Math.Clamp(parsed, 0.0, 2.0), 1);
-        Temperature = clamped;
-        TemperatureText = clamped.ToString("0.0", CultureInfo.InvariantCulture);
+    /// <summary>提交 top_p，夹紧到 [0, 1]。</summary>
+    public void CommitTopP()
+    {
+        TopP = ParseClamped(TopPText, TopP, 0.0, 1.0);
+        TopPText = FormatValue(TopP);
+    }
+
+    /// <summary>提交 frequency_penalty，夹紧到 [-2, 2]。</summary>
+    public void CommitFrequencyPenalty()
+    {
+        FrequencyPenalty = ParseClamped(FrequencyPenaltyText, FrequencyPenalty, -2.0, 2.0);
+        FrequencyPenaltyText = FormatValue(FrequencyPenalty);
+    }
+
+    /// <summary>提交 presence_penalty，夹紧到 [-2, 2]。</summary>
+    public void CommitPresencePenalty()
+    {
+        PresencePenalty = ParseClamped(PresencePenaltyText, PresencePenalty, -2.0, 2.0);
+        PresencePenaltyText = FormatValue(PresencePenalty);
     }
 
     [RelayCommand]
@@ -223,6 +287,11 @@ public partial class AiConnectionViewModel : ObservableObject
             _settings.ApiKey = ApiKey;
             _settings.MaxTokens = MaxTokens;
             _settings.Temperature = Temperature;
+            _settings.TopP = TopP;
+            _settings.FrequencyPenalty = FrequencyPenalty;
+            _settings.PresencePenalty = PresencePenalty;
+            _settings.DeepThinking = DeepThinking;
+            _settings.ResponseLanguage = ResponseLanguageSetting.SelectedOption?.Value ?? AiSettings.DefaultResponseLanguage;
             _settings.SystemPrompt = SystemPrompt;
             _settings.Nickname = Nickname;
             _settings.UserName = UserName;
@@ -324,6 +393,24 @@ public partial class AiConnectionViewModel : ObservableObject
         Temperature = Math.Round(Math.Max(Temperature - 0.1, 0.0), 1);
     }
 
+    [RelayCommand]
+    private void IncreaseTopP() => TopP = Math.Round(Math.Min(TopP + 0.1, 1.0), 1);
+
+    [RelayCommand]
+    private void DecreaseTopP() => TopP = Math.Round(Math.Max(TopP - 0.1, 0.0), 1);
+
+    [RelayCommand]
+    private void IncreaseFrequencyPenalty() => FrequencyPenalty = Math.Round(Math.Min(FrequencyPenalty + 0.1, 2.0), 1);
+
+    [RelayCommand]
+    private void DecreaseFrequencyPenalty() => FrequencyPenalty = Math.Round(Math.Max(FrequencyPenalty - 0.1, -2.0), 1);
+
+    [RelayCommand]
+    private void IncreasePresencePenalty() => PresencePenalty = Math.Round(Math.Min(PresencePenalty + 0.1, 2.0), 1);
+
+    [RelayCommand]
+    private void DecreasePresencePenalty() => PresencePenalty = Math.Round(Math.Max(PresencePenalty - 0.1, -2.0), 1);
+
     // ===== 恢复默认值 =====
 
     [RelayCommand]
@@ -355,6 +442,27 @@ public partial class AiConnectionViewModel : ObservableObject
     {
         Temperature = AiSettings.DefaultTemperature;
         TemperatureText = AiSettings.DefaultTemperature.ToString("0.0", CultureInfo.InvariantCulture);
+    }
+
+    [RelayCommand]
+    private void ResetTopP()
+    {
+        TopP = AiSettings.DefaultTopP;
+        TopPText = FormatValue(TopP);
+    }
+
+    [RelayCommand]
+    private void ResetFrequencyPenalty()
+    {
+        FrequencyPenalty = AiSettings.DefaultFrequencyPenalty;
+        FrequencyPenaltyText = FormatValue(FrequencyPenalty);
+    }
+
+    [RelayCommand]
+    private void ResetPresencePenalty()
+    {
+        PresencePenalty = AiSettings.DefaultPresencePenalty;
+        PresencePenaltyText = FormatValue(PresencePenalty);
     }
 
     private string BuildBaseUrl()

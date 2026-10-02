@@ -590,44 +590,11 @@ Background="#E4E0CA"
                     <StackPanel>
                         <!-- 通用 -->
                         <TextBlock Text="通用" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
-                        <TextBlock Text="字体、快捷键、代理等设置将在后续版本提供。"
-                                   Foreground="#8B7B6B" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,24"/>
+                        <views:GeneralSettingsView x:Name="GeneralSettingsPanel"/>
 
                         <!-- 聊天 -->
-                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
                         <views:AiConnectionView x:Name="AiConnectionPanel"/>
-
-                        <!-- 底部：打开配置文件 -->
-                        <Button x:Name="OpenSettingsJsonButton"
-                                Content="打开 settings.json"
-                                Click="OpenSettingsJson_Click"
-                                HorizontalAlignment="Left"
-                                Margin="0,10,0,8">
-                            <Button.Style>
-                                <Style TargetType="Button">
-                                    <Setter Property="Foreground" Value="White"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Setter Property="Height" Value="34"/>
-                                    <Setter Property="Padding" Value="20,0"/>
-                                    <Setter Property="Background" Value="#FD7956"/>
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
-                                                        Background="{TemplateBinding Background}">
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#D64541"/></Trigger>
-                                                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#A93226"/></Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </Button.Style>
-                        </Button>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

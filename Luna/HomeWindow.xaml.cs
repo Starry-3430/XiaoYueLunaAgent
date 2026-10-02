@@ -35,7 +35,6 @@ public partial class HomeWindow : Window
     private const int HT_CAPTION = 2;
 
     private readonly HomeViewModel _viewModel;
-    private readonly SettingsService _settingsService;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -64,13 +63,13 @@ public partial class HomeWindow : Window
     }
 
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
-        SettingsService settingsService)
+        GeneralSettingsViewModel generalSettingsViewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
-        _settingsService = settingsService;
         AiConnectionPanel.DataContext = aiConnectionViewModel;
+        GeneralSettingsPanel.DataContext = generalSettingsViewModel;
 
         SourceInitialized += (_, _) =>
         {
@@ -165,7 +164,7 @@ public partial class HomeWindow : Window
         viewer.LinkClicked += (_, args) =>
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
 
-        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
+        var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
             Background = System.Windows.Media.Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
@@ -177,7 +176,12 @@ public partial class HomeWindow : Window
             CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
             InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
             Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
-        });
+            MonoTypeface = ThemeService.CodeTypeface,
+        };
+        if (ThemeService.BaseTypeface is { } baseTypeface)
+            markdownStyle = markdownStyle with { BaseTypeface = baseTypeface };
+
+        viewer.ApplyTheme(markdownStyle);
 
         if (viewer.DataContext is not ChatMessage msg) return;
 
@@ -616,63 +620,6 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
     }
 
     // ===== 设置项交互 =====
-
-    /// <summary>
-    /// 点击「打开 settings.json」：弹出警告对话框，确认后打开配置文件。
-    /// </summary>
-    private void OpenSettingsJson_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new LunaDialog
-        {
-            Owner = this,
-            DialogTitle = "警告",
-            DialogContent = new TextBlock
-            {
-                Text = "settings.json是重要的系统配置文件，错误修改可能导致程序不能正常运行，是否继续？",
-                TextWrapping = TextWrapping.Wrap,
-                TextAlignment = TextAlignment.Left,
-                HorizontalAlignment = HorizontalAlignment.Left,
-            },
-        };
-
-        dialog.Buttons = new ObservableCollection<DialogButton>
-        {
-            new()
-            {
-                Text = "继续",
-                StyleKey = "StyleDanger",
-                Command = new RelayCommand(() =>
-                {
-                    dialog.Close();
-                    OpenSettingsFile();
-                }),
-            },
-            new()
-            {
-                Text = "取消",
-                StyleKey = "StyleBeige",
-                Command = new RelayCommand(dialog.Close),
-            },
-        };
-
-        dialog.ShowDialog();
-    }
-
-    /// <summary>用系统默认程序打开 settings.json。</summary>
-    private void OpenSettingsFile()
-    {
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_settingsService.SettingsPath)
-            {
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception ex)
-        {
-            ShowToast("无法打开配置文件：" + ex.Message, ToastType.Error);
-        }
-    }
 
     /// <summary>
     /// 输入框按下 Enter 时，执行发送命令（如果未按下 Shift）。

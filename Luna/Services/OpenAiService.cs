@@ -190,22 +190,64 @@ public class OpenAiService : IAiService
         if (string.IsNullOrWhiteSpace(prompt))
             return string.Empty;
 
-        return prompt
+        prompt = prompt
             .Replace("{nickname}", _settings.Nickname)
             .Replace("{Nickname}", _settings.Nickname)
             .Replace("{user}", _settings.UserName)
             .Replace("{User}", _settings.UserName);
+
+        prompt += _settings.ResponseLanguage switch
+        {
+            "zh" => "\n\n请始终使用简体中文回复。",
+            "en" => "\n\nAlways reply in English.",
+            _ => string.Empty,
+        };
+
+        return prompt;
+    }
+
+    /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
+    private string ResolveModel(JsonObject root)
+    {
+        var model = _settings.Model;
+        if (!_settings.DeepThinking)
+            return model;
+
+        var lower = model.ToLowerInvariant();
+
+        // 本身就是推理模型：无需额外参数
+        if (lower.Contains("reasoner") || lower.Contains("-r1") ||
+            lower.Contains("thinking") || lower.Contains("reasoning"))
+            return model;
+
+        // OpenAI o 系列 / GPT-5：通过 reasoning_effort 控制思考强度
+        if (lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4") || lower.Contains("gpt-5"))
+        {
+            root["reasoning_effort"] = "high";
+            return model;
+        }
+
+        // DeepSeek 非推理模型：切换到推理模型
+        if (lower.StartsWith("deepseek"))
+            return "deepseek-reasoner";
+
+        // 其他 OpenAI 兼容模型：尝试开启 reasoning_effort
+        root["reasoning_effort"] = "high";
+        return model;
     }
 
     private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream)
     {
         var root = new JsonObject
         {
-            ["model"] = _settings.Model,
             ["stream"] = stream,
             ["max_tokens"] = _settings.MaxTokens,
             ["temperature"] = _settings.Temperature,
+            ["top_p"] = _settings.TopP,
+            ["frequency_penalty"] = _settings.FrequencyPenalty,
+            ["presence_penalty"] = _settings.PresencePenalty,
         };
+        root["model"] = ResolveModel(root);
 
         var messagesArray = new JsonArray();
 
@@ -271,7 +313,7 @@ public class OpenAiService : IAiService
         }
         root["messages"] = messagesArray;
 
-        var registeredTools = _toolRegistry.GetAllTools().ToList();
+        var registeredTools = _toolRegistry.GetEnabledTools().ToList();
         if (registeredTools.Count > 0)
         {
             var toolsArray = new JsonArray();

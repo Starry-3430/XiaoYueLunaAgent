@@ -38,12 +38,31 @@ public partial class AiConnectionView : UserControl
             vm.CommitTemperature();
     }
 
+    private void TopPBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is AiConnectionViewModel vm)
+            vm.CommitTopP();
+    }
+
+    private void FrequencyPenaltyBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is AiConnectionViewModel vm)
+            vm.CommitFrequencyPenalty();
+    }
+
+    private void PresencePenaltyBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is AiConnectionViewModel vm)
+            vm.CommitPresencePenalty();
+    }
+
     /// <summary>点击下拉框以外区域时，关闭所有下拉弹出层。</summary>
     private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (DataContext is not AiConnectionViewModel vm) return;
         vm.ProviderSetting.IsOpen = false;
         vm.ModelSetting.IsOpen = false;
+        vm.ResponseLanguageSetting.IsOpen = false;
     }
 
     /// <summary>点击下拉触发框：切换其弹出层的展开状态。</summary>

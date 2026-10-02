@@ -118,11 +118,19 @@ public partial class App : Application
                 services.AddTransient<HomeWindow>();
                 services.AddSingleton<HomeViewModel>();
                 services.AddSingleton<AiConnectionViewModel>();
+                services.AddSingleton<GeneralSettingsViewModel>();
                 
                 // AI 服务配置（从 settings.json 加载）
                 services.AddSingleton<SettingsService>();
                 services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
-                services.AddSingleton<HttpClient>();
+                services.AddSingleton<ToolSettingsService>();
+                services.AddSingleton<SettingsProxy>();
+                services.AddSingleton(sp => new HttpClient(new SocketsHttpHandler
+                {
+                    UseProxy = true,
+                    Proxy = sp.GetRequiredService<SettingsProxy>(),
+                }));
+                services.AddSingleton<HotkeyService>();
                 services.AddSingleton<IAiService, OpenAiService>();
                 services.AddSingleton<ITool, ClipboardReadTool>();
                 services.AddSingleton<ITool, WebSearchTool>();
@@ -283,8 +291,23 @@ public partial class App : Application
 
         Log.Information("Luna 已启动");
 
-        // 5. 显示主窗口（MainWindow：紧凑悬浮输入窗）
+        // 5. 应用字体设置
+        var settings = _host.Services.GetRequiredService<AiSettings>();
+        ThemeService.ApplyFont(settings.FontFamily);
+
+        // 6. 显示主窗口（MainWindow：紧凑悬浮输入窗）
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        var hotkey = _host.Services.GetRequiredService<HotkeyService>();
+        hotkey.Attach(mainWindow);
+        hotkey.Update(settings.Hotkey);
+        hotkey.Pressed += () => Dispatcher.Invoke(() =>
+        {
+            mainWindow.Show();
+            mainWindow.ShowInternal();
+            mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        });
+
         mainWindow.Show();
         mainWindow.ShowInternal();
 

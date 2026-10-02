@@ -55,6 +55,54 @@
         <Setter Property="Width" Value="180"/>
     </Style>
 
+    <!-- 加密输入框 -->
+    <Style x:Key="SettingsPassword" TargetType="PasswordBox">
+        <Setter Property="Background" Value="#D4D0BA"/>
+        <Setter Property="Foreground" Value="#5B4833"/>
+        <Setter Property="CaretBrush" Value="#5B4833"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Height" Value="{StaticResource SettingsControlHeight}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Width" Value="180"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="PasswordChar" Value="●"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ScrollViewer x:Name="PART_ContentHost"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- 次级操作按钮 -->
+    <Style x:Key="SecondaryActionButton" TargetType="Button">
+        <Setter Property="Background" Value="#D4D0BA"/>
+        <Setter Property="Foreground" Value="#5B4833"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="18,9"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#DDD9C5"/></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Bg" Property="Opacity" Value="0.5"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SettingsStepperButton" TargetType="Button">
         <Setter Property="Width" Value="30"/>
         <Setter Property="Height" Value="30"/>

@@ -71,7 +71,7 @@ public class SettingsService
         }
     }
 
-    /// <summary>保存前把明文 ApiKey 用 DPAPI 加密写入 ApiKeyProtected 字段。</summary>
+    /// <summary>保存前把明文密钥用 DPAPI 加密写入对应的 Protected 字段。</summary>
     private static void ProtectApiKey(AiSettings settings)
     {
         if (!string.IsNullOrEmpty(settings.ApiKey))
@@ -79,9 +79,12 @@ public class SettingsService
 
         if (!string.IsNullOrEmpty(settings.TavilyApiKey))
             settings.TavilyApiKeyProtected = CredentialProtector.Protect(settings.TavilyApiKey);
+
+        if (!string.IsNullOrEmpty(settings.ProxyPassword))
+            settings.ProxyPasswordProtected = CredentialProtector.Protect(settings.ProxyPassword);
     }
 
-    /// <summary>加载后把 ApiKeyProtected 解密回明文 ApiKey；不存在则迁移旧明文字段。</summary>
+    /// <summary>加载后把 Protected 字段解密回明文；不存在则迁移旧明文字段。</summary>
     private static void RestoreApiKey(AiSettings settings)
     {
         if (!string.IsNullOrEmpty(settings.ApiKeyProtected))
@@ -93,6 +96,11 @@ public class SettingsService
             settings.TavilyApiKey = CredentialProtector.Unprotect(settings.TavilyApiKeyProtected);
         else if (!string.IsNullOrEmpty(settings.TavilyApiKey))
             settings.TavilyApiKeyProtected = CredentialProtector.Protect(settings.TavilyApiKey);
+
+        if (!string.IsNullOrEmpty(settings.ProxyPasswordProtected))
+            settings.ProxyPassword = CredentialProtector.Unprotect(settings.ProxyPasswordProtected);
+        else if (!string.IsNullOrEmpty(settings.ProxyPassword))
+            settings.ProxyPasswordProtected = CredentialProtector.Protect(settings.ProxyPassword);
     }
 
     /// <summary>

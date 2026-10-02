@@ -336,6 +336,161 @@
             </Grid>
         </Border>
 
+        <!-- top_p -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="top_p" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="核采样阈值（0 ~ 1.0），越低输出越保守。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecreaseTopPCommand}"/>
+                    <TextBox Grid.Column="1" Width="80" Height="{StaticResource SettingsControlHeight}" Margin="6,0"
+                             Style="{StaticResource SettingsInput}"
+                             Text="{Binding TopPText, UpdateSourceTrigger=PropertyChanged}"
+                             TextAlignment="Center"
+                             LostFocus="TopPBox_LostFocus"
+                             VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncreaseTopPCommand}" Margin="0,0,6,0"/>
+                    <Button Grid.Column="3" Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetTopPCommand}" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- frequency_penalty -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="frequency_penalty" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="频率惩罚（-2.0 ~ 2.0），越高越不重复用词。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecreaseFrequencyPenaltyCommand}"/>
+                    <TextBox Grid.Column="1" Width="80" Height="{StaticResource SettingsControlHeight}" Margin="6,0"
+                             Style="{StaticResource SettingsInput}"
+                             Text="{Binding FrequencyPenaltyText, UpdateSourceTrigger=PropertyChanged}"
+                             TextAlignment="Center"
+                             LostFocus="FrequencyPenaltyBox_LostFocus"
+                             VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncreaseFrequencyPenaltyCommand}" Margin="0,0,6,0"/>
+                    <Button Grid.Column="3" Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetFrequencyPenaltyCommand}" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- presence_penalty -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="presence_penalty" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="主题惩罚（-2.0 ~ 2.0），越高越发散新话题。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecreasePresencePenaltyCommand}"/>
+                    <TextBox Grid.Column="1" Width="80" Height="{StaticResource SettingsControlHeight}" Margin="6,0"
+                             Style="{StaticResource SettingsInput}"
+                             Text="{Binding PresencePenaltyText, UpdateSourceTrigger=PropertyChanged}"
+                             TextAlignment="Center"
+                             LostFocus="PresencePenaltyBox_LostFocus"
+                             VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncreasePresencePenaltyCommand}" Margin="0,0,6,0"/>
+                    <Button Grid.Column="3" Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetPresencePenaltyCommand}" VerticalAlignment="Center"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 深度思考 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="深度思考" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="开启后优先请求模型的推理能力。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <CheckBox Grid.Column="1" Style="{StaticResource SettingsToggle}"
+                          IsChecked="{Binding DeepThinking}" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- 回复语言 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="回复语言" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="希望 AI 主要使用的回复语言。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Border x:Name="LanguageDropdown" Width="250" Height="{StaticResource SettingsControlHeight}"
+                            Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                            PreviewMouseLeftButtonDown="SelectToggle_Click"
+                            Tag="{Binding ResponseLanguageSetting}">
+                        <Grid>
+                            <TextBlock Text="{Binding ResponseLanguageSetting.SelectedLabel}" Foreground="#5B4833"
+                                       FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"/>
+                        </Grid>
+                    </Border>
+                    <Popup IsOpen="{Binding ResponseLanguageSetting.IsOpen}"
+                           PlacementTarget="{Binding ElementName=LanguageDropdown}"
+                           Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                        <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                            <ItemsControl ItemsSource="{Binding ResponseLanguageSetting.Options}" Tag="{Binding ResponseLanguageSetting}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:SelectOption}">
+                                        <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                PreviewMouseLeftButtonDown="SelectOption_Click">
+                                            <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </Grid>
+        </Border>
+
         <!-- 操作区 -->
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
             <Button Content="连接测试" Style="{StaticResource SecondaryActionButton}"
