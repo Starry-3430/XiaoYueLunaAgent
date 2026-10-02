@@ -42,19 +42,31 @@ public class OpenAiService : IAiService
         httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
         httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
 
-        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage response;
+        try
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
-            response.EnsureSuccessStatusCode();
+            response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException($"请求 {url} 失败：{ex.InnerException?.Message ?? ex.Message}", ex, ex.StatusCode);
         }
 
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        _logger.LogDebug("Response: {Body}", body);
+        using (response)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
+                throw new HttpRequestException($"HTTP {(int)response.StatusCode} @ {url}：{errorBody}");
+            }
 
-        var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
-        return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogDebug("Response: {Body}", body);
+
+            var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
+            return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
+        }
     }
 
     public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
@@ -70,12 +82,22 @@ public class OpenAiService : IAiService
         httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
         httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
 
-        using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException($"请求 {url} 失败：{ex.InnerException?.Message ?? ex.Message}", ex, ex.StatusCode);
+        }
+
+        using var responseScope = response;
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
-            response.EnsureSuccessStatusCode();
+            throw new HttpRequestException($"HTTP {(int)response.StatusCode} @ {url}：{errorBody}");
         }
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -162,15 +184,41 @@ public class OpenAiService : IAiService
         }
     }
 
+    private string BuildSystemPrompt()
+    {
+        var prompt = _settings.SystemPrompt;
+        if (string.IsNullOrWhiteSpace(prompt))
+            return string.Empty;
+
+        return prompt
+            .Replace("{nickname}", _settings.Nickname)
+            .Replace("{Nickname}", _settings.Nickname)
+            .Replace("{user}", _settings.UserName)
+            .Replace("{User}", _settings.UserName);
+    }
+
     private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream)
     {
         var root = new JsonObject
         {
             ["model"] = _settings.Model,
             ["stream"] = stream,
+            ["max_tokens"] = _settings.MaxTokens,
+            ["temperature"] = _settings.Temperature,
         };
 
         var messagesArray = new JsonArray();
+
+        var systemPrompt = BuildSystemPrompt();
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            messagesArray.Add(new JsonObject
+            {
+                ["role"] = "system",
+                ["content"] = systemPrompt,
+            });
+        }
+
         foreach (var msg in messages)
         {
             if (msg.Role == "assistant" &&

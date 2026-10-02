@@ -9,4 +9,7 @@ public class DialogButton
     public object? CommandParameter { get; set; }
     public bool IsPrimary { get; set; }
     public bool IsCancel { get; set; }
+
+    /// <summary>可选：直接指定 DialogButtonStyles.xaml 中的样式键，优先级最高。</summary>
+    public string? StyleKey { get; set; }
 }

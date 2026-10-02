@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,8 +9,10 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
 using Luna.Models;
+using Luna.Services;
 using Luna.ViewModels;
 
 namespace Luna;
@@ -32,6 +35,7 @@ public partial class HomeWindow : Window
     private const int HT_CAPTION = 2;
 
     private readonly HomeViewModel _viewModel;
+    private readonly SettingsService _settingsService;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -59,11 +63,14 @@ public partial class HomeWindow : Window
         public double Height { get; set; }
     }
 
-    public HomeWindow(HomeViewModel viewModel)
+    public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
+        SettingsService settingsService)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+        _settingsService = settingsService;
+        AiConnectionPanel.DataContext = aiConnectionViewModel;
 
         SourceInitialized += (_, _) =>
         {
@@ -100,13 +107,6 @@ public partial class HomeWindow : Window
 
         // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(InputBox);
-
-        // 点击窗口任意位置时，关闭所有设置项中的下拉弹出层
-        PreviewMouseDown += (_, _) =>
-        {
-            foreach (var item in _viewModel.SettingsItems)
-                if (item is SelectSetting ss) ss.IsOpen = false;
-        };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
@@ -618,65 +618,59 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
     // ===== 设置项交互 =====
 
     /// <summary>
-    /// 点击下拉选择框：打开/关闭 Popup，并将 Popup 定位到当前按钮。
+    /// 点击「打开 settings.json」：弹出警告对话框，确认后打开配置文件。
     /// </summary>
-    private void SelectToggle_Click(object sender, MouseButtonEventArgs e)
+    private void OpenSettingsJson_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement fe || fe.DataContext is not SelectSetting setting) return;
-        e.Handled = true;
-
-        // 设置 Popup 的 PlacementTarget 为当前按钮
-        var popup = fe.Parent is Grid grid ? GetFirstChildPopup(grid) : null;
-        if (popup != null)
-            popup.PlacementTarget = fe;
-
-        setting.ToggleOpenCommand.Execute(null);
-    }
-
-    /// <summary>
-    /// 在视觉树中查找第一个 Popup 子元素。
-    /// </summary>
-    private static Popup? GetFirstChildPopup(DependencyObject parent)
-    {
-        var count = VisualTreeHelper.GetChildrenCount(parent);
-        for (var i = 0; i < count; i++)
+        var dialog = new LunaDialog
         {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is Popup p) return p;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// 点击下拉选项：执行选择命令并关闭弹出层。
-    /// </summary>
-    private void SelectOption_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not FrameworkElement fe || fe.DataContext is not SelectOption option) return;
-        e.Handled = true;
-        // 向上查找 DataContext 为 SelectSetting 的父级
-        var parent = fe;
-        while (parent != null)
-        {
-            if (parent.DataContext is SelectSetting setting)
+            Owner = this,
+            DialogTitle = "警告",
+            DialogContent = new TextBlock
             {
-                setting.SelectOptionCommand.Execute(option);
-                break;
-            }
-            parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
-        }
+                Text = "settings.json是重要的系统配置文件，错误修改可能导致程序不能正常运行，是否继续？",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "继续",
+                StyleKey = "StyleDanger",
+                Command = new RelayCommand(() =>
+                {
+                    dialog.Close();
+                    OpenSettingsFile();
+                }),
+            },
+            new()
+            {
+                Text = "取消",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
     }
 
-    /// <summary>
-    /// 数字输入框按下 Enter 时，强制更新绑定源。
-    /// </summary>
-    private void NumberInput_KeyDown(object sender, KeyEventArgs e)
+    /// <summary>用系统默认程序打开 settings.json。</summary>
+    private void OpenSettingsFile()
     {
-        if (e.Key == Key.Enter && sender is TextBox textBox)
+        try
         {
-            var expr = textBox.GetBindingExpression(TextBox.TextProperty);
-            expr?.UpdateSource();
-            e.Handled = true;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_settingsService.SettingsPath)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            ShowToast("无法打开配置文件：" + ex.Message, ToastType.Error);
         }
     }
 

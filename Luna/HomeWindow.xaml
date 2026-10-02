@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
+        xmlns:views="clr-namespace:Luna.Views"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
@@ -582,112 +583,52 @@ Background="#E4E0CA"
             </ScrollViewer>
             </Grid>
 
-            <!-- 设置 / 日记本 / 工具 内容区 -->
+            <!-- 设置 内容区 -->
             <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Padding="20,16">
-                    <ItemsControl ItemsSource="{Binding SettingsItems}">
-                        <ItemsControl.Resources>
-                            <DataTemplate DataType="{x:Type models:ToggleSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource SettingsToggle}"
-                                                  IsChecked="{Binding Value}" VerticalAlignment="Top"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
+                    <StackPanel>
+                        <!-- 通用 -->
+                        <TextBlock Text="通用" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Text="字体、快捷键、代理等设置将在后续版本提供。"
+                                   Foreground="#8B7B6B" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,24"/>
 
-                            <DataTemplate DataType="{x:Type models:NumberSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecrementCommand}"/>
-                                            <TextBox Grid.Column="1" Text="{Binding DisplayText, UpdateSourceTrigger=LostFocus}"
-                                                     Style="{StaticResource SettingsInput}" Margin="6,0"
-                                                     PreviewKeyDown="NumberInput_KeyDown"/>
-                                            <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncrementCommand}" Margin="0,0,6,0"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding Unit}" Foreground="#88FFFFFF" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                            <Button Grid.Column="4" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}"/>
-                                        </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
+                        <!-- 聊天 -->
+                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <views:AiConnectionView x:Name="AiConnectionPanel"/>
 
-                            <DataTemplate DataType="{x:Type models:SelectSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-<Grid Grid.Column="0">
-<Border Width="250" Height="34"
-                                                         Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
-                                                         PreviewMouseLeftButtonDown="SelectToggle_Click"
-                                                         Tag="{Binding .}">
-                                                    <TextBlock Text="{Binding SelectedLabel}" Foreground="#5B4833"
-                                                               FontSize="13" VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"/>
+                        <!-- 底部：打开配置文件 -->
+                        <Button x:Name="OpenSettingsJsonButton"
+                                Content="打开 settings.json"
+                                Click="OpenSettingsJson_Click"
+                                HorizontalAlignment="Left"
+                                Margin="0,10,0,8">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Height" Value="34"/>
+                                    <Setter Property="Padding" Value="20,0"/>
+                                    <Setter Property="Background" Value="#FD7956"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                                        Background="{TemplateBinding Background}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Border>
-                                                <Popup IsOpen="{Binding IsOpen}"
-                                                       Placement="Bottom" StaysOpen="True"
-                                                       AllowsTransparency="True">
-                                                    <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
-                                                        <ItemsControl ItemsSource="{Binding Options}">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type models:SelectOption}">
-                                                                    <Border Padding="10,8" CornerRadius="6" Cursor="Hand"
-                                                                            Background="Transparent"
-                                                                            PreviewMouseLeftButtonDown="SelectOption_Click"
-                                                                            Tag="{Binding .}">
-<TextBlock Text="{Binding Label}" Foreground="#5B4833"
-                                                                           FontSize="13" TextWrapping="Wrap"/>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </Border>
-                                                </Popup>
-                                            </Grid>
-                                            <Button Grid.Column="1" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}" Margin="4,0,0,0"/>
-                                        </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.Resources>
-                    </ItemsControl>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#D64541"/></Trigger>
+                                                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#A93226"/></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
             <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">

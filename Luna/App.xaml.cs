@@ -117,15 +117,11 @@ public partial class App : Application
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<HomeWindow>();
                 services.AddSingleton<HomeViewModel>();
+                services.AddSingleton<AiConnectionViewModel>();
                 
-                // AI 服务配置
-                services.AddSingleton(new AiSettings
-                {
-                    ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
-                    BaseUrl = "https://api.deepseek.com/v1",
-                    Model = "deepseek-flash",
-                    TavilyApiKey = Environment.GetEnvironmentVariable("LUNA_TAVILY_API_KEY") ?? "",
-                });
+                // AI 服务配置（从 settings.json 加载）
+                services.AddSingleton<SettingsService>();
+                services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
                 services.AddSingleton<ITool, ClipboardReadTool>();

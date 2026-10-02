@@ -1,19 +1,30 @@
 ﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
 using Luna.Models;
 
 namespace Luna.Controls;
 
 public partial class LunaDialog : Window
 {
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
+
     public static readonly DependencyProperty DialogTitleProperty =
         DependencyProperty.Register(nameof(DialogTitle), typeof(string), typeof(LunaDialog),
             new PropertyMetadata(null, OnTitleChanged));
 
     public static readonly DependencyProperty DialogContentProperty =
-        DependencyProperty.Register(nameof(DialogContent), typeof(object), typeof(LunaDialog));
+        DependencyProperty.Register(nameof(DialogContent), typeof(object), typeof(LunaDialog),
+            new PropertyMetadata(null, OnContentChanged));
 
     public static readonly DependencyProperty ButtonsProperty =
         DependencyProperty.Register(nameof(Buttons), typeof(ObservableCollection<DialogButton>), typeof(LunaDialog),
@@ -41,6 +52,13 @@ public partial class LunaDialog : Window
     {
         InitializeComponent();
         Buttons = [];
+
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var preference = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+        };
     }
 
     private static void OnTitleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -50,6 +68,31 @@ public partial class LunaDialog : Window
         dialog.TitleBlock.Visibility = e.NewValue is string s && !string.IsNullOrEmpty(s)
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
+
+    private static void OnContentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        var dialog = (LunaDialog)d;
+        dialog.ContentArea.Content = e.NewValue;
+    }
+
+    /// <summary>按住按钮以外的任意位置拖动弹窗。</summary>
+    private void Dialog_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState != MouseButtonState.Pressed) return;
+        if (IsInsideButton(e.OriginalSource as DependencyObject)) return;
+
+        DragMove();
+    }
+
+    private static bool IsInsideButton(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is Button) return true;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private static void OnButtonsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -115,7 +158,8 @@ public partial class LunaDialog : Window
 
     private Button MakeButton(DialogButton model)
     {
-        var styleKey = model.IsPrimary ? "StylePrimary" :
+        var styleKey = !string.IsNullOrEmpty(model.StyleKey) ? model.StyleKey :
+                       model.IsPrimary ? "StylePrimary" :
                        model.IsCancel ? "StyleCancel" : "StyleDefault";
 
         return new Button

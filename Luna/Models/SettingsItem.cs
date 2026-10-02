@@ -115,3 +115,24 @@ public partial class SelectSetting : SettingsItem
         IsOpen = !IsOpen;
     }
 }
+
+public partial class StringSetting : SettingsItem
+{
+    public const string MaskText = "········";
+
+    [ObservableProperty]
+    private string _value = string.Empty;
+
+    [ObservableProperty]
+    private string _displayText = string.Empty;
+
+    public bool IsEncrypted { get; set; }
+    public string DefaultValue { get; set; } = string.Empty;
+
+    [RelayCommand]
+    private void Reset()
+    {
+        Value = string.Empty;
+        DisplayText = string.Empty;
+    }
+}
