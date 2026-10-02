@@ -428,7 +428,7 @@ Background="#E4E0CA"
                                                         <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto"
                                                                       Loaded="ReasoningScrollViewer_Loaded"
                                                                       Visibility="{Binding IsReasoningExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <TextBlock Text="{Binding ReasoningContent}" TextWrapping="Wrap"
+                                                            <TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
                                                                        Foreground="#8B7B6B" FontSize="13"
                                                                        IsHitTestVisible="False" Focusable="False"/>
                                                         </ScrollViewer>

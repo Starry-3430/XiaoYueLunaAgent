@@ -40,6 +40,7 @@ public class DatabaseInitializer
 
         conn.Execute(CreateTablesSql);  // 全部 IF NOT EXISTS
         AddReasoningContentColumn(conn);
+        AddToolCallsJsonColumn(conn);
         _logger.LogInformation("数据库初始化完成：{Path}", _dbPath);
     }
 
@@ -48,6 +49,18 @@ public class DatabaseInitializer
         try
         {
             conn.Execute("ALTER TABLE Messages ADD COLUMN ReasoningContent TEXT NOT NULL DEFAULT ''");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+    }
+
+    private void AddToolCallsJsonColumn(SqliteConnection conn)
+    {
+        try
+        {
+            conn.Execute("ALTER TABLE Messages ADD COLUMN ToolCallsJson TEXT NOT NULL DEFAULT ''");
         }
         catch (SqliteException)
         {

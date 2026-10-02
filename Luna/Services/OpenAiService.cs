@@ -58,7 +58,7 @@ public class OpenAiService : IAiService
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
-    public async IAsyncEnumerable<StreamChunk> ChatStreamAsync(
+    public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -97,22 +97,62 @@ public class OpenAiService : IAiService
 
             var data = line[6..];
             if (data == "[DONE]")
+            {
+                yield return new StreamDone();
                 yield break;
+            }
 
             if (string.IsNullOrWhiteSpace(data))
                 continue;
 
-            StreamChunk? chunk = null;
+            List<StreamEvent>? events = null;
             try
             {
-                var chatChunk = JsonSerializer.Deserialize<ChatCompletionResponse>(data, JsonOptions);
-                var delta = chatChunk?.Choices?.FirstOrDefault()?.Delta;
-                if (delta is not null)
+                using var doc = JsonDocument.Parse(data);
+                var choices = doc.RootElement.GetProperty("choices");
+                if (choices.GetArrayLength() == 0) continue;
+
+                var delta = choices[0].GetProperty("delta");
+                events = new List<StreamEvent>();
+
+                if (delta.TryGetProperty("reasoning_content", out var r))
                 {
-                    var content = !string.IsNullOrEmpty(delta.Content) ? delta.Content : null;
-                    var reasoning = !string.IsNullOrEmpty(delta.ReasoningContent) ? delta.ReasoningContent : null;
-                    if (content is not null || reasoning is not null)
-                        chunk = new StreamChunk(content, reasoning);
+                    var text = r.GetString();
+                    if (!string.IsNullOrEmpty(text))
+                        events.Add(new ReasoningDelta(text));
+                }
+
+                if (delta.TryGetProperty("content", out var c))
+                {
+                    var text = c.GetString();
+                    if (!string.IsNullOrEmpty(text))
+                        events.Add(new ContentDelta(text));
+                }
+
+                if (delta.TryGetProperty("tool_calls", out var t))
+                {
+                    foreach (var call in t.EnumerateArray())
+                    {
+                        var index = call.TryGetProperty("index", out var idxProp)
+                            ? idxProp.GetInt32()
+                            : 0;
+
+                        string? id = null;
+                        if (call.TryGetProperty("id", out var idProp))
+                            id = idProp.GetString();
+
+                        string? name = null;
+                        if (call.TryGetProperty("function", out var funcProp) &&
+                            funcProp.TryGetProperty("name", out var nameProp))
+                            name = nameProp.GetString();
+
+                        string? argsFragment = null;
+                        if (call.TryGetProperty("function", out var funcProp2) &&
+                            funcProp2.TryGetProperty("arguments", out var argsProp))
+                            argsFragment = argsProp.GetString();
+
+                        events.Add(new ToolCallDelta(index, id, name, argsFragment));
+                    }
                 }
             }
             catch (JsonException ex)
@@ -120,8 +160,11 @@ public class OpenAiService : IAiService
                 _logger.LogWarning(ex, "SSE 解析跳过: {Line}", line);
             }
 
-            if (chunk is not null)
-                yield return chunk.Value;
+            if (events is not null)
+            {
+                foreach (var evt in events)
+                    yield return evt;
+            }
         }
     }
 }

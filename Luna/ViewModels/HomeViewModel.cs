@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
@@ -135,7 +136,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             var msgs = await _messageRepo.GetBySessionAsync(session.Id);
             foreach (var m in msgs)
             {
-                Messages.Add(new ChatMessage { Role = m.Role, Content = m.Content, ReasoningContent = m.ReasoningContent });
+                Messages.Add(new ChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content,
+                    Reasoning = m.ReasoningContent,
+                });
             }
             Status = "就绪";
         }
@@ -162,7 +168,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
         try
         {
-            // 1. 创建会话（如无）
             if (_currentSessionId is null)
             {
                 var session = new Session();
@@ -177,12 +182,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 });
             }
 
-            // 2. 生成 TurnId
             var turnId = Guid.NewGuid().ToString("N");
             var now = DateTime.UtcNow;
             var logicalDate = now.ToString("yyyy-MM-dd");
 
-            // 3. 写 user 消息
             var userMsg = new Message
             {
                 SessionId = _currentSessionId,
@@ -201,7 +204,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Status = "思考中…";
             _cts = new CancellationTokenSource();
 
-            // 4. 调用 AI 流式回复
             var uiReply = new ChatMessage { Role = "assistant", Content = "" };
             Messages.Add(uiReply);
 
@@ -209,20 +211,18 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             {
                 var replyContent = await StreamIntoAsync(uiReply, _cts.Token);
 
-                // 5. 写 assistant 消息
                 var assistantMsg = new Message
                 {
                     SessionId = _currentSessionId,
                     TurnId = turnId,
                     Role = "assistant",
                     Content = replyContent,
-                    ReasoningContent = uiReply.ReasoningContent,
+                    ReasoningContent = uiReply.Reasoning,
                     CreatedAtUtc = DateTime.UtcNow,
                     LogicalDate = logicalDate,
                 };
                 await _messageRepo.InsertAsync(assistantMsg);
 
-                // 6. 刷新会话时间并重新加载列表（保证 DB 中的 UpdatedAtUtc 排序）
                 await _sessionRepo.TouchAsync(_currentSessionId);
                 await LoadSessionsAsync();
 
@@ -254,29 +254,49 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private async Task<string> StreamIntoAsync(ChatMessage uiReply, CancellationToken ct)
     {
         var lockObj = new object();
-        var buffer = new List<StreamChunk>();
-        var sb = new StringBuilder();
-        var reasoningSb = new StringBuilder();
+        var buffer = new List<StreamEvent>();
+        var contentBuf = new StringBuilder();
+        var reasoningBuf = new StringBuilder();
+        var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
 
         timer.Tick += (_, _) =>
         {
-            StreamChunk[] batch;
+            StreamEvent[] batch;
             lock (lockObj)
             {
                 if (buffer.Count == 0) return;
                 batch = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var c in batch)
+            foreach (var evt in batch)
             {
-                if (c.Content is not null)
-                    sb.Append(c.Content);
-                if (c.ReasoningContent is not null)
-                    reasoningSb.Append(c.ReasoningContent);
+                switch (evt)
+                {
+                    case ReasoningDelta r:
+                        reasoningBuf.Append(r.Text);
+                        uiReply.Reasoning = reasoningBuf.ToString();
+                        break;
+                    case ContentDelta c:
+                        contentBuf.Append(c.Text);
+                        uiReply.Content = contentBuf.ToString();
+                        break;
+                    case ToolCallDelta t:
+                        if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
+                        {
+                            entry = new ToolCallEntry
+                            {
+                                ToolName = t.Name ?? "",
+                                Status = ToolCallStatus.Running,
+                            };
+                            pendingToolCalls[t.Index] = entry;
+                            uiReply.ToolCalls.Add(entry);
+                        }
+                        if (t.Name is not null) entry.ToolName = t.Name;
+                        if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
+                        break;
+                }
             }
-            uiReply.Content = sb.ToString();
-            uiReply.ReasoningContent = reasoningSb.ToString();
         };
 
         try
@@ -285,34 +305,63 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
             var consumeTask = Task.Run(async () =>
             {
-                await foreach (var chunk in _aiService.ChatStreamAsync(Messages, ct))
+                await foreach (var evt in _aiService.ChatStreamAsync(Messages, ct))
                 {
                     lock (lockObj)
-                        buffer.Add(chunk);
+                        buffer.Add(evt);
                 }
             }, ct);
 
             timer.Start();
             await consumeTask;
 
-            StreamChunk[] remaining;
+            StreamEvent[] remaining;
             lock (lockObj)
             {
                 remaining = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var c in remaining)
+            foreach (var evt in remaining)
             {
-                if (c.Content is not null)
-                    sb.Append(c.Content);
-                if (c.ReasoningContent is not null)
-                    reasoningSb.Append(c.ReasoningContent);
+                switch (evt)
+                {
+                    case ReasoningDelta r:
+                        reasoningBuf.Append(r.Text);
+                        break;
+                    case ContentDelta c:
+                        contentBuf.Append(c.Text);
+                        break;
+                    case ToolCallDelta t:
+                        if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
+                        {
+                            entry = new ToolCallEntry
+                            {
+                                ToolName = t.Name ?? "",
+                                Status = ToolCallStatus.Running,
+                            };
+                            pendingToolCalls[t.Index] = entry;
+                            uiReply.ToolCalls.Add(entry);
+                        }
+                        if (t.Name is not null) entry.ToolName = t.Name;
+                        if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
+                        break;
+                }
             }
             if (remaining.Length > 0)
             {
-                uiReply.Content = sb.ToString();
-                uiReply.ReasoningContent = reasoningSb.ToString();
+                uiReply.Content = contentBuf.ToString();
+                uiReply.Reasoning = reasoningBuf.ToString();
             }
+
+            foreach (var entry in pendingToolCalls.Values)
+            {
+                if (entry.Status == ToolCallStatus.Running)
+                    entry.Status = ToolCallStatus.Success;
+            }
+
+            var toolCallsJson = pendingToolCalls.Count > 0
+                ? JsonSerializer.Serialize(pendingToolCalls.Values.Select(tc => new { tc.ToolName, tc.ArgumentsJson }))
+                : "";
 
             return uiReply.Content;
         }

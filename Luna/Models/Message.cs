@@ -8,6 +8,7 @@ public class Message
     public string Role { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public string ReasoningContent { get; set; } = string.Empty;
+    public string ToolCallsJson { get; set; } = string.Empty;
     public string ContentType { get; set; } = "text";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string LogicalDate { get; set; } = string.Empty;

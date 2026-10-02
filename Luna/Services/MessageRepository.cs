@@ -14,9 +14,9 @@ public class MessageRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         await conn.ExecuteAsync(
             @"INSERT INTO Messages 
-              (SessionId, TurnId, Role, Content, ReasoningContent, ContentType, CreatedAtUtc, LogicalDate)
+              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ContentType, CreatedAtUtc, LogicalDate)
               VALUES 
-              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ContentType, @CreatedAtUtc, @LogicalDate)", m);
+              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ContentType, @CreatedAtUtc, @LogicalDate)", m);
     }
 
     public async Task<List<Message>> GetBySessionAsync(string sessionId)

@@ -1,6 +1,33 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Luna.Models;
+
+public enum ToolCallStatus
+{
+    Pending,
+    Running,
+    Success,
+    Failed,
+}
+
+public partial class ToolCallEntry : ObservableObject
+{
+    [ObservableProperty]
+    private string _toolName = "";
+
+    [ObservableProperty]
+    private string _argumentsJson = "";
+
+    [ObservableProperty]
+    private string _resultJson = "";
+
+    [ObservableProperty]
+    private ToolCallStatus _status;
+
+    [ObservableProperty]
+    private bool _isExpanded;
+}
 
 public partial class ChatMessage : ObservableObject
 {
@@ -13,7 +40,7 @@ public partial class ChatMessage : ObservableObject
     private string _content = string.Empty;
 
     [ObservableProperty]
-    private string _reasoningContent = string.Empty;
+    private string _reasoning = string.Empty;
 
     [ObservableProperty]
     private bool _isStreaming;
@@ -21,9 +48,11 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isReasoningExpanded;
 
+    public ObservableCollection<ToolCallEntry> ToolCalls { get; } = new();
+
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);
 
-    public bool HasReasoning => !string.IsNullOrEmpty(ReasoningContent);
+    public bool HasReasoning => !string.IsNullOrEmpty(Reasoning);
 
     partial void OnContentChanged(string value)
     {
@@ -35,7 +64,7 @@ public partial class ChatMessage : ObservableObject
         OnPropertyChanged(nameof(IsThinking));
     }
 
-    partial void OnReasoningContentChanged(string value)
+    partial void OnReasoningChanged(string value)
     {
         OnPropertyChanged(nameof(HasReasoning));
         if (!string.IsNullOrEmpty(value) && !_userCollapsedReasoning)
@@ -44,7 +73,6 @@ public partial class ChatMessage : ObservableObject
 
     partial void OnIsReasoningExpandedChanged(bool value)
     {
-        if (!value)
-            _userCollapsedReasoning = true;
+        if (!value) _userCollapsedReasoning = true;
     }
 }

@@ -160,7 +160,7 @@ private readonly MainViewModel _viewModel;
 
         PropertyChangedEventHandler handler = (_, args) =>
         {
-            if (args.PropertyName == nameof(ChatMessage.ReasoningContent))
+            if (args.PropertyName == nameof(ChatMessage.Reasoning))
                 sv.ScrollToBottom();
         };
         msg.PropertyChanged += handler;
