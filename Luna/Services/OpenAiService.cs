@@ -186,8 +186,8 @@ public class OpenAiService : IAiService
 
             if (msg.Role == "tool")
             {
-                if (msg.ToolCalls.Count > 0)
-                    obj["tool_call_id"] = msg.ToolCalls[0].ToolCallId;
+                if (!string.IsNullOrEmpty(msg.ToolCallId))
+                    obj["tool_call_id"] = msg.ToolCallId;
                 obj["content"] = msg.Content;
             }
             else

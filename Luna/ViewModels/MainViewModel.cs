@@ -170,6 +170,7 @@ public partial class MainViewModel : ObservableObject
                     {
                         Role = "tool",
                         Content = entry.ResultJson,
+                        ToolCallId = entry.ToolCallId,
                         ToolCalls = { new ToolCallEntry { ToolCallId = entry.ToolCallId, ToolName = entry.ToolName } },
                     });
                 }
@@ -197,6 +198,7 @@ public partial class MainViewModel : ObservableObject
                         TurnId = turnId,
                         Role = "tool",
                         Content = entry.ResultJson,
+                        ToolCallId = entry.ToolCallId,
                         ContentType = "tool_result",
                         CreatedAtUtc = DateTime.UtcNow,
                         LogicalDate = logicalDate,

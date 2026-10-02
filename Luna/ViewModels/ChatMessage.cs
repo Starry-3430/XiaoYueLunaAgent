@@ -59,6 +59,8 @@ public partial class ChatMessage : ObservableObject
 
     public long DbId { get; set; }
 
+    public string ToolCallId { get; set; } = string.Empty;
+
     public ObservableCollection<ToolCallEntry> ToolCalls { get; } = new();
 
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);

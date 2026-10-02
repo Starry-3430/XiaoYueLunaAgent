@@ -14,9 +14,9 @@ public class MessageRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         var id = await conn.ExecuteScalarAsync<long>(
             @"INSERT INTO Messages 
-              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ContentType, CreatedAtUtc, LogicalDate)
+              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ToolCallId, ContentType, CreatedAtUtc, LogicalDate)
               VALUES 
-              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ContentType, @CreatedAtUtc, @LogicalDate);
+              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ToolCallId, @ContentType, @CreatedAtUtc, @LogicalDate);
               SELECT last_insert_rowid();", m);
         return id;
     }

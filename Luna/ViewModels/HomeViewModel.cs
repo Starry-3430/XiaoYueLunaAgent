@@ -94,7 +94,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "信息",
             Tools =
             {
-                new ToolDefinition { Id = "web_search", Category = "信息", Name = "网页搜索", Description = "在互联网上搜索信息", IsEnabled = true, IsAvailable = true },
+                new ToolDefinition { Id = "web_search", Category = "信息", Name = "网页搜索", Description = "在互联网上搜索信息", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "web_fetch", Category = "信息", Name = "网页阅读", Description = "读取指定 URL 的网页内容", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "read_clipboard", Category = "信息", Name = "剪贴板读取", Description = "读取系统剪贴板中的文本内容", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "weather_time", Category = "信息", Name = "天气/时间", Description = "查询天气和当前时间", IsEnabled = true, IsAvailable = false },
@@ -263,6 +263,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                     Content = m.Content,
                     Reasoning = m.ReasoningContent,
                     DbId = m.Id,
+                    ToolCallId = m.ToolCallId,
                 };
 
                 if (!string.IsNullOrEmpty(m.ToolCallsJson))
@@ -295,13 +296,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 Messages.Add(msg);
             }
 
-            for (var i = Messages.Count - 1; i >= 0; i--)
+            for (var i = 0; i < Messages.Count; i++)
             {
-                if (Messages[i].Role == "assistant" && !string.IsNullOrEmpty(Messages[i].Content))
-                {
-                    Messages[i].IsFinalReply = true;
-                    break;
-                }
+                var m = Messages[i];
+                if (m.Role != "assistant") continue;
+
+                var isTurnEnd = i == Messages.Count - 1 || Messages[i + 1].Role == "user";
+                if (isTurnEnd && !string.IsNullOrEmpty(m.Content))
+                    m.IsFinalReply = true;
             }
 
             Status = "就绪";
@@ -447,6 +449,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                         {
                             Role = "tool",
                             Content = entry.ResultJson,
+                            ToolCallId = entry.ToolCallId,
                             ToolCalls = { new ToolCallEntry { ToolCallId = entry.ToolCallId, ToolName = entry.ToolName } },
                         });
                     }
@@ -474,6 +477,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                             TurnId = turnId,
                             Role = "tool",
                             Content = entry.ResultJson,
+                            ToolCallId = entry.ToolCallId,
                             ContentType = "tool_result",
                             CreatedAtUtc = DateTime.UtcNow,
                             LogicalDate = logicalDate,

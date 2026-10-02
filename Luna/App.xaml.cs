@@ -128,8 +128,8 @@ public partial class App : Application
                 });
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
-                services.AddSingleton<WebSearchTool>();
                 services.AddSingleton<ITool, ClipboardReadTool>();
+                services.AddSingleton<ITool, WebSearchTool>();
                 services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册
