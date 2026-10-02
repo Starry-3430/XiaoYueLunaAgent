@@ -9,6 +9,7 @@ using Serilog;
 using Luna.Data;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Tools;
 using Luna.ViewModels;
 using System.NativeTray;
 using System.Windows.Interop;
@@ -116,16 +117,24 @@ public partial class App : Application
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<HomeWindow>();
                 services.AddSingleton<HomeViewModel>();
+                services.AddSingleton<AiConnectionViewModel>();
+                services.AddSingleton<GeneralSettingsViewModel>();
                 
-                // AI 服务配置
-                services.AddSingleton(new AiSettings
+                // AI 服务配置（从 settings.json 加载）
+                services.AddSingleton<SettingsService>();
+                services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
+                services.AddSingleton<ToolSettingsService>();
+                services.AddSingleton<SettingsProxy>();
+                services.AddSingleton(sp => new HttpClient(new SocketsHttpHandler
                 {
-                    ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
-                    BaseUrl = "https://api.deepseek.com/v1",
-                    Model = "deepseek-flash",
-                });
-                services.AddSingleton<HttpClient>();
+                    UseProxy = true,
+                    Proxy = sp.GetRequiredService<SettingsProxy>(),
+                }));
+                services.AddSingleton<HotkeyService>();
                 services.AddSingleton<IAiService, OpenAiService>();
+                services.AddSingleton<ITool, ClipboardReadTool>();
+                services.AddSingleton<ITool, WebSearchTool>();
+                services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册
                 var dbDir = Path.Combine(
@@ -282,8 +291,23 @@ public partial class App : Application
 
         Log.Information("Luna 已启动");
 
-        // 5. 显示主窗口（MainWindow：紧凑悬浮输入窗）
+        // 5. 应用字体设置
+        var settings = _host.Services.GetRequiredService<AiSettings>();
+        ThemeService.ApplyFont(settings.FontFamily);
+
+        // 6. 显示主窗口（MainWindow：紧凑悬浮输入窗）
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        var hotkey = _host.Services.GetRequiredService<HotkeyService>();
+        hotkey.Attach(mainWindow);
+        hotkey.Update(settings.Hotkey);
+        hotkey.Pressed += () => Dispatcher.Invoke(() =>
+        {
+            mainWindow.Show();
+            mainWindow.ShowInternal();
+            mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        });
+
         mainWindow.Show();
         mainWindow.ShowInternal();
 

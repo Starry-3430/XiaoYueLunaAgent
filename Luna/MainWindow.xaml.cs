@@ -103,7 +103,7 @@ private readonly MainViewModel _viewModel;
         viewer.LinkClicked += (_, args) =>
             Process.Start(new ProcessStartInfo(args.Url) { UseShellExecute = true });
 
-        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
+        var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
             Background = System.Windows.Media.Brushes.Transparent,
             SubtleForeground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
@@ -114,7 +114,12 @@ private readonly MainViewModel _viewModel;
             InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
             Border = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
             QuoteBar = new SolidColorBrush(Color.FromRgb(0x63, 0x57, 0x4F)),
-        });
+            MonoTypeface = ThemeService.CodeTypeface,
+        };
+        if (ThemeService.BaseTypeface is { } baseTypeface)
+            markdownStyle = markdownStyle with { BaseTypeface = baseTypeface };
+
+        viewer.ApplyTheme(markdownStyle);
 
         ApplyLightScrollBarStyle(viewer);
 

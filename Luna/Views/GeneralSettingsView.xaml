@@ -1,0 +1,227 @@
+<UserControl x:Class="Luna.Views.GeneralSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:Luna.Models"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="700">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/SettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel PreviewMouseDown="Root_PreviewMouseDown">
+        <!-- 字体 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="字体" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="界面使用的字体。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <Border x:Name="FontDropdown" Width="250" Height="{StaticResource SettingsControlHeight}"
+                            Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                            PreviewMouseLeftButtonDown="SelectToggle_Click"
+                            Tag="{Binding FontSetting}">
+                        <Grid>
+                            <TextBlock Text="{Binding FontSetting.SelectedLabel}" Foreground="#5B4833"
+                                       FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"/>
+                        </Grid>
+                    </Border>
+                    <Popup IsOpen="{Binding FontSetting.IsOpen}"
+                           PlacementTarget="{Binding ElementName=FontDropdown}"
+                           Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                        <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                            <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding FontSetting.Options}" Tag="{Binding FontSetting}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:SelectOption}">
+                                            <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                    PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13"
+                                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 快捷键 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="快捷键" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="呼出胶囊窗口的全局快捷键，点击右侧输入框后按下组合键。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <Grid Grid.Column="1" VerticalAlignment="Center">
+                    <TextBox x:Name="HotkeyBox" Width="180" Style="{StaticResource SettingsInputWide}"
+                             IsReadOnly="True" Cursor="Hand"
+                             Text="{Binding HotkeyText, Mode=OneWay}"
+                             GotFocus="HotkeyBox_GotFocus"
+                             LostFocus="HotkeyBox_LostFocus"
+                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
+                    <TextBlock x:Name="HotkeyHint" Text="请按下快捷键…" Foreground="#8B7B6B" FontSize="12"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               IsHitTestVisible="False" Visibility="Collapsed"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 代理 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="代理" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="通过代理访问网络。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    </StackPanel>
+                    <Grid Grid.Column="1" VerticalAlignment="Center">
+                        <Border x:Name="ProxyDropdown" Width="180" Height="{StaticResource SettingsControlHeight}"
+                                Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                Tag="{Binding ProxyTypeSetting}">
+                            <Grid>
+                                <TextBlock Text="{Binding ProxyTypeSetting.SelectedLabel}" Foreground="#5B4833"
+                                           FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                        <Popup IsOpen="{Binding ProxyTypeSetting.IsOpen}"
+                               PlacementTarget="{Binding ElementName=ProxyDropdown}"
+                               Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                            <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                                <ItemsControl ItemsSource="{Binding ProxyTypeSetting.Options}" Tag="{Binding ProxyTypeSetting}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:SelectOption}">
+                                            <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                    PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="服务器" Style="{StaticResource SettingsTitle}"/>
+                    </StackPanel>
+                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
+                             Text="{Binding ProxyServer, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center"/>
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="端口" Style="{StaticResource SettingsTitle}"/>
+                    </StackPanel>
+                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
+                             Text="{Binding ProxyPort, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center"/>
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="用户名" Style="{StaticResource SettingsTitle}"/>
+                    </StackPanel>
+                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
+                             Text="{Binding ProxyUsername, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center"/>
+                </Grid>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="密码" Style="{StaticResource SettingsTitle}"/>
+                    </StackPanel>
+                    <PasswordBox x:Name="ProxyPasswordBox" Grid.Column="1" Width="180"
+                                 Style="{StaticResource SettingsPassword}"
+                                 PasswordChanged="ProxyPassword_PasswordChanged"
+                                 VerticalAlignment="Center"/>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="测试" Style="{StaticResource SecondaryActionButton}"
+                            Command="{Binding TestProxyCommand}"/>
+                    <TextBlock Text="{Binding ProxyTestStatus}" Foreground="#5B4833" FontSize="13"
+                               VerticalAlignment="Center" Margin="12,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 编辑配置文件 -->
+        <Button x:Name="EditSettingsJsonButton"
+                Content="编辑 settings.json"
+                Click="EditSettingsJson_Click"
+                HorizontalAlignment="Left"
+                Margin="0,10,0,8">
+            <Button.Style>
+                <Style TargetType="Button">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Height" Value="34"/>
+                    <Setter Property="Padding" Value="20,0"/>
+                    <Setter Property="Background" Value="#FD7956"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#D64541"/></Trigger>
+                                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#A93226"/></Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Button.Style>
+        </Button>
+    </StackPanel>
+</UserControl>

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,8 +9,10 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
 using Luna.Models;
+using Luna.Services;
 using Luna.ViewModels;
 
 namespace Luna;
@@ -59,11 +62,14 @@ public partial class HomeWindow : Window
         public double Height { get; set; }
     }
 
-    public HomeWindow(HomeViewModel viewModel)
+    public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
+        GeneralSettingsViewModel generalSettingsViewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+        AiConnectionPanel.DataContext = aiConnectionViewModel;
+        GeneralSettingsPanel.DataContext = generalSettingsViewModel;
 
         SourceInitialized += (_, _) =>
         {
@@ -100,13 +106,6 @@ public partial class HomeWindow : Window
 
         // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(InputBox);
-
-        // 点击窗口任意位置时，关闭所有设置项中的下拉弹出层
-        PreviewMouseDown += (_, _) =>
-        {
-            foreach (var item in _viewModel.SettingsItems)
-                if (item is SelectSetting ss) ss.IsOpen = false;
-        };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
@@ -165,7 +164,7 @@ public partial class HomeWindow : Window
         viewer.LinkClicked += (_, args) =>
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
 
-        viewer.ApplyTheme(WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
+        var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
         {
             Background = System.Windows.Media.Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
@@ -177,7 +176,12 @@ public partial class HomeWindow : Window
             CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
             InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
             Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
-        });
+            MonoTypeface = ThemeService.CodeTypeface,
+        };
+        if (ThemeService.BaseTypeface is { } baseTypeface)
+            markdownStyle = markdownStyle with { BaseTypeface = baseTypeface };
+
+        viewer.ApplyTheme(markdownStyle);
 
         if (viewer.DataContext is not ChatMessage msg) return;
 
@@ -616,69 +620,6 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
     }
 
     // ===== 设置项交互 =====
-
-    /// <summary>
-    /// 点击下拉选择框：打开/关闭 Popup，并将 Popup 定位到当前按钮。
-    /// </summary>
-    private void SelectToggle_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not FrameworkElement fe || fe.DataContext is not SelectSetting setting) return;
-        e.Handled = true;
-
-        // 设置 Popup 的 PlacementTarget 为当前按钮
-        var popup = fe.Parent is Grid grid ? GetFirstChildPopup(grid) : null;
-        if (popup != null)
-            popup.PlacementTarget = fe;
-
-        setting.ToggleOpenCommand.Execute(null);
-    }
-
-    /// <summary>
-    /// 在视觉树中查找第一个 Popup 子元素。
-    /// </summary>
-    private static Popup? GetFirstChildPopup(DependencyObject parent)
-    {
-        var count = VisualTreeHelper.GetChildrenCount(parent);
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(parent, i);
-            if (child is Popup p) return p;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// 点击下拉选项：执行选择命令并关闭弹出层。
-    /// </summary>
-    private void SelectOption_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not FrameworkElement fe || fe.DataContext is not SelectOption option) return;
-        e.Handled = true;
-        // 向上查找 DataContext 为 SelectSetting 的父级
-        var parent = fe;
-        while (parent != null)
-        {
-            if (parent.DataContext is SelectSetting setting)
-            {
-                setting.SelectOptionCommand.Execute(option);
-                break;
-            }
-            parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
-        }
-    }
-
-    /// <summary>
-    /// 数字输入框按下 Enter 时，强制更新绑定源。
-    /// </summary>
-    private void NumberInput_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && sender is TextBox textBox)
-        {
-            var expr = textBox.GetBindingExpression(TextBox.TextProperty);
-            expr?.UpdateSource();
-            e.Handled = true;
-        }
-    }
 
     /// <summary>
     /// 输入框按下 Enter 时，执行发送命令（如果未按下 Shift）。

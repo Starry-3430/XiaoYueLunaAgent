@@ -14,7 +14,13 @@ public enum ToolCallStatus
 public partial class ToolCallEntry : ObservableObject
 {
     [ObservableProperty]
+    private string _toolCallId = "";
+
+    [ObservableProperty]
     private string _toolName = "";
+
+    [ObservableProperty]
+    private string _displayName = "";
 
     [ObservableProperty]
     private string _argumentsJson = "";
@@ -48,15 +54,35 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isReasoningExpanded;
 
+    [ObservableProperty]
+    private bool _isFinalReply;
+
+    public long DbId { get; set; }
+
+    public string ToolCallId { get; set; } = string.Empty;
+
     public ObservableCollection<ToolCallEntry> ToolCalls { get; } = new();
 
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);
 
     public bool HasReasoning => !string.IsNullOrEmpty(Reasoning);
 
+    public bool HasToolCalls => ToolCalls.Count > 0;
+
+    public bool HasContent => !string.IsNullOrWhiteSpace(Content);
+
+    public ChatMessage()
+    {
+        ToolCalls.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasToolCalls));
+        };
+    }
+
     partial void OnContentChanged(string value)
     {
         OnPropertyChanged(nameof(IsThinking));
+        OnPropertyChanged(nameof(HasContent));
     }
 
     partial void OnIsStreamingChanged(bool value)

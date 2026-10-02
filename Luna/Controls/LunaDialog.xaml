@@ -4,12 +4,13 @@
         Title=""
         Width="350"
         SizeToContent="Height"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
+        Background="#FAFAF0"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0" GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -19,7 +20,8 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Border Style="{StaticResource DialogBorder}">
+    <Border Style="{StaticResource DialogBorder}"
+            PreviewMouseLeftButtonDown="Dialog_PreviewMouseLeftButtonDown">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

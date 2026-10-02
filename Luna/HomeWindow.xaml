@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
+        xmlns:views="clr-namespace:Luna.Views"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
@@ -221,7 +222,7 @@ Background="#E4E0CA"
                                         <Setter Property="HorizontalAlignment" Value="Left"/>
                                         <Setter Property="Background" Value="Transparent"/>
                                         <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,0,0,16"/>
+                                        <Setter Property="Margin" Value="0,0,0,4"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Role}" Value="user">
                                                 <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -434,21 +435,114 @@ Background="#E4E0CA"
                                                         </ScrollViewer>
                                                     </StackPanel>
                                                 </StackPanel>
-<md:MarkdownDocumentView SelectionEnabled="True"
+
+                                                <!-- 工具调用卡片 -->
+                                                <ItemsControl ItemsSource="{Binding ToolCalls}" Margin="10,4,10,0">
+                                                    <ItemsControl.Style>
+                                                        <Style TargetType="ItemsControl">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding HasToolCalls}" Value="True"/>
+                                                                        <Condition Binding="{Binding Role}" Value="assistant"/>
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </MultiDataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ItemsControl.Style>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type models:ToolCallEntry}">
+                                                            <StackPanel Margin="0,0,0,0">
+                                                                <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                                              HorizontalAlignment="Left" Cursor="Hand"
+                                                                              Background="Transparent" BorderThickness="0"
+                                                                              Padding="0">
+                                                                    <ToggleButton.Template>
+                                                                        <ControlTemplate TargetType="ToggleButton">
+                                                                            <Border Background="Transparent" Padding="8,4">
+                                                                                <ContentPresenter/>
+                                                                            </Border>
+                                                                        </ControlTemplate>
+                                                                    </ToggleButton.Template>
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding Status}" Value="Pending">  <Setter Property="Text" Value="⏳"/></DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Status}" Value="Running"> <Setter Property="Text" Value="⏳"/></DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Status}" Value="Success"> <Setter Property="Text" Value="✓"/></DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">  <Setter Property="Text" Value="✗"/></DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                                                        <TextBlock Text="▸" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                        <TextBlock Text="▾" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </StackPanel>
+                                                                </ToggleButton>
+                                                                <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                        Margin="0,4,0,0">
+                                                                            <TextBlock Text="参数" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                                                            <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,6">
+                                                                                <TextBlock Text="{Binding ArgumentsJson}" Foreground="#8B7B6B" FontSize="11"
+                                                                                           FontFamily="Consolas" TextWrapping="Wrap" Margin="8,0,0,0"/>
+                                                                            </ScrollViewer>
+                                                                            <TextBlock Text="结果" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                                                            <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
+                                                                                <TextBlock Text="{Binding ResultJson}" Foreground="#5B4833" FontSize="13"
+                                                                                           TextWrapping="Wrap" Margin="8,0,0,0"/>
+                                                                            </ScrollViewer>
+                                                                        </StackPanel>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+
+                                            <md:MarkdownDocumentView SelectionEnabled="True"
                                                                               Background="Transparent"
                                                                               HorizontalAlignment="Left"
                                                                               VirtualizationEnabled="False"
                                                                               MaxWidth="600"
-                                                                              Margin="0,6"
+                                                                              Margin="0,0"
                                                                               Loaded="MessageViewer_Loaded"
                                                                               PreviewMouseWheel="MarkdownViewer_PreviewMouseWheel">
                                                     <md:MarkdownDocumentView.Style>
                                                         <Style TargetType="md:MarkdownDocumentView">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding Role}" Value="assistant"/>
+                                                                        <Condition Binding="{Binding HasContent}" Value="True"/>
+                                                                    </MultiDataTrigger.Conditions>
                                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
+                                                                </MultiDataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </md:MarkdownDocumentView.Style>
@@ -461,12 +555,13 @@ Background="#E4E0CA"
                                                 <Style TargetType="StackPanel">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Role}" Value="assistant">
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Role}" Value="assistant"/>
+                                                                <Condition Binding="{Binding IsFinalReply}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
                                                             <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsStreaming}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
+                                                        </MultiDataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </StackPanel.Style>
@@ -488,112 +583,19 @@ Background="#E4E0CA"
             </ScrollViewer>
             </Grid>
 
-            <!-- 设置 / 日记本 / 工具 内容区 -->
+            <!-- 设置 内容区 -->
             <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Padding="20,16">
-                    <ItemsControl ItemsSource="{Binding SettingsItems}">
-                        <ItemsControl.Resources>
-                            <DataTemplate DataType="{x:Type models:ToggleSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource SettingsToggle}"
-                                                  IsChecked="{Binding Value}" VerticalAlignment="Top"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
+                    <StackPanel>
+                        <!-- 通用 -->
+                        <TextBlock Text="通用" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <views:GeneralSettingsView x:Name="GeneralSettingsPanel"/>
 
-                            <DataTemplate DataType="{x:Type models:NumberSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Content="−" Style="{StaticResource SettingsStepperButton}" Command="{Binding DecrementCommand}"/>
-                                            <TextBox Grid.Column="1" Text="{Binding DisplayText, UpdateSourceTrigger=LostFocus}"
-                                                     Style="{StaticResource SettingsInput}" Margin="6,0"
-                                                     PreviewKeyDown="NumberInput_KeyDown"/>
-                                            <Button Grid.Column="2" Content="+" Style="{StaticResource SettingsStepperButton}" Command="{Binding IncrementCommand}" Margin="0,0,6,0"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding Unit}" Foreground="#88FFFFFF" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                            <Button Grid.Column="4" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}"/>
-                                        </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-
-                            <DataTemplate DataType="{x:Type models:SelectSetting}">
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SettingsTitle}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                        </StackPanel>
-                                        <Grid Grid.Column="1" VerticalAlignment="Top" Margin="12,0,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-<Grid Grid.Column="0">
-<Border Width="250" Height="34"
-                                                         Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
-                                                         PreviewMouseLeftButtonDown="SelectToggle_Click"
-                                                         Tag="{Binding .}">
-                                                    <TextBlock Text="{Binding SelectedLabel}" Foreground="#5B4833"
-                                                               FontSize="13" VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                </Border>
-                                                <Popup IsOpen="{Binding IsOpen}"
-                                                       Placement="Bottom" StaysOpen="True"
-                                                       AllowsTransparency="True">
-                                                    <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
-                                                        <ItemsControl ItemsSource="{Binding Options}">
-                                                            <ItemsControl.ItemTemplate>
-                                                                <DataTemplate DataType="{x:Type models:SelectOption}">
-                                                                    <Border Padding="10,8" CornerRadius="6" Cursor="Hand"
-                                                                            Background="Transparent"
-                                                                            PreviewMouseLeftButtonDown="SelectOption_Click"
-                                                                            Tag="{Binding .}">
-<TextBlock Text="{Binding Label}" Foreground="#5B4833"
-                                                                           FontSize="13" TextWrapping="Wrap"/>
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
-                                                    </Border>
-                                                </Popup>
-                                            </Grid>
-                                            <Button Grid.Column="1" Style="{StaticResource SettingsResetButton}" Command="{Binding ResetCommand}" Margin="4,0,0,0"/>
-                                        </Grid>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.Resources>
-                    </ItemsControl>
+                        <!-- 聊天 -->
+                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <views:AiConnectionView x:Name="AiConnectionPanel"/>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
             <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">
@@ -604,11 +606,49 @@ Background="#E4E0CA"
                            VerticalAlignment="Center"/>
             </Grid>
             <Grid x:Name="ToolsContent" Grid.Row="1" Visibility="Collapsed">
-                <TextBlock Text="工具页面"
-                           Foreground="#8B7B6B"
-                           FontSize="14"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Padding="20,16">
+                    <ItemsControl ItemsSource="{Binding ToolCategories}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:ToolCategory}">
+                                <StackPanel Margin="0,0,0,24">
+                                    <TextBlock Text="{Binding Name}"
+                                               Foreground="#5B4833" FontSize="15" FontWeight="Bold"
+                                               Margin="0,0,0,10"/>
+
+                                    <ItemsControl ItemsSource="{Binding Tools}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:ToolDefinition}">
+                                                <Border Style="{StaticResource SettingsCard}"
+                                                        Padding="14,12" Margin="0,0,0,8">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{Binding Name}" Style="{StaticResource SettingsTitle}"/>
+<TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                                                            <TextBlock Text="{Binding StatusText}"
+                                                                       Foreground="#CB8B5B" FontSize="12"
+                                                                       Margin="0,2,0,0"
+                                                                       Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                        </StackPanel>
+                                                        <CheckBox Grid.Column="1"
+                                                                  Style="{StaticResource SettingsToggle}"
+                                                                  IsChecked="{Binding IsEnabled}"
+                                                                  IsEnabled="{Binding IsAvailable}"
+                                                                  VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
 
             <!-- 输入区 -->
