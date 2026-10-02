@@ -1,10 +1,12 @@
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
+using Luna.Services.Tools;
 
 namespace Luna.Services;
 
@@ -12,6 +14,7 @@ public class OpenAiService : IAiService
 {
     private readonly HttpClient _httpClient;
     private readonly AiSettings _settings;
+    private readonly ToolRegistry _toolRegistry;
     private readonly ILogger<OpenAiService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -19,42 +22,38 @@ public class OpenAiService : IAiService
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
-    public OpenAiService(HttpClient httpClient, AiSettings settings, ILogger<OpenAiService> logger)
+    public OpenAiService(HttpClient httpClient, AiSettings settings,
+        ToolRegistry toolRegistry, ILogger<OpenAiService> logger)
     {
         _httpClient = httpClient;
         _settings = settings;
+        _toolRegistry = toolRegistry;
         _logger = logger;
     }
 
     public async Task<string> ChatAsync(IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
     {
-        var request = new ChatCompletionRequest
-        {
-            Model = _settings.Model,
-            Stream = false,
-            Messages = messages.Select(m => new ChatCompletionMessage
-            {
-                Role = m.Role,
-                Content = m.Content,
-            }).ToList(),
-        };
+        var requestBody = BuildRequestBody(messages, stream: false);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-
         _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
         httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        httpRequest.Content = JsonContent.Create(request, options: JsonOptions);
+        httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
+            response.EnsureSuccessStatusCode();
+        }
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
         _logger.LogDebug("Response: {Body}", body);
 
         var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
-
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
@@ -62,27 +61,22 @@ public class OpenAiService : IAiService
         IEnumerable<ChatMessage> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = new ChatCompletionRequest
-        {
-            Model = _settings.Model,
-            Stream = true,
-            Messages = messages.Select(m => new ChatCompletionMessage
-            {
-                Role = m.Role,
-                Content = m.Content,
-            }).ToList(),
-        };
+        var requestBody = BuildRequestBody(messages, stream: true);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-
         _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
         httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        httpRequest.Content = JsonContent.Create(request, options: JsonOptions);
+        httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
+            response.EnsureSuccessStatusCode();
+        }
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -166,5 +160,96 @@ public class OpenAiService : IAiService
                     yield return evt;
             }
         }
+    }
+
+    private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream)
+    {
+        var root = new JsonObject
+        {
+            ["model"] = _settings.Model,
+            ["stream"] = stream,
+        };
+
+        var messagesArray = new JsonArray();
+        foreach (var msg in messages)
+        {
+            if (msg.Role == "assistant" &&
+                string.IsNullOrEmpty(msg.Content) &&
+                string.IsNullOrEmpty(msg.Reasoning) &&
+                msg.ToolCalls.Count == 0)
+                continue;
+
+            var obj = new JsonObject
+            {
+                ["role"] = msg.Role,
+            };
+
+            if (msg.Role == "tool")
+            {
+                if (msg.ToolCalls.Count > 0)
+                    obj["tool_call_id"] = msg.ToolCalls[0].ToolCallId;
+                obj["content"] = msg.Content;
+            }
+            else
+            {
+                obj["content"] = msg.Content;
+
+                if (msg.Role == "assistant" && !string.IsNullOrEmpty(msg.Reasoning))
+                {
+                    obj["reasoning_content"] = msg.Reasoning;
+                }
+
+                if (msg.Role == "assistant" && msg.ToolCalls.Count > 0)
+                {
+                    var tcArray = new JsonArray();
+                    foreach (var tc in msg.ToolCalls)
+                    {
+                        tcArray.Add(new JsonObject
+                        {
+                            ["id"] = tc.ToolCallId,
+                            ["type"] = "function",
+                            ["function"] = new JsonObject
+                            {
+                                ["name"] = tc.ToolName,
+                                ["arguments"] = tc.ArgumentsJson,
+                            },
+                        });
+                    }
+                    obj["tool_calls"] = tcArray;
+                }
+            }
+
+            messagesArray.Add(obj);
+        }
+        root["messages"] = messagesArray;
+
+        var registeredTools = _toolRegistry.GetAllTools().ToList();
+        if (registeredTools.Count > 0)
+        {
+            var toolsArray = new JsonArray();
+            foreach (var tool in registeredTools)
+            {
+                toolsArray.Add(new JsonObject
+                {
+                    ["type"] = "function",
+                    ["function"] = new JsonObject
+                    {
+                        ["name"] = tool.Name,
+                        ["description"] = tool.Description,
+                        ["parameters"] = JsonNode.Parse(tool.ParametersSchema),
+                    },
+                });
+            }
+            root["tools"] = toolsArray;
+            root["tool_choice"] = "auto";
+        }
+
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Request body (tools={ToolCount}): {Body}",
+                registeredTools.Count, root.ToJsonString());
+        }
+
+        return root;
     }
 }

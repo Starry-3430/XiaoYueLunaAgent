@@ -7,6 +7,7 @@ public class AiSettings
     public string ApiKey { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = "https://api.deepseek.com/v1";
     public string Model { get; set; } = "deepseek-chat";
+    public string TavilyApiKey { get; set; } = string.Empty;
 }
 
 public class ChatCompletionRequest

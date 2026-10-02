@@ -9,6 +9,7 @@ using Serilog;
 using Luna.Data;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Tools;
 using Luna.ViewModels;
 using System.NativeTray;
 using System.Windows.Interop;
@@ -123,9 +124,13 @@ public partial class App : Application
                     ApiKey = Environment.GetEnvironmentVariable("LUNA_API_KEY") ?? "",
                     BaseUrl = "https://api.deepseek.com/v1",
                     Model = "deepseek-flash",
+                    TavilyApiKey = Environment.GetEnvironmentVariable("LUNA_TAVILY_API_KEY") ?? "",
                 });
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<IAiService, OpenAiService>();
+                services.AddSingleton<WebSearchTool>();
+                services.AddSingleton<ITool, ClipboardReadTool>();
+                services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册
                 var dbDir = Path.Combine(

@@ -9,14 +9,24 @@ public class MessageRepository
     private readonly DatabaseInitializer _db;
     public MessageRepository(DatabaseInitializer db) => _db = db;
 
-    public async Task InsertAsync(Message m)
+    public async Task<long> InsertAsync(Message m)
     {
         using var conn = new SqliteConnection(_db.ConnectionString);
-        await conn.ExecuteAsync(
+        var id = await conn.ExecuteScalarAsync<long>(
             @"INSERT INTO Messages 
               (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ContentType, CreatedAtUtc, LogicalDate)
               VALUES 
-              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ContentType, @CreatedAtUtc, @LogicalDate)", m);
+              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ContentType, @CreatedAtUtc, @LogicalDate);
+              SELECT last_insert_rowid();", m);
+        return id;
+    }
+
+    public async Task DeleteAfterAsync(string sessionId, long afterId)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.ExecuteAsync(
+            "DELETE FROM Messages WHERE SessionId = @SessionId AND Id > @Id",
+            new { SessionId = sessionId, Id = afterId });
     }
 
     public async Task<List<Message>> GetBySessionAsync(string sessionId)
