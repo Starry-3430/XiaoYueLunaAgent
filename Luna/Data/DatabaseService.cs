@@ -77,25 +77,28 @@ public class DatabaseService
             LogicalDate UNINDEXED, Content, tokenize='trigram'
         );
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_ai
+        -- 普通 FTS5 表：用 DELETE 维护索引（旧的 'delete' 语法是给 external content 表用的，会报错）
+        DROP TRIGGER IF EXISTS DiaryEntries_ai;
+        DROP TRIGGER IF EXISTS DiaryEntries_ad;
+        DROP TRIGGER IF EXISTS DiaryEntries_au;
+
+        CREATE TRIGGER DiaryEntries_ai
             AFTER INSERT ON DiaryEntries
         BEGIN
             INSERT INTO DiaryFts(LogicalDate, Content)
             VALUES (new.LogicalDate, new.Content);
         END;
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_ad
+        CREATE TRIGGER DiaryEntries_ad
             AFTER DELETE ON DiaryEntries
         BEGIN
-            INSERT INTO DiaryFts(DiaryFts, LogicalDate, Content)
-            VALUES('delete', old.LogicalDate, old.Content);
+            DELETE FROM DiaryFts WHERE LogicalDate = old.LogicalDate;
         END;
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_au
+        CREATE TRIGGER DiaryEntries_au
             AFTER UPDATE ON DiaryEntries
         BEGIN
-            INSERT INTO DiaryFts(DiaryFts, LogicalDate, Content)
-            VALUES('delete', old.LogicalDate, old.Content);
+            DELETE FROM DiaryFts WHERE LogicalDate = old.LogicalDate;
             INSERT INTO DiaryFts(LogicalDate, Content)
             VALUES (new.LogicalDate, new.Content);
         END;

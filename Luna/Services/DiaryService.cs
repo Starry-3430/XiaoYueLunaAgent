@@ -211,6 +211,7 @@ public class DiaryService
         };
 
         using var conn = new SqliteConnection(_db.ConnectionString);
+        conn.Open();
         using var tx = conn.BeginTransaction();
 
         await conn.ExecuteAsync(
