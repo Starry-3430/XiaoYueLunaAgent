@@ -80,6 +80,7 @@ public static class UserEnvironment
         Add(lines, "音乐", Music);
         Add(lines, "视频", Videos);
 
+        lines.Add($"- 当前时间：{DateTime.Now:yyyy-MM-dd HH:mm}（本地时间，用于计算待办的截止/提醒时间）");
         lines.Add("搜索或读取文件时，可直接使用上述绝对路径，或使用别名 desktop/documents/downloads/pictures/music/videos/home。");
         return string.Join('\n', lines);
 

@@ -51,17 +51,43 @@ public partial class MainWindow : Window
     private const double VerticalPadding = 12;
 
 private readonly MainViewModel _viewModel;
+    private readonly ReminderService _reminderService;
     private readonly Stopwatch _animationStopwatch = new();
     private bool _animating;
     private bool _isShown;
     private bool _hadConversation;
     private EventHandler? _renderingHandler;
 
-    public MainWindow(MainViewModel viewModel)
+    // ===== 提醒模式 =====
+    private readonly Queue<TaskItem> _reminderQueue = new();
+    private readonly DispatcherTimer _reminderAutoTimer;
+    private readonly DispatcherTimer _reminderDelayTimer;
+    private TaskItem? _currentReminder;
+    private bool _reminderActive;
+    private CapsuleMode _modeBeforeReminder = CapsuleMode.Compact;
+
+    private enum CapsuleMode { Hidden, Compact, Expanded }
+
+    public MainWindow(MainViewModel viewModel, ReminderService reminderService)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+        _reminderService = reminderService;
+
+        _reminderAutoTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        _reminderAutoTimer.Tick += (_, _) => { _reminderAutoTimer.Stop(); CloseReminder(); };
+        _reminderDelayTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _reminderDelayTimer.Tick += (_, _) =>
+        {
+            _reminderDelayTimer.Stop();
+            TryShowQueuedReminder();
+            // 仍被占用则继续等待，直到胶囊空闲
+            if (_reminderQueue.Count > 0 && !_reminderActive)
+                _reminderDelayTimer.Start();
+        };
+
+        _reminderService.ReminderDue += OnReminderDue;
 
         // 监听消息集合变化，并为已有消息挂上属性变化监听
         _viewModel.Messages.CollectionChanged += OnMessagesChanged;
@@ -558,6 +584,13 @@ private void HideInternal()
         Left = -32000;
         Top = -32000;
         _isShown = false;
+
+        // 隐藏后若还有排队的提醒，稍等 1 秒（确认用户已离开）再弹出
+        if (_reminderQueue.Count > 0 && !_reminderActive)
+        {
+            _reminderDelayTimer.Stop();
+            _reminderDelayTimer.Start();
+        }
     }
 
     public void ShowInternal()
@@ -565,9 +598,11 @@ private void HideInternal()
         if (_hadConversation)
         {
             _viewModel.NewChat();
-            SwitchToCompact();
             _hadConversation = false;
         }
+
+        // 始终回到紧凑态：避免提醒模式等把三种内容都隐藏后，输入框不再显示
+        SwitchToCompact();
 
         PrepareForShow();
         Opacity = 1;
@@ -616,10 +651,12 @@ private void HideInternal()
         IslandBorder.Clip = null;
     }
 
-    private void PlayShowAnimation(double targetW, double targetH)
+    private void PlayShowAnimation(double targetW, double targetH, FrameworkElement? fadeContent = null)
     {
         if (_animating) return;
         if (targetW <= 0 || targetH <= 0) return;
+
+        var fade = fadeContent ?? CompactContent;
 
         var baseH = IslandBorder.MinHeight;
 
@@ -685,15 +722,16 @@ private void HideInternal()
             // 透明度：前 0.3 秒隐藏，0.3~0.8 秒渐显，之后完全显示
             if (elapsed <= 0.3)
             {
-                CompactContent.Opacity = 0;
+                fade.Opacity = 0;
             }
             else if (elapsed < 0.8)
             {
-                CompactContent.Opacity = (elapsed - 0.3) / 0.5;
+                // 内容透明度线性淡入
+                fade.Opacity = (elapsed - 0.3) / 0.5;
             }
             else
             {
-                CompactContent.Opacity = 1;
+                fade.Opacity = 1;
             }
 
             // 动画结束：停止逐帧回调，并设置最终圆角
@@ -726,9 +764,10 @@ private void HideInternal()
     {
         // 重新计算占位符与输入框尺寸
         StopAnimation();
+        ReminderContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Visible;
-        // CompactContent.Opacity = 1;
+        CompactContent.Opacity = 1;
         UpdatePlaceholderVisibility();
         UpdateCompactInputSize();
         Dispatcher.BeginInvoke(() =>
@@ -741,6 +780,7 @@ private void HideInternal()
     private void SwitchToExpanded()
     {
         StopAnimation();
+        ReminderContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Opacity = 0;
         ExpandedContent.Visibility = Visibility.Visible;
@@ -753,6 +793,165 @@ private void HideInternal()
             InputBox.Focus();
             ScrollMessagesToEnd();
         }, DispatcherPriority.Loaded);
+    }
+
+    // ===== 定时提醒 =====
+
+    private void OnReminderDue(TaskItem task)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => OnReminderDue(task));
+            return;
+        }
+
+        if (IsCapsuleInUse())
+        {
+            _reminderQueue.Enqueue(task);
+            _reminderDelayTimer.Stop();
+            _reminderDelayTimer.Start();
+            return;
+        }
+
+        DisplayReminder(task);
+    }
+
+    /// <summary>胶囊是否正在被用户使用（输入/展开/已有提醒）。</summary>
+    private bool IsCapsuleInUse()
+    {
+        if (!_isShown || Opacity <= 0) return false;
+        if (_reminderActive) return true;
+        if (ExpandedContent.Visibility == Visibility.Visible) return true;
+        if (CompactInputBox.IsKeyboardFocusWithin || InputBox.IsKeyboardFocusWithin) return true;
+        if (!string.IsNullOrEmpty(_viewModel.InputText)) return true;
+        return false;
+    }
+
+    private CapsuleMode CurrentMode()
+    {
+        if (!_isShown || Opacity <= 0) return CapsuleMode.Hidden;
+        if (ExpandedContent.Visibility == Visibility.Visible) return CapsuleMode.Expanded;
+        return CapsuleMode.Compact;
+    }
+
+    private void TryShowQueuedReminder()
+    {
+        if (_reminderActive || _reminderQueue.Count == 0) return;
+        if (IsCapsuleInUse()) return;
+        DisplayReminder(_reminderQueue.Dequeue());
+    }
+
+    private void DisplayReminder(TaskItem task)
+    {
+        _currentReminder = task;
+        _reminderActive = true;
+        _modeBeforeReminder = CurrentMode();
+
+        ReminderTitle.Text = task.Title;
+        if (string.IsNullOrWhiteSpace(task.Notes))
+        {
+            ReminderNotes.Text = string.Empty;
+            ReminderNotes.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ReminderNotes.Text = task.Notes;
+            ReminderNotes.Visibility = Visibility.Visible;
+        }
+
+        SwitchToReminder();
+        ShowCapsuleForReminder(); // 始终播放“唤醒”动画
+
+        _reminderAutoTimer.Stop();
+        _reminderAutoTimer.Start();
+    }
+
+    private void SwitchToReminder()
+    {
+        StopAnimation();
+        CompactContent.Visibility = Visibility.Collapsed;
+        ExpandedContent.Visibility = Visibility.Collapsed;
+        ReminderContent.Visibility = Visibility.Visible;
+    }
+
+    private void ShowCapsuleForReminder()
+    {
+        PrepareForShow();
+        ReminderContent.Opacity = 0;
+        Opacity = 1;
+        Reposition();
+        _isShown = true;
+        IslandBorder.UpdateLayout();
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            var w = IslandBorder.ActualWidth;
+            var h = IslandBorder.ActualHeight;
+            if (w > 0 && h > 0)
+                PlayShowAnimation(w, h, ReminderContent);
+            else
+            {
+                ReminderContent.Opacity = 1;
+                IslandBorder.Clip = null;
+            }
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void CloseReminder()
+    {
+        _reminderAutoTimer.Stop();
+        _reminderActive = false;
+        _currentReminder = null;
+        ReminderContent.Visibility = Visibility.Collapsed;
+
+        if (_reminderQueue.Count > 0 && !IsCapsuleInUse())
+        {
+            DisplayReminder(_reminderQueue.Dequeue());
+            return;
+        }
+
+        RestoreMode();
+
+        if (_reminderQueue.Count > 0 && !_reminderActive)
+        {
+            _reminderDelayTimer.Stop();
+            _reminderDelayTimer.Start();
+        }
+    }
+
+    private void RestoreMode()
+    {
+        switch (_modeBeforeReminder)
+        {
+            case CapsuleMode.Expanded:
+                SwitchToExpanded();
+                if (!_isShown) ShowCapsuleForReminder();
+                break;
+            case CapsuleMode.Hidden:
+                // 隐藏前先回到紧凑态，保证下次唤起时输入框可见
+                SwitchToCompact();
+                HideInternal();
+                break;
+            default:
+                SwitchToCompact();
+                break;
+        }
+    }
+
+    private void ReminderSnooze_Click(object sender, RoutedEventArgs e)
+    {
+        var id = _currentReminder?.Id;
+        if (id is not null)
+            _ = _reminderService.SnoozeAsync(id, 10);
+        CloseReminder();
+    }
+
+    private void ReminderDone_Click(object sender, RoutedEventArgs e)
+    {
+        var id = _currentReminder?.Id;
+        if (id is not null)
+            _ = _reminderService.CompleteAsync(id);
+        CloseReminder();
     }
 
     // ===== 展开模式的输入框 =====
@@ -785,8 +984,8 @@ private void HideInternal()
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
-        // AI 正在回复（发送中）时，禁止失焦关闭胶囊
-        if (_viewModel.IsBusy) return;
+        // AI 正在回复（发送中）或正在提醒时，禁止失焦关闭胶囊
+        if (_viewModel.IsBusy || _reminderActive) return;
 
         // 胶囊窗口失去激活状态时自动隐藏
         HideInternal();
@@ -794,13 +993,20 @@ private void HideInternal()
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        // Esc 隐藏窗口；发送中不生效，直到 AI 回复结束或用户取消
-        if (e.Key == Key.Escape)
-        {
-            if (_viewModel.IsBusy) return;
+        if (e.Key != Key.Escape) return;
 
-            HideInternal();
+        // 提醒模式：Esc 收起提醒
+        if (_reminderActive)
+        {
+            CloseReminder();
             e.Handled = true;
+            return;
         }
+
+        // 发送中不生效，直到 AI 回复结束或用户取消
+        if (_viewModel.IsBusy) return;
+
+        HideInternal();
+        e.Handled = true;
     }
 }

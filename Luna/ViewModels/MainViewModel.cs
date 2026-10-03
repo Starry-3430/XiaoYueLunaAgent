@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -25,7 +25,8 @@ public partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _cts;
     private string? _currentSessionId;
 
-    private const int MaxToolRounds = 3;
+    // 仅作为“防死循环”的安全上限；正常的多步工具调用（如代码执行）不会触及。
+    private const int MaxSafetyToolRounds = 200;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -116,8 +117,16 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            for (var round = 0; round < MaxToolRounds; round++)
+            var round = 0;
+            while (!_cts.IsCancellationRequested)
             {
+                if (++round > MaxSafetyToolRounds)
+                {
+                    _logger.LogWarning("工具轮次达到安全上限 {Max}，提前结束", MaxSafetyToolRounds);
+                    break;
+                }
+
+                var previousReply = activeReply;
                 var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                 Messages.Add(uiReply);
                 activeReply = uiReply;
@@ -127,6 +136,18 @@ public partial class MainViewModel : ObservableObject
 
                 if (pendingToolCalls.Count == 0)
                 {
+                    // 工具调用后模型没有产出正文：丢弃这个空回复，
+                    // 让上一条（含工具调用/正文）作为最终回复，保证“复制/重写”按钮出现。
+                    if (string.IsNullOrWhiteSpace(content) &&
+                        string.IsNullOrWhiteSpace(reasoning) &&
+                        previousReply is not null)
+                    {
+                        Messages.Remove(uiReply);
+                        activeReply = previousReply;
+                        lastAssistantMsg = null;
+                        break;
+                    }
+
                     replyContent = content;
                     replyReasoning = reasoning;
                     lastAssistantMsg = uiReply;
