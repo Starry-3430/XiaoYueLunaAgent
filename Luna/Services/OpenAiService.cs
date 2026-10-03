@@ -196,6 +196,9 @@ public class OpenAiService : IAiService
             .Replace("{user}", _settings.UserName)
             .Replace("{User}", _settings.UserName);
 
+        // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
+        prompt += "\n\n" + UserEnvironment.BuildPromptSection();
+
         prompt += _settings.ResponseLanguage switch
         {
             "zh" => "\n\n请始终使用简体中文回复。",
@@ -326,7 +329,7 @@ public class OpenAiService : IAiService
                     {
                         ["name"] = tool.Name,
                         ["description"] = tool.Description,
-                        ["parameters"] = JsonNode.Parse(tool.ParametersSchema),
+                        ["parameters"] = JsonNode.Parse(tool.ParametersSchema.GetRawText()),
                     },
                 });
             }

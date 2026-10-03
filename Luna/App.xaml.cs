@@ -1,11 +1,16 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
+using CommunityToolkit.Mvvm.Input;
+using Luna.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownViewer;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Luna.Data;
 using Luna.Models;
@@ -78,12 +83,12 @@ public partial class App : Application
         };
         
         // ===== 托盘图标初始化 =====
-        var iconUri = new Uri("pack://application:,,,/iconStream/icon.ico");
+        var iconUri = new Uri("pack://application:,,,/iconStream/Luna.ico");
         var streamInfo = Application.GetResourceStream(iconUri);
         using var iconStream = streamInfo.Stream;
         _trayIconImage = new Win32Icon(iconStream)
         {
-            ShowAsMonochrome = true, // 单色自适应
+            ShowAsMonochrome = false, // 显示彩色图标
             ThemeMode = TrayThemeMode.System // 跟随系统
         };
 
@@ -126,6 +131,8 @@ public partial class App : Application
                 services.AddSingleton<SettingsService>();
                 services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
                 services.AddSingleton<ToolSettingsService>();
+                services.AddSingleton<ToolPermissionService>();
+                services.AddSingleton<WindowsSearchService>();
                 services.AddSingleton<SettingsProxy>();
                 services.AddSingleton(sp => new HttpClient(new SocketsHttpHandler
                 {
@@ -134,8 +141,15 @@ public partial class App : Application
                 }));
                 services.AddSingleton<HotkeyService>();
                 services.AddSingleton<IAiService, OpenAiService>();
+                services.AddSingleton(sp => new NotificationService(
+                    _trayIcon, sp.GetRequiredService<ILogger<NotificationService>>()));
                 services.AddSingleton<ITool, ClipboardReadTool>();
                 services.AddSingleton<ITool, WebSearchTool>();
+                services.AddSingleton<ITool, FetchUrlTool>();
+                services.AddSingleton<ITool, GetCurrentTimeTool>();
+                services.AddSingleton<ITool, ReadFileTool>();
+                services.AddSingleton<ITool, SendNotificationTool>();
+                services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册
@@ -313,7 +327,40 @@ public partial class App : Application
         mainWindow.Show();
         mainWindow.ShowInternal();
 
+        // 7. 配置文件丢失或损坏时，已自动重置，提示用户
+        if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
+            ShowSettingsResetDialog(mainWindow);
+
         base.OnStartup(e);
+    }
+
+    /// <summary>配置文件丢失或结构损坏并已重置时弹出的提示。</summary>
+    private static void ShowSettingsResetDialog(Window owner)
+    {
+        var dialog = new LunaDialog
+        {
+            Owner = owner,
+            DialogTitle = "配置文件已损坏",
+            DialogContent = new TextBlock
+            {
+                Text = "由于settings.json配置文件丢失或结构被破坏，已重置工具和设置的相关配置",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "确定",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
     }
 
     /// <summary>重启当前程序：释放单实例锁并启动新的进程。</summary>

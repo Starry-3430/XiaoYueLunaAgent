@@ -216,16 +216,30 @@ private readonly MainViewModel _viewModel;
             var scrollViewer = FindChildScrollViewer(element);
             if (scrollViewer == null) return;
 
-            var offset = scrollViewer.HorizontalOffset - e.Delta;
-            offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
-            scrollViewer.ScrollToHorizontalOffset(offset);
+            SmoothScroll.Horizontal(scrollViewer, e.Delta);
         }
         else
         {
             e.Handled = true;
             var parentSv = FindAncestorScrollViewer(sender as DependencyObject);
-            parentSv?.ScrollToVerticalOffset(parentSv.VerticalOffset - e.Delta);
+            if (parentSv != null)
+                SmoothScroll.Vertical(parentSv, e.Delta);
         }
+    }
+
+    /// <summary>ScrollViewer 自身的滚轮平滑滚动；内部可滚动控件优先处理。</summary>
+    private void SmoothScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer sv || e.Handled) return;
+
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) return;
+
+        if (FindAncestorScrollViewer(e.OriginalSource as DependencyObject) is { } inner
+            && !ReferenceEquals(inner, sv))
+            return;
+
+        e.Handled = true;
+        SmoothScroll.Vertical(sv, e.Delta);
     }
 
     private static bool IsInsideCodeBlock(DependencyObject? element)
@@ -771,15 +785,20 @@ private void HideInternal()
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        // AI 正在回复（发送中）时，禁止失焦关闭胶囊
+        if (_viewModel.IsBusy) return;
+
         // 胶囊窗口失去激活状态时自动隐藏
         HideInternal();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        // Esc 隐藏窗口
+        // Esc 隐藏窗口；发送中不生效，直到 AI 回复结束或用户取消
         if (e.Key == Key.Escape)
         {
+            if (_viewModel.IsBusy) return;
+
             HideInternal();
             e.Handled = true;
         }

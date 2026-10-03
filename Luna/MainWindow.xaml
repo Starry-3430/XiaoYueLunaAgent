@@ -182,7 +182,8 @@
                               Grid.Row="0"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              ScrollViewer.CanContentScroll="False">
+                              ScrollViewer.CanContentScroll="False"
+                              PreviewMouseWheel="SmoothScroll_PreviewMouseWheel">
                     <ItemsControl ItemsSource="{Binding Messages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -515,6 +516,14 @@
                                                         </Style>
                                                     </md:MarkdownDocumentView.Style>
                                                 </md:MarkdownDocumentView>
+                                                <!-- 出错 / 取消提示 -->
+                                                <Border Margin="8,4,8,0" Padding="10,7" CornerRadius="6"
+                                                        Background="#33FD7956"
+                                                        HorizontalAlignment="Left"
+                                                        Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#FFB4A0"
+                                                               FontSize="13" TextWrapping="Wrap" MaxWidth="500"/>
+                                                </Border>
                                                 <StackPanel Orientation="Horizontal" Margin="8,0,0,4">
                                                 <StackPanel.Style>
                                                     <Style TargetType="StackPanel">

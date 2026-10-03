@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SessionRepository _sessionRepo;
     private readonly MessageRepository _messageRepo;
     private readonly ToolRegistry _toolRegistry;
+    private readonly ToolPermissionService _toolPermission;
     private readonly ILogger<MainViewModel> _logger;
     private CancellationTokenSource? _cts;
     private string? _currentSessionId;
@@ -42,12 +43,13 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, ToolRegistry toolRegistry,
-        ILogger<MainViewModel> logger)
+        ToolPermissionService toolPermission, ILogger<MainViewModel> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
         _toolRegistry = toolRegistry;
+        _toolPermission = toolPermission;
         _logger = logger;
         _logger.LogInformation("MainViewModel 已创建");
     }
@@ -110,6 +112,7 @@ public partial class MainViewModel : ObservableObject
         var replyContent = "";
         var replyReasoning = "";
         ChatMessage? lastAssistantMsg = null;
+        ChatMessage? activeReply = null;
 
         try
         {
@@ -117,6 +120,7 @@ public partial class MainViewModel : ObservableObject
             {
                 var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                 Messages.Add(uiReply);
+                activeReply = uiReply;
 
                 var (content, reasoning, pendingToolCalls) =
                     await StreamOneRoundAsync(uiReply, _cts.Token);
@@ -150,12 +154,33 @@ public partial class MainViewModel : ObservableObject
                         continue;
                     }
 
+                    // 中/高风险工具在执行前需要用户授权
+                    if (ToolPermissionService.NeedsConfirmation(tool) &&
+                        !_toolPermission.IsAlwaysAllowed(_currentSessionId, tool.Name))
+                    {
+                        var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
+                        if (decision == ToolPermissionDecision.Deny)
+                        {
+                            entry.Status = ToolCallStatus.Failed;
+                            entry.ResultJson = "User Denied";
+                            _logger.LogInformation("用户拒绝执行工具 {Name}", entry.ToolName);
+                            continue;
+                        }
+                        if (decision == ToolPermissionDecision.AllowAlways)
+                            _toolPermission.AllowForConversation(_currentSessionId, tool.Name);
+                    }
+
                     try
                     {
-                        var result = await tool.ExecuteAsync(entry.ArgumentsJson, _cts.Token);
-                        entry.ResultJson = TruncateResult(result);
-                        entry.Status = ToolCallStatus.Success;
-                        _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
+                        using var argsDoc = JsonDocument.Parse(
+                            string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
+                        var result = await tool.ExecuteAsync(argsDoc.RootElement.Clone(), _cts.Token);
+                        entry.ResultJson = TruncateResult(result.Content);
+                        entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
+                        if (result.IsError)
+                            _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
+                        else
+                            _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
                     }
                     catch (Exception ex)
                     {
@@ -213,18 +238,31 @@ public partial class MainViewModel : ObservableObject
         {
             Status = "就绪（已取消）";
             _logger.LogInformation("请求被取消");
+            if (activeReply is not null)
+            {
+                activeReply.IsStreaming = false;
+                activeReply.ErrorMessage = "已取消";
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI 回复失败");
             Status = "出错：" + ex.Message;
+            if (activeReply is not null)
+            {
+                activeReply.IsStreaming = false;
+                activeReply.ErrorMessage = "出错：" + ex.Message;
+            }
         }
         finally
         {
-            if (lastAssistantMsg is not null)
+            // 达到最大工具轮次 / 取消 / 出错而没有最终文本回复时，
+            // 把最后一条回复标记为最终，避免“复制/重写”按钮消失。
+            var finalReply = lastAssistantMsg ?? activeReply;
+            if (finalReply is not null)
             {
-                lastAssistantMsg.IsStreaming = false;
-                lastAssistantMsg.IsFinalReply = true;
+                finalReply.IsStreaming = false;
+                finalReply.IsFinalReply = true;
             }
         }
 
@@ -386,6 +424,7 @@ public partial class MainViewModel : ObservableObject
 
     public void NewChat()
     {
+        _toolPermission.ClearConversation(_currentSessionId);
         Messages.Clear();
         InputText = string.Empty;
         Status = "就绪";

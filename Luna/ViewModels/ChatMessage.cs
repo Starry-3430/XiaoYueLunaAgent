@@ -57,6 +57,12 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isFinalReply;
 
+    /// <summary>出错或被取消时展示在 AI 输出位置的提示。</summary>
+    [ObservableProperty]
+    private string _errorMessage = string.Empty;
+
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
     public long DbId { get; set; }
 
     public string ToolCallId { get; set; } = string.Empty;
@@ -100,5 +106,10 @@ public partial class ChatMessage : ObservableObject
     partial void OnIsReasoningExpandedChanged(bool value)
     {
         if (!value) _userCollapsedReasoning = true;
+    }
+
+    partial void OnErrorMessageChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasError));
     }
 }

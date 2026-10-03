@@ -158,6 +158,27 @@ public partial class HomeWindow : Window
         SetActiveSideButton(null);
     }
 
+    // ===== 工具页：Tavily API Key =====
+
+    private void TavilyKeyBox_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox box && box.Password != _viewModel.TavilyApiKey)
+            box.Password = _viewModel.TavilyApiKey;
+    }
+
+    private void TavilyKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox box && box.Password != _viewModel.TavilyApiKey)
+            _viewModel.TavilyApiKey = box.Password;
+    }
+
+    private void TavilyKeyReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Parent: Panel panel } &&
+            panel.Children.OfType<PasswordBox>().FirstOrDefault() is { } box)
+            box.Password = string.Empty;
+    }
+
     // ===== 气泡 Markdown 渲染 =====
     private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
     {
@@ -249,16 +270,32 @@ public partial class HomeWindow : Window
             var scrollViewer = FindChildScrollViewer(element);
             if (scrollViewer == null) return;
 
-            var offset = scrollViewer.HorizontalOffset - e.Delta;
-            offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
-            scrollViewer.ScrollToHorizontalOffset(offset);
+            SmoothScroll.Horizontal(scrollViewer, e.Delta);
         }
         else
         {
             e.Handled = true;
             var parentSv = FindAncestorScrollViewer(sender as DependencyObject);
-            parentSv?.ScrollToVerticalOffset(parentSv.VerticalOffset - e.Delta);
+            if (parentSv != null)
+                SmoothScroll.Vertical(parentSv, e.Delta);
         }
+    }
+
+    /// <summary>ScrollViewer 自身的滚轮平滑滚动；内部可滚动控件优先处理。</summary>
+    private void SmoothScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer sv || e.Handled) return;
+
+        // Shift+滚轮交给内部 markdown / 代码块处理
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) return;
+
+        // 指针位于内部可滚动控件（推理、工具结果等）上时，交给它自己处理
+        if (FindAncestorScrollViewer(e.OriginalSource as DependencyObject) is { } inner
+            && !ReferenceEquals(inner, sv))
+            return;
+
+        e.Handled = true;
+        SmoothScroll.Vertical(sv, e.Delta);
     }
 
     private static bool IsInsideCodeBlock(DependencyObject? element)
