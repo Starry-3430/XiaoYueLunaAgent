@@ -25,7 +25,8 @@ public partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _cts;
     private string? _currentSessionId;
 
-    private const int MaxToolRounds = 5;
+    // 仅作为“防死循环”的安全上限；正常的多步工具调用（如代码执行）不会触及。
+    private const int MaxSafetyToolRounds = 200;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -116,8 +117,15 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            for (var round = 0; round < MaxToolRounds; round++)
+            var round = 0;
+            while (!_cts.IsCancellationRequested)
             {
+                if (++round > MaxSafetyToolRounds)
+                {
+                    _logger.LogWarning("工具轮次达到安全上限 {Max}，提前结束", MaxSafetyToolRounds);
+                    break;
+                }
+
                 var previousReply = activeReply;
                 var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                 Messages.Add(uiReply);

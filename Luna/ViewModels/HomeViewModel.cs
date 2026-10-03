@@ -120,8 +120,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "组织",
             Tools =
             {
-                new ToolDefinition { Id = "todo", Category = "组织", Name = "待办事项", Description = "创建和管理待办事项", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "reminder", Category = "组织", Name = "定时提醒", Description = "设置定时提醒", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "todo", Category = "组织", Name = "待办事项", Description = "创建/管理待办事项，可为待办设置截止时间与提醒时间", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "clipboard_history", Category = "组织", Name = "剪贴板历史", Description = "查看和管理剪贴板历史记录", IsEnabled = true, IsAvailable = false },
             }
         });
@@ -353,7 +352,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             _sessionDrafts[_currentSessionId] = InputText;
     }
 
-    private const int MaxToolRounds = 5;
+    // 仅作为“防死循环”的安全上限；正常的多步工具调用（如代码执行）不会触及。
+    private const int MaxSafetyToolRounds = 200;
 
     [RelayCommand]
     private async Task SendAsync()
@@ -424,8 +424,15 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
         try
         {
-            for (var round = 0; round < MaxToolRounds; round++)
+            var round = 0;
+            while (!_cts.IsCancellationRequested)
                 {
+                    if (++round > MaxSafetyToolRounds)
+                    {
+                        _logger.LogWarning("工具轮次达到安全上限 {Max}，提前结束", MaxSafetyToolRounds);
+                        break;
+                    }
+
                     var previousReply = activeReply;
                     var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                     Messages.Add(uiReply);
