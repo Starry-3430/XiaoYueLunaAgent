@@ -167,6 +167,8 @@ public partial class App : Application
                 services.AddSingleton<SessionRepository>();
                 services.AddSingleton<MessageRepository>();
                 services.AddSingleton<TaskRepository>();
+                services.AddSingleton<TurnSummaryService>();
+                services.AddSingleton<ChatGenerationService>();
                 services.AddSingleton<ReminderService>();
             })
             .Build();

@@ -31,9 +31,13 @@ public class OpenAiService : IAiService
         _logger = logger;
     }
 
-    public async Task<string> ChatAsync(IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
+    public Task<string> ChatAsync(IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
+        => ChatAsync(messages, new AiRequestOptions(), cancellationToken);
+
+    public async Task<string> ChatAsync(IEnumerable<ChatMessage> messages, AiRequestOptions options,
+        CancellationToken cancellationToken = default)
     {
-        var requestBody = BuildRequestBody(messages, stream: false);
+        var requestBody = BuildRequestBody(messages, stream: false, options);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
@@ -73,7 +77,7 @@ public class OpenAiService : IAiService
         IEnumerable<ChatMessage> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var requestBody = BuildRequestBody(messages, stream: true);
+        var requestBody = BuildRequestBody(messages, stream: true, new AiRequestOptions());
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
@@ -184,9 +188,13 @@ public class OpenAiService : IAiService
         }
     }
 
-    private string BuildSystemPrompt()
+    private string BuildSystemPrompt(AiRequestOptions options)
     {
-        var prompt = _settings.SystemPrompt;
+        if (!options.IncludeSystemPrompt)
+            return string.Empty;
+
+        var useOverride = options.SystemPrompt is not null;
+        var prompt = options.SystemPrompt ?? _settings.SystemPrompt;
         if (string.IsNullOrWhiteSpace(prompt))
             return string.Empty;
 
@@ -196,8 +204,13 @@ public class OpenAiService : IAiService
             .Replace("{user}", _settings.UserName)
             .Replace("{User}", _settings.UserName);
 
+        // 覆盖提示词（如轮次摘要）自带完整指令，不追加用户目录与语言偏好
+        if (useOverride)
+            return prompt;
+
         // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
-        prompt += "\n\n" + UserEnvironment.BuildPromptSection();
+        if (options.IncludeUserEnvironment)
+            prompt += "\n\n" + UserEnvironment.BuildPromptSection();
 
         prompt += _settings.ResponseLanguage switch
         {
@@ -239,22 +252,30 @@ public class OpenAiService : IAiService
         return model;
     }
 
-    private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream)
+    private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream, AiRequestOptions options)
     {
         var root = new JsonObject
         {
             ["stream"] = stream,
-            ["max_tokens"] = _settings.MaxTokens,
-            ["temperature"] = _settings.Temperature,
+            ["max_tokens"] = options.MaxTokens ?? _settings.MaxTokens,
+            ["temperature"] = options.Temperature ?? _settings.Temperature,
             ["top_p"] = _settings.TopP,
             ["frequency_penalty"] = _settings.FrequencyPenalty,
             ["presence_penalty"] = _settings.PresencePenalty,
         };
-        root["model"] = ResolveModel(root);
+        root["model"] = options.DeepThinking ? ResolveModel(root) : _settings.Model;
+
+        if (!string.IsNullOrEmpty(options.ResponseFormat))
+        {
+            root["response_format"] = new JsonObject
+            {
+                ["type"] = options.ResponseFormat,
+            };
+        }
 
         var messagesArray = new JsonArray();
 
-        var systemPrompt = BuildSystemPrompt();
+        var systemPrompt = BuildSystemPrompt(options);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
             messagesArray.Add(new JsonObject
@@ -264,37 +285,35 @@ public class OpenAiService : IAiService
             });
         }
 
+        // 记录上一条 assistant tool_calls 的 id 集合：只有能对应上的 tool 结果才会发送，
+        // 避免出现 "Messages with role 'tool' must be a response to a preceding message with 'tool_calls'"。
+        HashSet<string>? pendingToolCallIds = null;
+
         foreach (var msg in messages)
         {
-            if (msg.Role == "assistant" &&
-                string.IsNullOrEmpty(msg.Content) &&
-                string.IsNullOrEmpty(msg.Reasoning) &&
-                msg.ToolCalls.Count == 0)
-                continue;
-
-            var obj = new JsonObject
+            if (msg.Role == "assistant")
             {
-                ["role"] = msg.Role,
-            };
-
-            if (msg.Role == "tool")
-            {
-                if (!string.IsNullOrEmpty(msg.ToolCallId))
-                    obj["tool_call_id"] = msg.ToolCallId;
-                obj["content"] = msg.Content;
-            }
-            else
-            {
-                obj["content"] = msg.Content;
-
-                if (msg.Role == "assistant" && !string.IsNullOrEmpty(msg.Reasoning))
+                if (string.IsNullOrEmpty(msg.Content) &&
+                    string.IsNullOrEmpty(msg.Reasoning) &&
+                    msg.ToolCalls.Count == 0)
                 {
-                    obj["reasoning_content"] = msg.Reasoning;
+                    pendingToolCallIds = null;
+                    continue;
                 }
 
-                if (msg.Role == "assistant" && msg.ToolCalls.Count > 0)
+                var obj = new JsonObject
+                {
+                    ["role"] = "assistant",
+                    ["content"] = msg.Content,
+                };
+
+                if (!string.IsNullOrEmpty(msg.Reasoning))
+                    obj["reasoning_content"] = msg.Reasoning;
+
+                if (msg.ToolCalls.Count > 0)
                 {
                     var tcArray = new JsonArray();
+                    var ids = new HashSet<string>(StringComparer.Ordinal);
                     foreach (var tc in msg.ToolCalls)
                     {
                         tcArray.Add(new JsonObject
@@ -307,16 +326,51 @@ public class OpenAiService : IAiService
                                 ["arguments"] = tc.ArgumentsJson,
                             },
                         });
+                        if (!string.IsNullOrEmpty(tc.ToolCallId))
+                            ids.Add(tc.ToolCallId);
                     }
                     obj["tool_calls"] = tcArray;
+                    pendingToolCallIds = ids;
                 }
-            }
+                else
+                {
+                    pendingToolCallIds = null;
+                }
 
-            messagesArray.Add(obj);
+                messagesArray.Add(obj);
+            }
+            else if (msg.Role == "tool")
+            {
+                // 无对应 tool_calls 的孤儿工具结果直接丢弃，防止 API 400
+                if (pendingToolCallIds is null ||
+                    string.IsNullOrEmpty(msg.ToolCallId) ||
+                    !pendingToolCallIds.Contains(msg.ToolCallId))
+                    continue;
+
+                var obj = new JsonObject
+                {
+                    ["role"] = "tool",
+                    ["content"] = msg.Content,
+                    ["tool_call_id"] = msg.ToolCallId,
+                };
+                messagesArray.Add(obj);
+            }
+            else
+            {
+                // user / system 等：重置工具上下文
+                pendingToolCallIds = null;
+                messagesArray.Add(new JsonObject
+                {
+                    ["role"] = msg.Role,
+                    ["content"] = msg.Content,
+                });
+            }
         }
         root["messages"] = messagesArray;
 
-        var registeredTools = _toolRegistry.GetEnabledTools().ToList();
+        var registeredTools = options.IncludeTools
+            ? _toolRegistry.GetEnabledTools().ToList()
+            : new List<ITool>();
         if (registeredTools.Count > 0)
         {
             var toolsArray = new JsonArray();

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -57,6 +58,7 @@ private readonly MainViewModel _viewModel;
     private bool _isShown;
     private bool _hadConversation;
     private EventHandler? _renderingHandler;
+    private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
 
     // ===== 提醒模式 =====
     private readonly Queue<TaskItem> _reminderQueue = new();
@@ -89,12 +91,13 @@ private readonly MainViewModel _viewModel;
 
         _reminderService.ReminderDue += OnReminderDue;
 
-        // 监听消息集合变化，并为已有消息挂上属性变化监听
-        _viewModel.Messages.CollectionChanged += OnMessagesChanged;
-        foreach (var message in _viewModel.Messages)
+        // 监听消息集合变化，并为已有消息挂上属性变化监听；切换会话时集合会整体更换
+        _viewModel.PropertyChanged += (_, e) =>
         {
-            message.PropertyChanged += OnMessagePropertyChanged;
-        }
+            if (e.PropertyName == nameof(MainViewModel.Messages))
+                BindMessages();
+        };
+        BindMessages();
 
         // 窗口初始化完成后设置 Hook、尺寸变化、可见性变化等
         SourceInitialized += OnSourceInitialized;
@@ -112,6 +115,9 @@ private readonly MainViewModel _viewModel;
         };
 
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+
+        // 窗口重新激活时刷新仍在流式输出的消息渲染
+        Activated += (_, _) => MarkdownViewerRefresher.RefreshStreaming(this);
     }
 
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
@@ -151,37 +157,76 @@ private readonly MainViewModel _viewModel;
 
         if (viewer.DataContext is not ChatMessage msg) return;
 
-        viewer.SetMarkdown(msg.Content);
+        var rendered = string.Empty;
 
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        var dirty = false;
-        var rendering = false;
-
-        timer.Tick += (_, _) =>
+        void RenderFromScratch()
         {
-            if (!dirty || rendering) return;
-            rendering = true;
-            dirty = false;
-            try { viewer.SetMarkdown(msg.Content); }
-            catch { dirty = true; }
-            finally { rendering = false; }
+            rendered = msg.Content;
+            if (msg.IsStreaming)
+            {
+                viewer.Reset();
+                if (!string.IsNullOrEmpty(rendered))
+                    viewer.AppendDelta(rendered);
+            }
+            else
+            {
+                viewer.SetMarkdown(rendered);
+            }
             ApplyLightScrollBarStyle(viewer);
-        };
+        }
+
+        void AppendNewContent()
+        {
+            var content = msg.Content;
+            if (!content.StartsWith(rendered, StringComparison.Ordinal))
+            {
+                RenderFromScratch();
+                return;
+            }
+
+            var delta = content[rendered.Length..];
+            if (delta.Length > 0)
+                viewer.AppendDelta(delta);
+            rendered = content;
+        }
 
         PropertyChangedEventHandler handler = (_, args) =>
         {
-            if (args.PropertyName != nameof(ChatMessage.Content)) return;
-            dirty = true;
-            if (!timer.IsEnabled) timer.Start();
+            try
+            {
+                if (args.PropertyName == nameof(ChatMessage.Content))
+                {
+                    AppendNewContent();
+                }
+                else if (args.PropertyName == nameof(ChatMessage.IsStreaming) && !msg.IsStreaming)
+                {
+                    AppendNewContent();
+                    viewer.Complete();
+                }
+            }
+            catch
+            {
+                // 渲染异常不应影响流式循环
+            }
+        };
+
+        System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
+        {
+            if (viewer.IsVisible)
+                RenderFromScratch();
         };
 
         msg.PropertyChanged += handler;
+        // 视图重新可见时整体重绘，避免流式文本卡住
+        viewer.IsVisibleChanged += visibility;
 
         viewer.Unloaded += (_, _) =>
         {
             msg.PropertyChanged -= handler;
-            timer.Stop();
+            viewer.IsVisibleChanged -= visibility;
         };
+
+        RenderFromScratch();
     }
 
     private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
@@ -456,6 +501,19 @@ private readonly MainViewModel _viewModel;
             CompactInputBox.MaxHeight = LineHeight * MaxLines + VerticalPadding;
             CompactInputBox.Height = double.NaN; // 高度由内容自适应
         }
+    }
+
+    /// <summary>把集合监听挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
+    private void BindMessages()
+    {
+        if (_boundMessages is not null)
+            _boundMessages.CollectionChanged -= OnMessagesChanged;
+
+        _boundMessages = _viewModel.Messages;
+        _boundMessages.CollectionChanged += OnMessagesChanged;
+
+        foreach (var message in _boundMessages)
+            message.PropertyChanged += OnMessagePropertyChanged;
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -792,6 +850,7 @@ private void HideInternal()
             IslandBorder.CornerRadius = new CornerRadius(25);
             InputBox.Focus();
             ScrollMessagesToEnd();
+            MarkdownViewerRefresher.RefreshStreaming(this);
         }, DispatcherPriority.Loaded);
     }
 
