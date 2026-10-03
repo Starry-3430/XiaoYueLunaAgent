@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
@@ -165,6 +165,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             {
                 tool.IsAvailable = true;
                 tool.Risk = _toolRegistry.GetTool(tool.Id)?.Risk ?? ToolRiskLevel.None;
+            }
+            else if (_toolRegistry.IsGroupRegistered(tool.Id))
+            {
+                // 同组工具（如 todo → add_task/list_tasks/...）共用一个开关
+                tool.IsAvailable = true;
+                tool.Risk = _toolRegistry.GetGroupRisk(tool.Id);
             }
         }
 
@@ -347,7 +353,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             _sessionDrafts[_currentSessionId] = InputText;
     }
 
-    private const int MaxToolRounds = 3;
+    private const int MaxToolRounds = 5;
 
     [RelayCommand]
     private async Task SendAsync()
@@ -420,6 +426,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         {
             for (var round = 0; round < MaxToolRounds; round++)
                 {
+                    var previousReply = activeReply;
                     var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                     Messages.Add(uiReply);
                     activeReply = uiReply;
@@ -429,6 +436,18 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
                     if (pendingToolCalls.Count == 0)
                     {
+                        // 工具调用后模型没有产出正文：丢弃这个空回复，
+                        // 让上一条（含工具调用/正文）作为最终回复，保证“复制/重写”按钮出现。
+                        if (string.IsNullOrWhiteSpace(content) &&
+                            string.IsNullOrWhiteSpace(reasoning) &&
+                            previousReply is not null)
+                        {
+                            Messages.Remove(uiReply);
+                            activeReply = previousReply;
+                            lastAssistantMsg = null;
+                            break;
+                        }
+
                         replyContent = content;
                         replyReasoning = reasoning;
                         lastAssistantMsg = uiReply;

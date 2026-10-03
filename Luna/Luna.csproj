@@ -2,7 +2,9 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
+        <!-- API 目标：Windows 10 2004 (19041)；最低支持：Windows 10 1809 (17763) -->
         <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
         <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>

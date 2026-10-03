@@ -147,6 +147,22 @@ public class DatabaseInitializer
         );
         CREATE INDEX IF NOT EXISTS IX_Attachments_MessageId ON Attachments(MessageId);
 
+        CREATE TABLE IF NOT EXISTS Tasks (
+            Id                TEXT PRIMARY KEY,
+            Title             TEXT NOT NULL,
+            Notes             TEXT,
+            DueAtUtc          TEXT,
+            RemindAtUtc       TEXT,
+            Status            TEXT NOT NULL DEFAULT 'pending',
+            Priority          INTEGER NOT NULL DEFAULT 0,
+            ReminderCount     INTEGER NOT NULL DEFAULT 0,
+            LastRemindedAtUtc TEXT,
+            CreatedAtUtc      TEXT NOT NULL,
+            UpdatedAtUtc      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_Tasks_Status ON Tasks(Status);
+        CREATE INDEX IF NOT EXISTS IX_Tasks_RemindAtUtc ON Tasks(RemindAtUtc);
+
         CREATE VIRTUAL TABLE IF NOT EXISTS DiaryFts USING fts5(
             LogicalDate UNINDEXED, Content, tokenize='trigram'
         );
