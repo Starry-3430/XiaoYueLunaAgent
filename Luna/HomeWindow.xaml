@@ -674,11 +674,7 @@ Background="#E4E0CA"
                 </ScrollViewer>
             </Grid>
             <Grid x:Name="DiaryContent" Grid.Row="1" Visibility="Collapsed">
-                <TextBlock Text="日记本页面"
-                           Foreground="#8B7B6B"
-                           FontSize="14"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
+                <views:DiaryView x:Name="DiaryPanel"/>
             </Grid>
             <Grid x:Name="ToolsContent" Grid.Row="1" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Globalization;
+using System.IO;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -7,6 +8,9 @@ namespace Luna.Services;
 
 public class DatabaseInitializer
 {
+    /// <summary>当前架构版本，用于执行一次性数据迁移。</summary>
+    private const long CurrentSchemaVersion = 1;
+
     private readonly string _dbPath;
     private readonly ILogger<DatabaseInitializer> _logger;
 
@@ -42,7 +46,94 @@ public class DatabaseInitializer
         AddReasoningContentColumn(conn);
         AddToolCallsJsonColumn(conn);
         AddToolCallIdColumn(conn);
+        MigrateLogicalDates(conn);
         _logger.LogInformation("数据库初始化完成：{Path}", _dbPath);
+    }
+
+    /// <summary>
+    /// 一次性迁移：早期版本用 UTC 日期写入 LogicalDate，现统一改为
+    /// <see cref="LogicalDate"/>（本地时间 -4 小时）。迁移依据 CreatedAtUtc 重算，天然幂等，
+    /// 由 PRAGMA user_version 控制只执行一次。
+    /// </summary>
+    private void MigrateLogicalDates(SqliteConnection conn)
+    {
+        var version = conn.ExecuteScalar<long>("PRAGMA user_version;");
+        if (version >= CurrentSchemaVersion) return;
+
+        var messages = RecomputeMessageLogicalDates(conn);
+        var summaries = RecomputeTurnSummaryLogicalDates(conn);
+
+        conn.Execute($"PRAGMA user_version = {CurrentSchemaVersion};");
+
+        if (messages > 0 || summaries > 0)
+            _logger.LogInformation("逻辑日期迁移完成：Messages {Messages} 行，TurnSummaries {Summaries} 行",
+                messages, summaries);
+    }
+
+    private static int RecomputeMessageLogicalDates(SqliteConnection conn)
+    {
+        var rows = conn.Query<LogicalDateRow>(
+            "SELECT Id, CreatedAtUtc FROM Messages").ToList();
+        if (rows.Count == 0) return 0;
+
+        using var tx = conn.BeginTransaction();
+        var count = 0;
+        foreach (var row in rows)
+        {
+            if (!TryParseUtc(row.CreatedAtUtc, out var utc)) continue;
+            conn.Execute(
+                "UPDATE Messages SET LogicalDate = @LogicalDate WHERE Id = @Id",
+                new { LogicalDate = LogicalDate.FromUtc(utc), row.Id }, tx);
+            count++;
+        }
+        tx.Commit();
+        return count;
+    }
+
+    private static int RecomputeTurnSummaryLogicalDates(SqliteConnection conn)
+    {
+        var rows = conn.Query<TurnSummaryLogicalDateRow>(
+            "SELECT TurnId, CreatedAtUtc FROM TurnSummaries").ToList();
+        if (rows.Count == 0) return 0;
+
+        using var tx = conn.BeginTransaction();
+        var count = 0;
+        foreach (var row in rows)
+        {
+            if (!TryParseUtc(row.CreatedAtUtc, out var utc)) continue;
+            conn.Execute(
+                "UPDATE TurnSummaries SET LogicalDate = @LogicalDate WHERE TurnId = @TurnId",
+                new { LogicalDate = LogicalDate.FromUtc(utc), row.TurnId }, tx);
+            count++;
+        }
+        tx.Commit();
+        return count;
+    }
+
+    private static bool TryParseUtc(string? value, out DateTime utc)
+    {
+        utc = default;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        if (!DateTime.TryParse(value, CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind, out var parsed))
+            return false;
+
+        utc = parsed.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+            : parsed.ToUniversalTime();
+        return true;
+    }
+
+    private sealed class LogicalDateRow
+    {
+        public long Id { get; set; }
+        public string CreatedAtUtc { get; set; } = string.Empty;
+    }
+
+    private sealed class TurnSummaryLogicalDateRow
+    {
+        public string TurnId { get; set; } = string.Empty;
+        public string CreatedAtUtc { get; set; } = string.Empty;
     }
 
     private void AddReasoningContentColumn(SqliteConnection conn)
@@ -167,25 +258,28 @@ public class DatabaseInitializer
             LogicalDate UNINDEXED, Content, tokenize='trigram'
         );
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_ai
+        -- 普通 FTS5 表：用 DELETE 维护索引（旧的 'delete' 语法是给 external content 表用的，会报错）
+        DROP TRIGGER IF EXISTS DiaryEntries_ai;
+        DROP TRIGGER IF EXISTS DiaryEntries_ad;
+        DROP TRIGGER IF EXISTS DiaryEntries_au;
+
+        CREATE TRIGGER DiaryEntries_ai
             AFTER INSERT ON DiaryEntries
         BEGIN
             INSERT INTO DiaryFts(LogicalDate, Content)
             VALUES (new.LogicalDate, new.Content);
         END;
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_ad
+        CREATE TRIGGER DiaryEntries_ad
             AFTER DELETE ON DiaryEntries
         BEGIN
-            INSERT INTO DiaryFts(DiaryFts, LogicalDate, Content)
-            VALUES('delete', old.LogicalDate, old.Content);
+            DELETE FROM DiaryFts WHERE LogicalDate = old.LogicalDate;
         END;
 
-        CREATE TRIGGER IF NOT EXISTS DiaryEntries_au
+        CREATE TRIGGER DiaryEntries_au
             AFTER UPDATE ON DiaryEntries
         BEGIN
-            INSERT INTO DiaryFts(DiaryFts, LogicalDate, Content)
-            VALUES('delete', old.LogicalDate, old.Content);
+            DELETE FROM DiaryFts WHERE LogicalDate = old.LogicalDate;
             INSERT INTO DiaryFts(LogicalDate, Content)
             VALUES (new.LogicalDate, new.Content);
         END;

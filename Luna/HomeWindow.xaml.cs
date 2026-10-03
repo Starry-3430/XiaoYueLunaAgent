@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -38,6 +39,8 @@ public partial class HomeWindow : Window
 
     private readonly HomeViewModel _viewModel;
     private readonly Luna.Data.DatabaseService _databaseService;
+    private readonly DiaryService _diaryService;
+    private readonly DiaryViewModel _diaryViewModel;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -45,6 +48,7 @@ public partial class HomeWindow : Window
     private const double AnimDuration = 0.3;        // 动画持续时间
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
+    private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
 
     private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
     private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
@@ -66,14 +70,18 @@ public partial class HomeWindow : Window
     }
 
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
-        GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService)
+        GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService,
+        DiaryService diaryService, DiaryViewModel diaryViewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
         _databaseService = databaseService;
+        _diaryService = diaryService;
+        _diaryViewModel = diaryViewModel;
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
+        DiaryPanel.DataContext = diaryViewModel;
 
         SourceInitialized += (_, _) =>
         {
@@ -93,16 +101,23 @@ public partial class HomeWindow : Window
             }
         };
 
-        // 消息集合变化时，自动滚动到最底部
-        _viewModel.Messages.CollectionChanged += (_, _) =>
+        // 切换会话时消息集合会整体更换，需要重新绑定自动滚动
+        _viewModel.PropertyChanged += (_, e) =>
         {
-            MessageScrollViewer.Dispatcher.BeginInvoke(() =>
-                MessageScrollViewer.ScrollToEnd());
+            if (e.PropertyName == nameof(HomeViewModel.Messages))
+                BindMessages();
         };
+        BindMessages();
 
 // 左侧底部按钮：切换右侧内容区
         SettingsButton.Click += (_, _) => { ShowSideContent(SettingsContent, "设置"); SetActiveSideButton(SettingsButton); };
-        DiaryButton.Click += (_, _) => { ShowSideContent(DiaryContent, "日记本"); SetActiveSideButton(DiaryButton); };
+        DiaryButton.Click += (_, _) =>
+        {
+            ShowSideContent(DiaryContent, "日记本");
+            SetActiveSideButton(DiaryButton);
+            _diaryService.Trigger();          // 打开日记视图时触发一次检查
+            _ = _diaryViewModel.LoadAsync();  // 加载日记列表
+        };
         ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题
@@ -113,6 +128,25 @@ public partial class HomeWindow : Window
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+
+        // 窗口重新激活时刷新仍在流式输出的消息渲染
+        Activated += (_, _) => MarkdownViewerRefresher.RefreshStreaming(this);
+    }
+
+    /// <summary>把自动滚动挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
+    private void BindMessages()
+    {
+        if (_boundMessages is not null)
+            _boundMessages.CollectionChanged -= OnMessagesChanged;
+
+        _boundMessages = _viewModel.Messages;
+        _boundMessages.CollectionChanged += OnMessagesChanged;
+    }
+
+    private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        MessageScrollViewer.Dispatcher.BeginInvoke(() =>
+            MessageScrollViewer.ScrollToEnd());
     }
 
     /// <summary>
@@ -156,6 +190,10 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
+
+        // 切回聊天时刷新仍在流式输出的消息
+        Dispatcher.BeginInvoke(() => MarkdownViewerRefresher.RefreshStreaming(MessageScrollViewer),
+            System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -181,67 +219,123 @@ public partial class HomeWindow : Window
 
     // ===== 气泡 Markdown 渲染 =====
     private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
+{
+    if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+
+    _ = new BubbleContextMenu(viewer);
+
+    viewer.LinkClicked += (_, args) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+
+    // ===== 构建主题（只构建一次，反复复用）=====
+    var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
     {
-        if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+        Background = System.Windows.Media.Brushes.Transparent,
+        Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+        SubtleForeground = new SolidColorBrush(Color.FromRgb(0x36, 0x2F, 0x2B)),
+        EmSize = 16,
+        ParagraphLineHeight = 1.4,
+        HeadingScales = new[] { 1.4, 1.25, 1.15, 1.08, 1.04, 1.0 },
+        QuoteBar = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+        CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+        InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+        Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
+        MonoTypeface = ThemeService.CodeTypeface,
+    };
+    if (ThemeService.BaseTypeface is { } baseTypeface)
+        markdownStyle = markdownStyle with { BaseTypeface = baseTypeface };
 
-        _ = new BubbleContextMenu(viewer);
+    // ===== 统一封装主题应用 =====
+    void ApplyStyle() => viewer.ApplyTheme(markdownStyle);
 
-        viewer.LinkClicked += (_, args) =>
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+    // 首次进入时先应用一次
+    ApplyStyle();
 
-        var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
+    if (viewer.DataContext is not ChatMessage msg) return;
+
+    var rendered = string.Empty;
+
+    void RenderFromScratch()
+    {
+        rendered = msg.Content;
+        if (msg.IsStreaming)
         {
-            Background = System.Windows.Media.Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            SubtleForeground = new SolidColorBrush(Color.FromRgb(0x36, 0x2F, 0x2B)),
-            EmSize = 16,
-            ParagraphLineHeight = 1.4,
-            HeadingScales = new[] { 1.4, 1.25, 1.15, 1.08, 1.04, 1.0 },
-            QuoteBar = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
-            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
-            Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xCF, 0xB4)),
-            MonoTypeface = ThemeService.CodeTypeface,
-        };
-        if (ThemeService.BaseTypeface is { } baseTypeface)
-            markdownStyle = markdownStyle with { BaseTypeface = baseTypeface };
-
-        viewer.ApplyTheme(markdownStyle);
-
-        if (viewer.DataContext is not ChatMessage msg) return;
-
-        viewer.SetMarkdown(msg.Content);
-
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        var dirty = false;
-        var rendering = false;
-
-        timer.Tick += (_, _) =>
+            viewer.Reset();
+            ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
+            if (!string.IsNullOrEmpty(rendered))
+                viewer.AppendDelta(rendered);
+        }
+        else
         {
-            if (!dirty || rendering) return;
-            rendering = true;
-            dirty = false;
-            try { viewer.SetMarkdown(msg.Content); }
-            catch { dirty = true; }
-            finally { rendering = false; }
-        };
-
-        PropertyChangedEventHandler handler = (_, args) =>
-        {
-            if (args.PropertyName != nameof(ChatMessage.Content)) return;
-            dirty = true;
-            if (!timer.IsEnabled) timer.Start();
-        };
-
-        msg.PropertyChanged += handler;
-
-        viewer.Unloaded += (_, _) =>
-        {
-            msg.PropertyChanged -= handler;
-            timer.Stop();
-        };
+            viewer.SetMarkdown(rendered);
+            ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
+        }
     }
 
+    void AppendNewContent()
+    {
+        if (!viewer.IsVisible) return;
+
+        var content = msg.Content;
+        if (!content.StartsWith(rendered, StringComparison.Ordinal))
+        {
+            RenderFromScratch();
+            return;
+        }
+
+        var delta = content[rendered.Length..];
+        if (delta.Length > 0)
+            viewer.AppendDelta(delta);
+        rendered = content;
+    }
+
+    PropertyChangedEventHandler handler = (_, args) =>
+    {
+        try
+        {
+            if (args.PropertyName == nameof(ChatMessage.Content))
+            {
+                AppendNewContent();
+            }
+            else if (args.PropertyName == nameof(ChatMessage.IsStreaming) && !msg.IsStreaming)
+            {
+                if (viewer.IsVisible)
+                {
+                    AppendNewContent();
+                    viewer.Complete();
+                }
+            }
+        }
+        catch { }
+    };
+
+    System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
+    {
+        if (!viewer.IsVisible) return;
+
+        if (msg.IsStreaming)
+        {
+            RenderFromScratch();
+        }
+        else
+        {
+            rendered = msg.Content;
+            viewer.SetMarkdown(rendered);
+            ApplyStyle();                       // ★ 同样要重新应用
+        }
+    };
+
+    msg.PropertyChanged += handler;
+    viewer.IsVisibleChanged += visibility;
+
+    viewer.Unloaded += (_, _) =>
+    {
+        msg.PropertyChanged -= handler;
+        viewer.IsVisibleChanged -= visibility;
+    };
+
+    RenderFromScratch();
+}
     private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not ScrollViewer sv) return;

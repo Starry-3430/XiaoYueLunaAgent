@@ -1,0 +1,118 @@
+<UserControl x:Class="Luna.Views.DiaryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:controls="clr-namespace:Luna.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="700">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Styles/SettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="DiaryNavButton" TargetType="Button">
+                <Setter Property="Background" Value="#E4E0CA"/>
+                <Setter Property="Foreground" Value="#5B4833"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="20,7"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                    Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="#DDD9C5"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="DiaryTodayButton" TargetType="Button" BasedOn="{StaticResource DiaryNavButton}">
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                    Background="#343434">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="#727272"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bg" Property="Background" Value="#9A9A9A"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 搜索：使用设置页的文本框样式 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Center" Margin="0,6,0,0" Width="320">
+            <TextBox x:Name="SearchBox"
+                     Style="{StaticResource SettingsInputWide}"
+                     controls:TextBoxBehaviors.EnterLosesFocus="False"
+                     Width="320" HorizontalAlignment="Left" Padding="12,0"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     KeyDown="SearchBox_KeyDown"/>
+            <TextBlock Text="搜索日记内容…（回车）"
+                       Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center"
+                       Margin="14,0,0,0" IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SearchText}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+
+        <!-- 卡片 + 按钮整体在 y 轴居中 -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+            <Grid x:Name="PagerHost" Height="460" ClipToBounds="True" Background="Transparent"
+                  SizeChanged="Host_SizeChanged">
+                <Canvas x:Name="PagerCanvas" ClipToBounds="False"/>
+
+                <!-- 左右边缘渐变遮罩：从 ±2 卡片中点起向外渐隐到界面背景色 -->
+                <Border x:Name="LeftFade" HorizontalAlignment="Left" IsHitTestVisible="False"/>
+                <Border x:Name="RightFade" HorizontalAlignment="Right" IsHitTestVisible="False"/>
+            </Grid>
+
+            <!-- 翻页按钮：当天卡片下方 20px -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <Button x:Name="PrevButton" Content="上一页" Click="Prev_Click"
+                        Style="{StaticResource DiaryNavButton}"/>
+                <Button x:Name="TodayButton" Content="今天" Click="Today_Click"
+                        Style="{StaticResource DiaryTodayButton}" Margin="12,0"/>
+                <Button x:Name="NextButton" Content="下一页" Click="Next_Click"
+                        Style="{StaticResource DiaryNavButton}"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

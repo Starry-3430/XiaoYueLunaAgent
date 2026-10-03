@@ -37,4 +37,22 @@ public class MessageRepository
             new { Id = sessionId });
         return rows.ToList();
     }
+
+    public async Task<List<Message>> GetByTurnAsync(string turnId)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        var rows = await conn.QueryAsync<Message>(
+            "SELECT * FROM Messages WHERE TurnId = @Id ORDER BY Id",
+            new { Id = turnId });
+        return rows.ToList();
+    }
+
+    /// <summary>重写时把复用的用户消息重新归属到新轮次，避免摘要按 TurnId 取不到用户文本。</summary>
+    public async Task ReassignTurnAsync(long messageId, string turnId, string logicalDate)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.ExecuteAsync(
+            "UPDATE Messages SET TurnId = @TurnId, LogicalDate = @LogicalDate WHERE Id = @Id",
+            new { Id = messageId, TurnId = turnId, LogicalDate = logicalDate });
+    }
 }

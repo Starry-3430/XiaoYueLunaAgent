@@ -126,6 +126,7 @@ public partial class App : Application
                 services.AddSingleton<HomeViewModel>();
                 services.AddSingleton<AiConnectionViewModel>();
                 services.AddSingleton<GeneralSettingsViewModel>();
+                services.AddSingleton<DiaryViewModel>();
                 
                 // AI 服务配置（从 settings.json 加载）
                 services.AddSingleton<SettingsService>();
@@ -167,7 +168,10 @@ public partial class App : Application
                 services.AddSingleton<SessionRepository>();
                 services.AddSingleton<MessageRepository>();
                 services.AddSingleton<TaskRepository>();
+                services.AddSingleton<TurnSummaryService>();
+                services.AddSingleton<ChatGenerationService>();
                 services.AddSingleton<ReminderService>();
+                services.AddSingleton<DiaryService>();
             })
             .Build();
     }
@@ -335,6 +339,9 @@ public partial class App : Application
 
         // 7. 启动提醒服务（轮询待办提醒）
         _host.Services.GetRequiredService<ReminderService>().Start();
+
+        // 7.1 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
+        _host.Services.GetRequiredService<DiaryService>().Start();
 
         // 8. 配置文件丢失或损坏时，已自动重置，提示用户
         if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
