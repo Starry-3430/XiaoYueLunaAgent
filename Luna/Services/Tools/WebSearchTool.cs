@@ -35,6 +35,9 @@ public class WebSearchTool : ITool
 
     public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(_settings.TavilyApiKey))
+            return "未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。";
+
         var query = argumentsJson;
         try
         {

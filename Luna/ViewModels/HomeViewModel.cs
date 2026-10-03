@@ -23,6 +23,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly AiSettings _aiSettings;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolSettingsService _toolSettings;
+    private readonly SettingsService _settingsService;
     private readonly ILogger<HomeViewModel> _logger;
     private CancellationTokenSource? _cts;
     private string? _currentSessionId;
@@ -40,13 +41,18 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [ObservableProperty]
     private ChatSessionItem? _selectedSession;
 
+    /// <summary>Tavily 搜索 API Key（明文，编辑后立即加密持久化）。</summary>
+    [ObservableProperty]
+    private string _tavilyApiKey = string.Empty;
+
     public ObservableCollection<ChatMessage> Messages { get; } = new();
     public ObservableCollection<ChatSessionItem> ChatSessions { get; } = new();
     public ObservableCollection<ToolCategory> ToolCategories { get; } = new();
 
     public HomeViewModel(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AiSettings aiSettings, ToolRegistry toolRegistry,
-        ToolSettingsService toolSettings, ILogger<HomeViewModel> logger)
+        ToolSettingsService toolSettings, SettingsService settingsService,
+        ILogger<HomeViewModel> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
@@ -54,7 +60,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _aiSettings = aiSettings;
         _toolRegistry = toolRegistry;
         _toolSettings = toolSettings;
+        _settingsService = settingsService;
         _logger = logger;
+
+        _tavilyApiKey = _aiSettings.TavilyApiKey;
 
         WeakReferenceMessenger.Default.Register<SessionUpdateMessage>(this);
         _ = LoadSessionsAsync();
@@ -69,10 +78,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "信息",
             Tools =
             {
-                new ToolDefinition { Id = "web_search", Category = "信息", Name = "网页搜索", Description = "在互联网上搜索信息", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "web_fetch", Category = "信息", Name = "网页阅读", Description = "读取指定 URL 的网页内容", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "web_search", Category = "信息", Name = "网页搜索", Description = "通过 Tavily 在互联网上搜索信息，返回标题、URL 与摘要", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "fetch_url", Category = "信息", Name = "网页阅读", Description = "抓取指定 URL 的网页正文，配合搜索使用", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "get_current_time", Category = "信息", Name = "当前时间", Description = "获取当前日期与时间", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "read_clipboard", Category = "信息", Name = "剪贴板读取", Description = "读取系统剪贴板中的文本内容", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "weather_time", Category = "信息", Name = "天气/时间", Description = "查询天气和当前时间", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "news_calendar", Category = "信息", Name = "新闻/日历", Description = "获取新闻摘要或日历信息", IsEnabled = true, IsAvailable = false },
             }
         });
@@ -193,6 +202,20 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         if (e.PropertyName != nameof(ToolDefinition.IsEnabled)) return;
         if (sender is ToolDefinition tool)
             _toolSettings.SetEnabled(tool.Id, tool.IsEnabled);
+    }
+
+    /// <summary>用户编辑 Tavily Key 后立即加密保存，并同步“网页搜索”的可用状态。</summary>
+    partial void OnTavilyApiKeyChanged(string value)
+    {
+        _aiSettings.TavilyApiKey = value;
+        _settingsService.Save(_aiSettings);
+
+        var tool = ToolCategories.SelectMany(c => c.Tools).FirstOrDefault(t => t.Id == "web_search");
+        if (tool is null) return;
+
+        var hasKey = !string.IsNullOrEmpty(value);
+        tool.StatusText = hasKey ? "" : "未配置 API Key";
+        tool.IsEnabled = hasKey;
     }
 
     private async Task LoadSessionsAsync()

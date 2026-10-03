@@ -216,16 +216,30 @@ private readonly MainViewModel _viewModel;
             var scrollViewer = FindChildScrollViewer(element);
             if (scrollViewer == null) return;
 
-            var offset = scrollViewer.HorizontalOffset - e.Delta;
-            offset = Math.Max(0, Math.Min(offset, scrollViewer.ScrollableWidth));
-            scrollViewer.ScrollToHorizontalOffset(offset);
+            SmoothScroll.Horizontal(scrollViewer, e.Delta);
         }
         else
         {
             e.Handled = true;
             var parentSv = FindAncestorScrollViewer(sender as DependencyObject);
-            parentSv?.ScrollToVerticalOffset(parentSv.VerticalOffset - e.Delta);
+            if (parentSv != null)
+                SmoothScroll.Vertical(parentSv, e.Delta);
         }
+    }
+
+    /// <summary>ScrollViewer 自身的滚轮平滑滚动；内部可滚动控件优先处理。</summary>
+    private void SmoothScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer sv || e.Handled) return;
+
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) return;
+
+        if (FindAncestorScrollViewer(e.OriginalSource as DependencyObject) is { } inner
+            && !ReferenceEquals(inner, sv))
+            return;
+
+        e.Handled = true;
+        SmoothScroll.Vertical(sv, e.Delta);
     }
 
     private static bool IsInsideCodeBlock(DependencyObject? element)

@@ -136,6 +136,8 @@ public partial class App : Application
                 services.AddSingleton<IAiService, OpenAiService>();
                 services.AddSingleton<ITool, ClipboardReadTool>();
                 services.AddSingleton<ITool, WebSearchTool>();
+                services.AddSingleton<ITool, FetchUrlTool>();
+                services.AddSingleton<ITool, GetCurrentTimeTool>();
                 services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册

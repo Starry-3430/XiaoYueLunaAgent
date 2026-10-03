@@ -182,7 +182,8 @@
                               Grid.Row="0"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              ScrollViewer.CanContentScroll="False">
+                              ScrollViewer.CanContentScroll="False"
+                              PreviewMouseWheel="SmoothScroll_PreviewMouseWheel">
                     <ItemsControl ItemsSource="{Binding Messages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

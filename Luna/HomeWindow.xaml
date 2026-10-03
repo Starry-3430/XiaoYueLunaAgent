@@ -211,6 +211,7 @@ Background="#E4E0CA"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               ScrollViewer.CanContentScroll="False"
+                              PreviewMouseWheel="SmoothScroll_PreviewMouseWheel"
                               Padding="20,16">
                 <ItemsControl ItemsSource="{Binding Messages}">
                     <ItemsControl.ItemTemplate>
@@ -586,6 +587,7 @@ Background="#E4E0CA"
             <!-- 设置 内容区 -->
             <Grid x:Name="SettingsContent" Grid.Row="1" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="SmoothScroll_PreviewMouseWheel"
                               Padding="20,16">
                     <StackPanel>
                         <!-- 通用 -->
@@ -671,6 +673,7 @@ Background="#E4E0CA"
             </Grid>
             <Grid x:Name="ToolsContent" Grid.Row="1" Visibility="Collapsed">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="SmoothScroll_PreviewMouseWheel"
                               Padding="20,16">
                     <ItemsControl ItemsSource="{Binding ToolCategories}">
                         <ItemsControl.ItemTemplate>
@@ -685,25 +688,56 @@ Background="#E4E0CA"
                                             <DataTemplate DataType="{x:Type models:ToolDefinition}">
                                                 <Border Style="{StaticResource SettingsCard}"
                                                         Padding="14,12" Margin="0,0,0,8">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <StackPanel Grid.Column="0">
-                                                            <TextBlock Text="{Binding Name}" Style="{StaticResource SettingsTitle}"/>
+                                                    <StackPanel>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="{Binding Name}" Style="{StaticResource SettingsTitle}"/>
 <TextBlock Text="{Binding Description}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                                                            <TextBlock Text="{Binding StatusText}"
-                                                                       Foreground="#CB8B5B" FontSize="12"
-                                                                       Margin="0,2,0,0"
-                                                                       Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                        </StackPanel>
-                                                        <CheckBox Grid.Column="1"
-                                                                  Style="{StaticResource SettingsToggle}"
-                                                                  IsChecked="{Binding IsEnabled}"
-                                                                  IsEnabled="{Binding IsAvailable}"
-                                                                  VerticalAlignment="Center"/>
-                                                    </Grid>
+                                                                <TextBlock Text="{Binding StatusText}"
+                                                                           Foreground="#CB8B5B" FontSize="12"
+                                                                           Margin="0,2,0,0"
+                                                                           Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                            </StackPanel>
+                                                            <CheckBox Grid.Column="1"
+                                                                      Style="{StaticResource SettingsToggle}"
+                                                                      IsChecked="{Binding IsEnabled}"
+                                                                      IsEnabled="{Binding IsAvailable}"
+                                                                      VerticalAlignment="Center"/>
+                                                        </Grid>
+
+                                                        <!-- web_search 的 Tavily Key 子控件 -->
+                                                        <Grid Margin="0,10,0,0">
+                                                            <Grid.Style>
+                                                                <Style TargetType="Grid">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Id}" Value="web_search">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Grid.Style>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="Tavily API Key"
+                                                                       Style="{StaticResource SettingsTitle}"
+                                                                       VerticalAlignment="Center"/>
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <PasswordBox Width="180" Style="{StaticResource SettingsPassword}"
+                                                                             Loaded="TavilyKeyBox_Loaded"
+                                                                             PasswordChanged="TavilyKeyBox_PasswordChanged"
+                                                                             VerticalAlignment="Center"/>
+                                                                <Button Style="{StaticResource SettingsResetButton}"
+                                                                        Click="TavilyKeyReset_Click" Margin="6,0,0,0"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </StackPanel>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
