@@ -39,6 +39,8 @@ public partial class HomeWindow : Window
 
     private readonly HomeViewModel _viewModel;
     private readonly Luna.Data.DatabaseService _databaseService;
+    private readonly DiaryService _diaryService;
+    private readonly DiaryViewModel _diaryViewModel;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -68,14 +70,18 @@ public partial class HomeWindow : Window
     }
 
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
-        GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService)
+        GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService,
+        DiaryService diaryService, DiaryViewModel diaryViewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
         _databaseService = databaseService;
+        _diaryService = diaryService;
+        _diaryViewModel = diaryViewModel;
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
+        DiaryPanel.DataContext = diaryViewModel;
 
         SourceInitialized += (_, _) =>
         {
@@ -105,7 +111,13 @@ public partial class HomeWindow : Window
 
 // 左侧底部按钮：切换右侧内容区
         SettingsButton.Click += (_, _) => { ShowSideContent(SettingsContent, "设置"); SetActiveSideButton(SettingsButton); };
-        DiaryButton.Click += (_, _) => { ShowSideContent(DiaryContent, "日记本"); SetActiveSideButton(DiaryButton); };
+        DiaryButton.Click += (_, _) =>
+        {
+            ShowSideContent(DiaryContent, "日记本");
+            SetActiveSideButton(DiaryButton);
+            _diaryService.Trigger();          // 打开日记视图时触发一次检查
+            _ = _diaryViewModel.LoadAsync();  // 加载日记列表
+        };
         ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题

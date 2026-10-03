@@ -47,6 +47,7 @@ public sealed class ChatGenerationService
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly TurnSummaryService _turnSummaryService;
+    private readonly DiaryService _diaryService;
     private readonly ILogger<ChatGenerationService> _logger;
 
     private readonly ConcurrentDictionary<string, SessionRuntime> _runtimes = new(StringComparer.Ordinal);
@@ -57,7 +58,7 @@ public sealed class ChatGenerationService
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
-        ILogger<ChatGenerationService> logger)
+        DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
@@ -65,6 +66,7 @@ public sealed class ChatGenerationService
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _turnSummaryService = turnSummaryService;
+        _diaryService = diaryService;
         _logger = logger;
     }
 
@@ -382,6 +384,9 @@ public sealed class ChatGenerationService
 
             // 成功结束后异步生成轮次摘要，不阻塞界面
             _turnSummaryService.Trigger(sessionId, turnId, logicalDate);
+
+            // 顺带触发一次日记检查（补齐历史积压；当天不会提前生成）
+            _diaryService.Trigger();
         }
 
         await _sessionRepo.TouchAsync(sessionId);
