@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -28,6 +29,7 @@ public partial class App : Application
     private Win32Icon? _trayIconImage;                  // 托盘图标图像
     private TrayIconHost? _trayIcon;                    // 托盘图标宿主
     private HomeWindow? _homeWindow;                    // 主窗口实例
+    private bool _restarting;                           // 是否正在重启进程
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
     private DateTime _lastTrayClickTime;                // 上次托盘点击时间，用于判断双击间隔
     private const int DoubleClickThresholdMs = 500;     // 双击判定阈值（毫秒）
@@ -314,14 +316,40 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    /// <summary>重启当前程序：释放单实例锁并启动新的进程。</summary>
+    public void Restart()
+    {
+        _restarting = true;
+
+        var exe = Environment.ProcessPath;
+        try
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+        }
+        catch
+        {
+            // 忽略未持有的情况
+        }
+        _singleInstanceMutex?.Dispose();
+        _singleInstanceMutex = null;
+
+        if (!string.IsNullOrEmpty(exe))
+            Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+
+        Shutdown();
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         Log.Information("Luna 正在退出");
 
         // 释放单实例相关资源
         _showWindowEvent?.Dispose();
-        _singleInstanceMutex?.ReleaseMutex();
-        _singleInstanceMutex?.Dispose();
+        if (!_restarting)
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+            _singleInstanceMutex?.Dispose();
+        }
 
         // 停止并释放 Host
         _host.StopAsync().GetAwaiter().GetResult();

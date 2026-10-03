@@ -16,7 +16,7 @@ public class AiSettings
     public const string DefaultUserName = "主人";
     public const string DefaultResponseLanguage = "auto";
     public const string DefaultFontFamily = "";
-    public const string DefaultHotkey = "Ctrl+Alt+Space";
+    public const string DefaultHotkey = "Ctrl + Alt + Y";
     public const string DefaultProxyType = "none"; // none / http / socks4 / socks5
 
     /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>

@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -35,6 +37,7 @@ public partial class HomeWindow : Window
     private const int HT_CAPTION = 2;
 
     private readonly HomeViewModel _viewModel;
+    private readonly Luna.Data.DatabaseService _databaseService;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -63,11 +66,12 @@ public partial class HomeWindow : Window
     }
 
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
-        GeneralSettingsViewModel generalSettingsViewModel)
+        GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
+        _databaseService = databaseService;
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
 
@@ -457,13 +461,16 @@ public partial class HomeWindow : Window
     /// <summary>
     /// 构建单个 Toast 的视觉元素（边框、文本、关闭按钮等）。
     /// </summary>
-private static Border BuildToastElement(string text, Color bgColor, TranslateTransform transform, int id, Action<int> onClose)
+    private Border BuildToastElement(string text, Color bgColor, TranslateTransform transform, int id, Action<int> onClose)
     {
+        const double toastLineHeight = 18; // 单行高度
+        const int maxToastLines = 5;       // 最多显示 5 行
+
         var closeBlock = new TextBlock
         {
             // 关闭按钮
             Text = "✕",
-            Style = Application.Current.TryFindResource("ToastClose") as Style,
+            Style = TryFindResource("ToastClose") as Style,
         };
 
         // 内部布局：文本区（可滚动）+ 关闭按钮
@@ -475,7 +482,7 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            MaxHeight = 184, // 限制最大高度，超出滚动
+            MaxHeight = toastLineHeight * maxToastLines, // 最多 5 行，超出滚动
         };
         var textBlock = new TextBlock
         {
@@ -483,6 +490,8 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
             Foreground = System.Windows.Media.Brushes.White,
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
+            LineHeight = toastLineHeight,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
         };
         scrollViewer.Content = textBlock;
         Grid.SetColumn(scrollViewer, 0);
@@ -493,7 +502,7 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
         // 外层 Border，使用 ToastBorder 样式并设置背景色
         var toast = new Border
         {
-            Style = Application.Current.TryFindResource("ToastBorder") as Style,
+            Style = TryFindResource("ToastBorder") as Style,
             Background = new SolidColorBrush(bgColor),
             Child = innerGrid,
             RenderTransform = transform,
@@ -617,6 +626,122 @@ private static Border BuildToastElement(string text, Color bgColor, TranslateTra
     private void HeaderArea_MouseUp(object sender, MouseButtonEventArgs e)
     {
         _headerDragStart = null;
+    }
+
+    // ===== 调试 =====
+
+    /// <summary>打开日志文件夹。</summary>
+    private void OpenLogsButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Luna", "logs");
+            Directory.CreateDirectory(dir);
+            Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
+            ShowToast("已打开日志文件夹：" + dir, ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowToast("无法打开日志文件夹：" + ex.Message, ToastType.Error);
+        }
+    }
+
+    /// <summary>清空数据库（三次确认）。</summary>
+    private void ClearDatabaseButton_Click(object sender, RoutedEventArgs e)
+    {
+        const string body = "这将会完全删除数据库中的所有内容，包括聊天记录、日记记录等，确定要继续吗？";
+
+        if (!ShowConfirm("警告", body + "1/3")) return;
+        if (!ShowConfirm("警告", body + "2/3")) return;
+        if (!ShowConfirm("警告", body + "\n这是最后一次提醒 3/3")) return;
+
+        try
+        {
+            _databaseService.ClearAllData();
+        }
+        catch (Exception ex)
+        {
+            ShowToast("清空数据库失败：" + ex.Message, ToastType.Error);
+            return;
+        }
+
+        ShowRestartDialog();
+    }
+
+    private bool ShowConfirm(string title, string body)
+    {
+        var confirmed = false;
+
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = title,
+            DialogContent = new TextBlock
+            {
+                Text = body,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "取消",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = "继续",
+                StyleKey = "StyleDangerSoft",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+        return confirmed;
+    }
+
+    private void ShowRestartDialog()
+    {
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = "已清除数据",
+            DialogContent = new TextBlock
+            {
+                Text = "重新启动程序以应用",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "重新启动",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    dialog.Close();
+                    if (Application.Current is App app)
+                        app.Restart();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
     }
 
     // ===== 设置项交互 =====

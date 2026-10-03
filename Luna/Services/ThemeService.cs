@@ -12,13 +12,8 @@ namespace Luna.Services;
 /// </summary>
 public static class ThemeService
 {
-    private static readonly FontFamily CodeFontFamily =
-        new("pack://application:,,,/Assets/#Cascadia Mono");
-
-    private static readonly FontFamily[] MonospaceFamilies =
-    [
-        CodeFontFamily,
-    ];
+    // 代码块字体：优先系统安装的 Cascadia Mono，缺失时回退 Consolas。
+    private static readonly FontFamily CodeFontFamily = new("Cascadia Mono, Consolas");
 
     private static FontFamily? _currentFont;
     private static bool _initialized;
@@ -96,12 +91,9 @@ public static class ThemeService
         var source = family?.Source;
         if (string.IsNullOrEmpty(source)) return false;
 
-        if (source.Contains("Cascadia", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("Consolas", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("Mono", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        return MonospaceFamilies.Any(f => f.Source == source);
+        return source.Contains("Cascadia", StringComparison.OrdinalIgnoreCase) ||
+               source.Contains("Consolas", StringComparison.OrdinalIgnoreCase) ||
+               source.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
+               source.Contains("Mono", StringComparison.OrdinalIgnoreCase);
     }
 }

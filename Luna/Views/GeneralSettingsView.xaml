@@ -73,17 +73,51 @@
                     <TextBlock Text="快捷键" Style="{StaticResource SettingsTitle}"/>
                     <TextBlock Text="呼出胶囊窗口的全局快捷键，点击右侧输入框后按下组合键。" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
-                <Grid Grid.Column="1" VerticalAlignment="Center">
-                    <TextBox x:Name="HotkeyBox" Width="180" Style="{StaticResource SettingsInputWide}"
-                             IsReadOnly="True" Cursor="Hand"
-                             Text="{Binding HotkeyText, Mode=OneWay}"
-                             GotFocus="HotkeyBox_GotFocus"
-                             LostFocus="HotkeyBox_LostFocus"
-                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
-                    <TextBlock x:Name="HotkeyHint" Text="请按下快捷键…" Foreground="#8B7B6B" FontSize="12"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                               IsHitTestVisible="False" Visibility="Collapsed"/>
-                </Grid>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BindCopilotButton" Content="绑定到Copilot"
+                            Click="BindCopilot_Click" Margin="0,0,10,0">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="#8B7B6B"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="Padding" Value="2,0"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="#5B4833"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter Property="Foreground" Value="#3D3327"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Grid>
+                        <TextBox x:Name="HotkeyBox" Width="180" Style="{StaticResource SettingsInputWide}"
+                                 IsReadOnly="True" Cursor="Hand"
+                                 Text="{Binding HotkeyDisplay, Mode=OneWay}"
+                                 GotFocus="HotkeyBox_GotFocus"
+                                 LostFocus="HotkeyBox_LostFocus"
+                                 PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
+                        <TextBlock x:Name="HotkeyHint" Text="请按下快捷键…" Foreground="#8B7B6B" FontSize="12"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                   IsHitTestVisible="False" Visibility="Collapsed"/>
+                    </Grid>
+                    <Button Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetHotkeyCommand}" Margin="6,0,0,0"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -99,35 +133,39 @@
                         <TextBlock Text="代理" Style="{StaticResource SettingsTitle}"/>
                         <TextBlock Text="通过代理访问网络。" Style="{StaticResource SettingsDesc}" Margin="0"/>
                     </StackPanel>
-                    <Grid Grid.Column="1" VerticalAlignment="Center">
-                        <Border x:Name="ProxyDropdown" Width="180" Height="{StaticResource SettingsControlHeight}"
-                                Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
-                                PreviewMouseLeftButtonDown="SelectToggle_Click"
-                                Tag="{Binding ProxyTypeSetting}">
-                            <Grid>
-                                <TextBlock Text="{Binding ProxyTypeSetting.SelectedLabel}" Foreground="#5B4833"
-                                           FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
-                                           HorizontalAlignment="Right"/>
-                            </Grid>
-                        </Border>
-                        <Popup IsOpen="{Binding ProxyTypeSetting.IsOpen}"
-                               PlacementTarget="{Binding ElementName=ProxyDropdown}"
-                               Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
-                            <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
-                                <ItemsControl ItemsSource="{Binding ProxyTypeSetting.Options}" Tag="{Binding ProxyTypeSetting}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type models:SelectOption}">
-                                            <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
-                                                    PreviewMouseLeftButtonDown="SelectOption_Click">
-                                                <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Grid>
+                            <Border x:Name="ProxyDropdown" Width="180" Height="{StaticResource SettingsControlHeight}"
+                                    Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                    PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                    Tag="{Binding ProxyTypeSetting}">
+                                <Grid>
+                                    <TextBlock Text="{Binding ProxyTypeSetting.SelectedLabel}" Foreground="#5B4833"
+                                               FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"/>
+                                </Grid>
                             </Border>
-                        </Popup>
-                    </Grid>
+                            <Popup IsOpen="{Binding ProxyTypeSetting.IsOpen}"
+                                   PlacementTarget="{Binding ElementName=ProxyDropdown}"
+                                   Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                                <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                                    <ItemsControl ItemsSource="{Binding ProxyTypeSetting.Options}" Tag="{Binding ProxyTypeSetting}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:SelectOption}">
+                                                <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                        PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                    <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <Button Style="{StaticResource SettingsResetButton}"
+                                Command="{Binding ResetProxyTypeCommand}" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <Grid Margin="0,10,0,0">
@@ -138,9 +176,13 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="服务器" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
-                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
-                             Text="{Binding ProxyServer, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
+                                 Text="{Binding ProxyServer, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalAlignment="Center"/>
+                        <Button Style="{StaticResource SettingsResetButton}"
+                                Command="{Binding ResetProxyServerCommand}" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <Grid Margin="0,10,0,0">
@@ -151,9 +193,13 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="端口" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
-                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
-                             Text="{Binding ProxyPort, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
+                                 Text="{Binding ProxyPort, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalAlignment="Center"/>
+                        <Button Style="{StaticResource SettingsResetButton}"
+                                Command="{Binding ResetProxyPortCommand}" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <Grid Margin="0,10,0,0">
@@ -164,9 +210,13 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="用户名" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
-                    <TextBox Grid.Column="1" Width="180" Style="{StaticResource SettingsInputWide}"
-                             Text="{Binding ProxyUsername, UpdateSourceTrigger=PropertyChanged}"
-                             VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
+                                 Text="{Binding ProxyUsername, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalAlignment="Center"/>
+                        <Button Style="{StaticResource SettingsResetButton}"
+                                Command="{Binding ResetProxyUsernameCommand}" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <Grid Margin="0,10,0,0">
@@ -177,10 +227,14 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="密码" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
-                    <PasswordBox x:Name="ProxyPasswordBox" Grid.Column="1" Width="180"
-                                 Style="{StaticResource SettingsPassword}"
-                                 PasswordChanged="ProxyPassword_PasswordChanged"
-                                 VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <PasswordBox x:Name="ProxyPasswordBox" Width="180"
+                                     Style="{StaticResource SettingsPassword}"
+                                     PasswordChanged="ProxyPassword_PasswordChanged"
+                                     VerticalAlignment="Center"/>
+                        <Button Style="{StaticResource SettingsResetButton}"
+                                Click="ResetProxyPassword_Click" Margin="6,0,0,0"/>
+                    </StackPanel>
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
@@ -192,12 +246,20 @@
             </StackPanel>
         </Border>
 
+        <!-- 保存 -->
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,2">
+            <Button Content="保存" Style="{StaticResource PrimaryActionButton}"
+                    Command="{Binding SaveCommand}"/>
+            <TextBlock Text="{Binding SaveStatus}" Foreground="#78A29F" FontSize="13"
+                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+        </StackPanel>
+
         <!-- 编辑配置文件 -->
         <Button x:Name="EditSettingsJsonButton"
                 Content="编辑 settings.json"
                 Click="EditSettingsJson_Click"
                 HorizontalAlignment="Left"
-                Margin="0,10,0,8">
+                Margin="0,6,0,8">
             <Button.Style>
                 <Style TargetType="Button">
                     <Setter Property="Foreground" Value="White"/>

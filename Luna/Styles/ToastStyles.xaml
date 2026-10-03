@@ -4,8 +4,8 @@
     <Style x:Key="ToastBorder" TargetType="Border">
         <Setter Property="MaxWidth" Value="350"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="14,10,14,10"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="10"/>
         <Setter Property="Margin" Value="0,0,0,2"/>
         <Setter Property="Effect">
             <Setter.Value>

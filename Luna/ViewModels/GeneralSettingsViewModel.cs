@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Net.Http;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _hotkeyText = string.Empty;
 
+    /// <summary>录制框展示文本：绑定 Copilot 时显示“Copilot”，否则显示实际组合键。</summary>
+    public string HotkeyDisplay => HotkeyService.IsCopilotChord(HotkeyText) ? "Copilot" : HotkeyText;
+
     [ObservableProperty]
     private string _proxyServer = string.Empty;
 
@@ -44,6 +48,11 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTestingProxy;
 
+    [ObservableProperty]
+    private string _saveStatus = string.Empty;
+
+    private readonly DispatcherTimer _saveStatusTimer;
+
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
         HotkeyService hotkeyService, ILogger<GeneralSettingsViewModel> logger)
     {
@@ -51,6 +60,13 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
         _logger = logger;
+
+        _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+        _saveStatusTimer.Tick += (_, _) =>
+        {
+            _saveStatusTimer.Stop();
+            SaveStatus = string.Empty;
+        };
 
         FontSetting.Options.Add(new SelectOption { Value = string.Empty, Label = "默认（内置字体）" });
         foreach (var source in System.Windows.Media.Fonts.SystemFontFamilies
@@ -68,7 +84,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             FontSetting.Options.Insert(1, new SelectOption { Value = _settings.FontFamily, Label = _settings.FontFamily });
         }
 
-        ProxyTypeSetting.Options.Add(new SelectOption { Value = "none", Label = "不使用" });
+        ProxyTypeSetting.Options.Add(new SelectOption { Value = "none", Label = "无代理" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "http", Label = "HTTP" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks4", Label = "SOCKS4" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks5", Label = "SOCKS5" });
@@ -101,6 +117,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     partial void OnHotkeyTextChanged(string value)
     {
+        OnPropertyChanged(nameof(HotkeyDisplay));
         if (_loading) return;
         _hotkeyService.Update(value);
         Persist();
@@ -126,6 +143,16 @@ public partial class GeneralSettingsViewModel : ObservableObject
         Persist();
     }
 
+    /// <summary>保存通用设置。</summary>
+    [RelayCommand]
+    private void Save()
+    {
+        Persist();
+        SaveStatus = "已保存";
+        _saveStatusTimer.Stop();
+        _saveStatusTimer.Start();
+    }
+
     private void Persist()
     {
         if (_loading) return;
@@ -140,6 +167,29 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
         _settingsService.Save(_settings);
     }
+
+    // ===== 恢复默认值 =====
+
+    [RelayCommand]
+    private void ResetHotkey() => HotkeyText = AiSettings.DefaultHotkey;
+
+    [RelayCommand]
+    private void ResetProxyType()
+    {
+        ProxyTypeSetting.SelectedOption =
+            ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultProxyType)
+            ?? ProxyTypeSetting.Options.FirstOrDefault();
+        ApplyProxyType();
+    }
+
+    [RelayCommand]
+    private void ResetProxyServer() => ProxyServer = string.Empty;
+
+    [RelayCommand]
+    private void ResetProxyPort() => ProxyPort = 0;
+
+    [RelayCommand]
+    private void ResetProxyUsername() => ProxyUsername = string.Empty;
 
     /// <summary>测试当前代理是否可用。</summary>
     [RelayCommand]
