@@ -31,6 +31,11 @@ public partial class GeneralSettingsView : UserControl
 
     private void ProxyPassword_PasswordChanged(object sender, RoutedEventArgs e) => OnProxyPasswordChanged();
 
+    private void ResetProxyPassword_Click(object sender, RoutedEventArgs e)
+    {
+        ProxyPasswordBox.Password = string.Empty;
+    }
+
     private void OnProxyPasswordChanged()
     {
         if (DataContext is GeneralSettingsViewModel vm && vm.ProxyPassword != ProxyPasswordBox.Password)
@@ -116,6 +121,49 @@ public partial class GeneralSettingsView : UserControl
         dialog.ShowDialog();
     }
 
+    /// <summary>一键把快捷键绑定到 Copilot 键（Win + Shift + F23）。</summary>
+    private void BindCopilot_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GeneralSettingsViewModel vm) return;
+
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = "注意",
+            DialogContent = new TextBlock
+            {
+                Text = "如果你是中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开搜索框。\n" +
+                       "如果你是非中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开Windows Copilot功能\n" +
+                       "是否继续？",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "取消",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = "继续",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    dialog.Close();
+                    vm.HotkeyText = "Win + Shift + F23";
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+    }
+
     private static ItemsControl? FindAncestorItemsControl(DependencyObject? child)
     {
         while (child != null)
@@ -181,13 +229,13 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = "取消",
-                StyleKey = "StyleDefault",
+                StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
             new()
             {
                 Text = "继续",
-                StyleKey = "StyleDanger",
+                StyleKey = "StyleDangerSoft",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();

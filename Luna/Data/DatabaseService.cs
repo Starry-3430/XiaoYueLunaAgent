@@ -133,6 +133,27 @@ public class DatabaseService
         conn.Execute("PRAGMA quick_check");
     }
 
+    /// <summary>清空所有表中的数据，保留表结构（含索引/触发器）。</summary>
+    public void ClearAllData()
+    {
+        using var conn = GetConnection();
+        conn.Open();
+
+        using var tx = conn.BeginTransaction();
+
+        // 先删 DiaryEntries 以触发 FTS 同步触发器，再清空其余数据表
+        conn.Execute("DELETE FROM DiaryEntries;", transaction: tx);
+        conn.Execute("DELETE FROM DiaryFts;", transaction: tx);
+        conn.Execute("DELETE FROM DiaryDays;", transaction: tx);
+        conn.Execute("DELETE FROM Attachments;", transaction: tx);
+        conn.Execute("DELETE FROM Messages;", transaction: tx);
+        conn.Execute("DELETE FROM TurnSummaries;", transaction: tx);
+        conn.Execute("DELETE FROM Sessions;", transaction: tx);
+        conn.Execute("DELETE FROM sqlite_sequence WHERE name = 'Messages';", transaction: tx);
+
+        tx.Commit();
+    }
+
     private static void ExecuteRaw(SqliteConnection conn, string sql, SqliteTransaction? tx = null)
     {
         using var cmd = conn.CreateCommand();
