@@ -28,13 +28,17 @@ public class SettingsService
 
     public string SettingsPath => _settingsPath;
 
+    /// <summary>最近一次 <see cref="Load"/> 是否因配置文件丢失或结构损坏而进行了重置。</summary>
+    public bool LastLoadWasReset { get; private set; }
+
     public AiSettings Load()
     {
         if (!File.Exists(_settingsPath))
         {
+            LastLoadWasReset = true;
             var defaults = CreateDefault();
             Save(defaults);
-            _logger.LogInformation("已创建默认配置文件：{Path}", _settingsPath);
+            _logger.LogWarning("配置文件丢失，已重置为默认配置：{Path}", _settingsPath);
             return defaults;
         }
 
@@ -44,17 +48,25 @@ public class SettingsService
             var settings = JsonSerializer.Deserialize<AiSettings>(json, JsonOptions);
             if (settings is not null)
             {
+                LastLoadWasReset = false;
                 RestoreApiKey(settings);
                 _logger.LogInformation("已加载配置文件：{Path}", _settingsPath);
                 return settings;
             }
+
+            _logger.LogWarning("配置文件内容为空，准备重置：{Path}", _settingsPath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "配置文件解析失败，使用默认配置");
+            _logger.LogError(ex, "配置文件解析失败，准备重置");
         }
 
-        return CreateDefault();
+        // 结构损坏：覆盖为默认配置
+        LastLoadWasReset = true;
+        var reset = CreateDefault();
+        Save(reset);
+        _logger.LogWarning("配置文件结构损坏，已重置为默认配置：{Path}", _settingsPath);
+        return reset;
     }
 
     public void Save(AiSettings settings)

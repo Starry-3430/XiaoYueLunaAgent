@@ -7,10 +7,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Luna.Services.Tools;
 
-/// <summary>抓取指定 URL 的网页并提取正文文本，供搜索后阅读使用。无参数、无副作用。</summary>
+/// <summary>抓取指定 URL 的网页并提取正文文本，供搜索后阅读使用。无副作用。</summary>
 public class FetchUrlTool : ITool
 {
     private const int MaxChars = 5000;
+
+    private static readonly JsonElement Schema = ToolSchema.Parse(
+        """{"type":"object","properties":{"url":{"type":"string","description":"要读取的网页完整 URL（需以 http:// 或 https:// 开头）"}},"required":["url"]}""");
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<FetchUrlTool> _logger;
@@ -18,7 +21,7 @@ public class FetchUrlTool : ITool
     public string Name => "fetch_url";
     public string DisplayName => "网页阅读";
     public string Description => "抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情";
-    public string ParametersSchema => """{"type":"object","properties":{"url":{"type":"string","description":"要读取的网页完整 URL（需以 http:// 或 https:// 开头）"}},"required":["url"]}""";
+    public JsonElement ParametersSchema => Schema;
 
     public FetchUrlTool(HttpClient httpClient, ILogger<FetchUrlTool> logger)
     {
@@ -26,15 +29,15 @@ public class FetchUrlTool : ITool
         _logger = logger;
     }
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
     {
-        var url = ExtractUrl(argumentsJson);
+        var url = ExtractUrl(args);
         if (string.IsNullOrWhiteSpace(url))
-            return "缺少参数 url。";
+            return ToolResult.Error("缺少参数 url。");
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            return $"无效的 URL：{url}";
+            return ToolResult.Error($"无效的 URL：{url}");
 
         try
         {
@@ -44,42 +47,33 @@ public class FetchUrlTool : ITool
 
             using var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
-                return $"抓取失败：HTTP {(int)response.StatusCode}";
+                return ToolResult.Error($"抓取失败：HTTP {(int)response.StatusCode}");
 
             var html = await response.Content.ReadAsStringAsync(ct);
             var text = ExtractText(html);
 
             if (string.IsNullOrWhiteSpace(text))
-                return $"网页 {uri} 未提取到正文内容。";
+                return ToolResult.Error($"网页 {uri} 未提取到正文内容。");
 
             _logger.LogInformation("网页抓取成功: {Url}, 正文长度: {Length}", uri, text.Length);
-            return text;
+            return ToolResult.Ok(text);
         }
         catch (OperationCanceledException)
         {
-            return "抓取超时或被取消。";
+            return ToolResult.Error("抓取超时或被取消。");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "网页抓取失败: {Url}", url);
-            return $"抓取失败：{ex.Message}";
+            return ToolResult.Error($"抓取失败：{ex.Message}");
         }
     }
 
-    private static string ExtractUrl(string argumentsJson)
+    private static string ExtractUrl(JsonElement args)
     {
-        try
-        {
-            using var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.ValueKind == JsonValueKind.Object &&
-                doc.RootElement.TryGetProperty("url", out var u))
-                return u.GetString()?.Trim() ?? string.Empty;
-        }
-        catch
-        {
-            // 参数不是合法 JSON 时，退化为把整串当作 URL
-        }
-        return argumentsJson.Trim();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("url", out var u))
+            return u.GetString()?.Trim() ?? string.Empty;
+        return string.Empty;
     }
 
     private static readonly Regex TitleRegex =

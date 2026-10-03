@@ -10,21 +10,24 @@ namespace Luna.Services.Tools;
 
 public class WebSearchTool : ITool
 {
-    private readonly HttpClient _httpClient;
-    private readonly AiSettings _settings;
-    private readonly ILogger<WebSearchTool> _logger;
-
     private const string TavilyApiUrl = "https://api.tavily.com/search";
+
+    private static readonly JsonElement Schema = ToolSchema.Parse(
+        """{"type":"object","properties":{"query":{"type":"string","description":"搜索关键词或问题"}},"required":["query"]}""");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
+    private readonly HttpClient _httpClient;
+    private readonly AiSettings _settings;
+    private readonly ILogger<WebSearchTool> _logger;
+
     public string Name => "web_search";
     public string DisplayName => "网页搜索";
     public string Description => "在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要";
-    public string ParametersSchema => """{"type":"object","properties":{"query":{"type":"string","description":"搜索关键词或问题"}},"required":["query"]}""";
+    public JsonElement ParametersSchema => Schema;
 
     public WebSearchTool(HttpClient httpClient, AiSettings settings, ILogger<WebSearchTool> logger)
     {
@@ -33,30 +36,32 @@ public class WebSearchTool : ITool
         _logger = logger;
     }
 
-    public async Task<string> ExecuteAsync(string argumentsJson, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_settings.TavilyApiKey))
-            return "未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。";
+            return ToolResult.Error("未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。");
 
-        var query = argumentsJson;
-        try
-        {
-            using var doc = JsonDocument.Parse(argumentsJson);
-            if (doc.RootElement.TryGetProperty("query", out var q))
-                query = q.GetString() ?? query;
-        }
-        catch { }
+        var query = ExtractQuery(args);
+        if (string.IsNullOrWhiteSpace(query))
+            return ToolResult.Error("缺少参数 query。");
 
         try
         {
             var results = await SearchAsync(query, 5, ct);
-            return FormatResults(results);
+            return ToolResult.Ok(FormatResults(results));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Tavily 搜索失败: {Query}", query);
-            return $"搜索失败: {ex.Message}";
+            return ToolResult.Error($"搜索失败: {ex.Message}");
         }
+    }
+
+    private static string ExtractQuery(JsonElement args)
+    {
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("query", out var q))
+            return q.GetString()?.Trim() ?? string.Empty;
+        return string.Empty;
     }
 
     private async Task<List<WebSearchResult>> SearchAsync(string query, int maxResults, CancellationToken ct)

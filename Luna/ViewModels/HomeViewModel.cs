@@ -23,6 +23,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly AiSettings _aiSettings;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolSettingsService _toolSettings;
+    private readonly ToolPermissionService _toolPermission;
     private readonly SettingsService _settingsService;
     private readonly ILogger<HomeViewModel> _logger;
     private CancellationTokenSource? _cts;
@@ -51,8 +52,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public HomeViewModel(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AiSettings aiSettings, ToolRegistry toolRegistry,
-        ToolSettingsService toolSettings, SettingsService settingsService,
-        ILogger<HomeViewModel> logger)
+        ToolSettingsService toolSettings, ToolPermissionService toolPermission,
+        SettingsService settingsService, ILogger<HomeViewModel> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
@@ -60,6 +61,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _aiSettings = aiSettings;
         _toolRegistry = toolRegistry;
         _toolSettings = toolSettings;
+        _toolPermission = toolPermission;
         _settingsService = settingsService;
         _logger = logger;
 
@@ -91,10 +93,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "系统",
             Tools =
             {
-                new ToolDefinition { Id = "powershell", Category = "系统", Name = "PowerShell", Description = "执行 PowerShell 命令", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
-                new ToolDefinition { Id = "everything", Category = "系统", Name = "Everything", Description = "通过 Everything 搜索文件", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "powershell", Category = "系统", Name = "PowerShell", Description = "执行 PowerShell 命令", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.High },
+                new ToolDefinition { Id = "search_files", Category = "系统", Name = "文件搜索", Description = "按文件名搜索文件，优先查 Windows 搜索索引，未命中时回退全盘扫描", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "read_file", Category = "系统", Name = "读取文件", Description = "读取指定文件内容（限定目录、扩展名与大小）", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "write_file", Category = "系统", Name = "写入文件", Description = "写入文件内容（需沙箱目录与二次确认）", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
                 new ToolDefinition { Id = "file_open", Category = "系统", Name = "打开文件/应用", Description = "打开指定文件或启动应用程序", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "file_rw", Category = "系统", Name = "文件读写", Description = "读取或写入文件内容", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
                 new ToolDefinition { Id = "screenshot", Category = "系统", Name = "截图", Description = "截取屏幕截图", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "window_manager", Category = "系统", Name = "窗口管理", Description = "管理窗口位置、大小和状态", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "volume_brightness", Category = "系统", Name = "音量/亮度", Description = "调节系统音量和屏幕亮度", IsEnabled = true, IsAvailable = false },
@@ -139,7 +142,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "开发",
             Tools =
             {
-                new ToolDefinition { Id = "code_exec", Category = "开发", Name = "代码执行（沙箱）", Description = "在沙箱环境中执行代码", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
+                new ToolDefinition { Id = "code_execute", Category = "开发", Name = "代码执行（沙箱）", Description = "在沙箱环境中执行代码", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
                 new ToolDefinition { Id = "git", Category = "开发", Name = "Git", Description = "执行 Git 操作", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
                 new ToolDefinition { Id = "file_tree", Category = "开发", Name = "文件树结构", Description = "获取目录的文件树结构", IsEnabled = true, IsAvailable = false },
             }
@@ -150,7 +153,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Name = "通信",
             Tools =
             {
-                new ToolDefinition { Id = "system_notify", Category = "通信", Name = "系统通知", Description = "发送系统通知", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "send_notification", Category = "通信", Name = "系统通知", Description = "发送系统通知，为“定时提醒”铺路", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Low },
                 new ToolDefinition { Id = "email", Category = "通信", Name = "邮件", Description = "发送邮件", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
             }
         });
@@ -159,7 +162,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         foreach (var tool in cat.Tools)
         {
             if (_toolRegistry.IsRegistered(tool.Id))
+            {
                 tool.IsAvailable = true;
+                tool.Risk = _toolRegistry.GetTool(tool.Id)?.Risk ?? ToolRiskLevel.None;
+            }
         }
 
         foreach (var cat in ToolCategories)
@@ -248,6 +254,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private void NewChat()
     {
         SaveCurrentDraft();
+        _toolPermission.ClearConversation(_currentSessionId);
         Messages.Clear();
         InputText = string.Empty;
         Status = "就绪";
@@ -407,6 +414,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         var replyContent = "";
         var replyReasoning = "";
         ChatMessage? lastAssistantMsg = null;
+        ChatMessage? activeReply = null;
 
         try
         {
@@ -414,6 +422,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 {
                     var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
                     Messages.Add(uiReply);
+                    activeReply = uiReply;
 
                     var (content, reasoning, pendingToolCalls) =
                         await StreamOneRoundAsync(uiReply, _cts.Token);
@@ -447,12 +456,33 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                             continue;
                         }
 
+                        // 中/高风险工具在执行前需要用户授权
+                        if (ToolPermissionService.NeedsConfirmation(tool) &&
+                            !_toolPermission.IsAlwaysAllowed(_currentSessionId, tool.Name))
+                        {
+                            var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
+                            if (decision == ToolPermissionDecision.Deny)
+                            {
+                                entry.Status = ToolCallStatus.Failed;
+                                entry.ResultJson = "User Denied";
+                                _logger.LogInformation("用户拒绝执行工具 {Name}", entry.ToolName);
+                                continue;
+                            }
+                            if (decision == ToolPermissionDecision.AllowAlways)
+                                _toolPermission.AllowForConversation(_currentSessionId, tool.Name);
+                        }
+
                         try
                         {
-                            var result = await tool.ExecuteAsync(entry.ArgumentsJson, _cts.Token);
-                            entry.ResultJson = TruncateResult(result);
-                            entry.Status = ToolCallStatus.Success;
-                            _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
+                            using var argsDoc = JsonDocument.Parse(
+                                string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
+                            var result = await tool.ExecuteAsync(argsDoc.RootElement.Clone(), _cts.Token);
+                            entry.ResultJson = TruncateResult(result.Content);
+                            entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
+                            if (result.IsError)
+                                _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
+                            else
+                                _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
                         }
                         catch (Exception ex)
                         {
@@ -509,18 +539,31 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             catch (OperationCanceledException)
             {
                 Status = "就绪（已取消）";
+                if (activeReply is not null)
+                {
+                    activeReply.IsStreaming = false;
+                    activeReply.ErrorMessage = "已取消";
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AI 回复失败");
                 Status = "出错：" + ex.Message;
+                if (activeReply is not null)
+                {
+                    activeReply.IsStreaming = false;
+                    activeReply.ErrorMessage = "出错：" + ex.Message;
+                }
             }
             finally
             {
-                if (lastAssistantMsg is not null)
+                // 达到最大工具轮次 / 取消 / 出错而没有最终文本回复时，
+                // 把最后一条回复标记为最终，避免“复制/重写”按钮消失。
+                var finalReply = lastAssistantMsg ?? activeReply;
+                if (finalReply is not null)
                 {
-                    lastAssistantMsg.IsStreaming = false;
-                    lastAssistantMsg.IsFinalReply = true;
+                    finalReply.IsStreaming = false;
+                    finalReply.IsFinalReply = true;
                 }
             }
 

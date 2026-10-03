@@ -7,6 +7,7 @@
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
+        Icon="pack://application:,,,/iconStream/Luna.ico"
         Width="1200" Height="850"
         MinWidth="720" MinHeight="550"
 Background="#E4E0CA"
@@ -548,6 +549,14 @@ Background="#E4E0CA"
                                                         </Style>
                                                     </md:MarkdownDocumentView.Style>
                                                 </md:MarkdownDocumentView>
+                                        <!-- 出错 / 取消提示 -->
+                                        <Border Margin="10,4,10,0" Padding="10,7" CornerRadius="6"
+                                                Background="#22FD7956"
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#A93226"
+                                                       FontSize="13" TextWrapping="Wrap" MaxWidth="560"/>
+                                        </Border>
                                         <!-- AI 操作按钮 -->
                                         <StackPanel Orientation="Horizontal"
                                                     HorizontalAlignment="Left"
@@ -702,11 +711,18 @@ Background="#E4E0CA"
                                                                            Margin="0,2,0,0"
                                                                            Visibility="{Binding HasStatusText, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                                             </StackPanel>
-                                                            <CheckBox Grid.Column="1"
-                                                                      Style="{StaticResource SettingsToggle}"
-                                                                      IsChecked="{Binding IsEnabled}"
-                                                                      IsEnabled="{Binding IsAvailable}"
-                                                                      VerticalAlignment="Center"/>
+                                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding RiskLabel}"
+                                                                           Foreground="{Binding RiskBrush}"
+                                                                           FontSize="14" FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,8,0"
+                                                                           Visibility="{Binding HasRiskLabel, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                <CheckBox Style="{StaticResource SettingsToggle}"
+                                                                          IsChecked="{Binding IsEnabled}"
+                                                                          IsEnabled="{Binding IsAvailable}"
+                                                                          VerticalAlignment="Center"/>
+                                                            </StackPanel>
                                                         </Grid>
 
                                                         <!-- web_search 的 Tavily Key 子控件 -->

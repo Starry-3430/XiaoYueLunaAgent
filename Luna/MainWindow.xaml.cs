@@ -785,15 +785,20 @@ private void HideInternal()
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        // AI 正在回复（发送中）时，禁止失焦关闭胶囊
+        if (_viewModel.IsBusy) return;
+
         // 胶囊窗口失去激活状态时自动隐藏
         HideInternal();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        // Esc 隐藏窗口
+        // Esc 隐藏窗口；发送中不生效，直到 AI 回复结束或用户取消
         if (e.Key == Key.Escape)
         {
+            if (_viewModel.IsBusy) return;
+
             HideInternal();
             e.Handled = true;
         }
