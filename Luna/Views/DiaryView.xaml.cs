@@ -19,7 +19,6 @@ public partial class DiaryView : UserControl
     private const double CardWidth = 320;
     private const double CardHeight = 460;
     private const double ContentWidth = 250;
-    private const double ContentMaxHeight = 170; // 约 8 行
     private const double Spacing = 310;      // 相邻卡片中心间距（拉开一点）
     private const double MaskInner = 600;    // 遮罩内边界距中心的像素（保持原值不变）
     private const double NeighborScale = 0.82;
@@ -229,14 +228,13 @@ public partial class DiaryView : UserControl
                 LineHeight = 20,
                 Foreground = TitleBrush,
             };
+            // 正文铺满整张卡片，只有放不下时才出现滚动条
             return new ScrollViewer
             {
-                Width = ContentWidth,
-                MaxHeight = ContentMaxHeight,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
                 Content = text,
             };
         }
