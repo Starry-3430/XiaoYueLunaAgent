@@ -2,7 +2,7 @@
   
   <img width="4840" height="2360" alt="IMG_9811" src="https://github.com/user-attachments/assets/cef6108c-a342-474a-a17f-faa494a1f960" />
   
-  [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&color=F7D12A&center=true&multiline=true&repeat=false&width=435&height=120&lines=%E4%B8%80%E9%97%AA%E4%B8%80%E9%97%AA%E4%BA%AE%E6%99%B6%E6%99%B6;%E6%BB%A1%E5%A4%A9%E9%83%BD%E6%98%AF%E5%B0%8F%E6%98%9F%E6%98%9F...)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&color=F7D12A&center=true&multiline=true&repeat=false&width=435&height=55&lines=%E4%B8%80%E9%97%AA%E4%B8%80%E9%97%AA%E4%BA%AE%E6%99%B6%E6%99%B6;%E6%BB%A1%E5%A4%A9%E9%83%BD%E6%98%AF%E5%B0%8F%E6%98%9F%E6%98%9F...)](https://git.io/typing-svg)
   
 </div>
 
