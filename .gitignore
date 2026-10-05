@@ -1,3 +1,22 @@
-﻿/todo.md
+﻿# Build output
 bin/
 obj/
+
+# IDE / user-specific files
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# Local database
+*.db
+*.db-shm
+*.db-wal
+
+# Local settings / secrets
+settings.json
+*.env
+.env.local
+
+# Private planning doc
+/todo.md

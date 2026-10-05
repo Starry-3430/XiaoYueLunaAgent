@@ -112,45 +112,28 @@ dotnet run --project Luna
 
 ## 📁 项目结构
 
+```
 Luna/
-
 ├── Luna/
-
 │   ├── App.xaml.cs                  # 应用入口，DI / Host / 单实例
-
 │   ├── MainWindow.xaml              # 灵动岛胶囊窗口
-
 │   ├── HomeWindow.xaml              # 主界面（聊天 / 设置 / 日记 / 工具）
-
 │   ├── Views/                       # AiConnectionView、GeneralSettingsView、DiaryView
-
 │   ├── ViewModels/                  # MVVM ViewModel
-
 │   ├── Models/                      # 数据模型与默认提示词
-
 │   ├── Services/
-
 │   │   ├── Tools/                   # ITool、ToolRegistry、各工具实现
-
 │   │   ├── OpenAiService.cs         # AI 服务与流式对话
-
 │   │   ├── ChatGenerationService.cs # 对话/工具调用编排
-
 │   │   ├── DiaryService.cs          # 日记生成
-
 │   │   ├── TurnSummaryService.cs    # 轮次摘要
-
 │   │   ├── *Repository.cs           # Session / Message / Task 仓储
-
 │   │   └── DatabaseInitializer.cs   # 建表与 FTS5 索引
-
 │   ├── Data/                        # DatabaseService（SQLite 连接）
-
 │   ├── Controls/                    # 自定义控件（对话框、右键菜单、平滑滚动等）
-
 │   └── Styles/                      # XAML 资源字典
-
 └── Luna.sln
+```
 
 ---
 
