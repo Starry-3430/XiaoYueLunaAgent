@@ -1187,4 +1187,49 @@ private void HideInternal()
         HideInternal();
         e.Handled = true;
     }
+
+    // ===== 拖拽上传附件（展开态） =====
+
+    private void ExpandedContent_DragEnter(object sender, DragEventArgs e) => UpdateExpandedDropState(e);
+
+    private void ExpandedContent_DragOver(object sender, DragEventArgs e) => UpdateExpandedDropState(e);
+
+    private void UpdateExpandedDropState(DragEventArgs e)
+    {
+        if (!_reminderActive && TryGetDroppedFiles(e, out _))
+        {
+            DropOverlay.Visibility = Visibility.Visible;
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            DropOverlay.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private void ExpandedContent_DragLeave(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private async void ExpandedContent_Drop(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+        if (!TryGetDroppedFiles(e, out var files)) return;
+
+        e.Handled = true;
+        await _viewModel.AddDroppedFilesAsync(files);
+    }
+
+    private static bool TryGetDroppedFiles(DragEventArgs e, out string[] files)
+    {
+        files = Array.Empty<string>();
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] data || data.Length == 0) return false;
+
+        files = data;
+        return true;
+    }
 }

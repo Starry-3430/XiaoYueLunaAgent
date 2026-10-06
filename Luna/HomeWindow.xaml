@@ -207,7 +207,12 @@ Background="#E4E0CA"
         <Rectangle Grid.Column="1" Width="1" Fill="#E4E0CA" HorizontalAlignment="Left"/>
 
         <!-- 右侧聊天区 -->
-        <Grid Grid.Column="2" Background="#E4E0CA">
+        <Grid x:Name="ChatArea" Grid.Column="2" Background="#E4E0CA"
+              AllowDrop="True"
+              DragEnter="ChatArea_DragEnter"
+              DragOver="ChatArea_DragOver"
+              DragLeave="ChatArea_DragLeave"
+              Drop="ChatArea_Drop">
             <Grid.RowDefinitions>
                 <RowDefinition Height="70"/>
                 <RowDefinition Height="*"/>
@@ -1004,6 +1009,20 @@ Background="#E4E0CA"
                     </Button.Template>
                 </Button>
             </Grid>
+
+            <!-- 拖拽上传遮罩 -->
+            <Border x:Name="DropOverlay" Grid.RowSpan="4" Panel.ZIndex="50"
+                    Background="#D9E4E0CA" Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="拖动到此处上传附件"
+                               Foreground="#5B4833" FontSize="20" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="最多10个附件，每个最多100MB"
+                               Foreground="#8B7B6B" FontSize="13" Margin="0,10,0,0"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
 
     <!-- 通知浮层 -->

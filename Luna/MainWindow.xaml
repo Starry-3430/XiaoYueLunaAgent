@@ -246,7 +246,12 @@
             <Grid x:Name="ExpandedContent"
                   Grid.RowSpan="2"
                   Width="420" Height="840"
-                  Visibility="Collapsed">
+                  Visibility="Collapsed"
+                  AllowDrop="True"
+                  DragEnter="ExpandedContent_DragEnter"
+                  DragOver="ExpandedContent_DragOver"
+                  DragLeave="ExpandedContent_DragLeave"
+                  Drop="ExpandedContent_Drop">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
@@ -802,6 +807,23 @@
                     </StackPanel>
                 </StackPanel>
             </Grid>
+
+            <!-- 拖拽上传遮罩（仅展开态显示） -->
+            <Border x:Name="DropOverlay" Grid.RowSpan="2"
+                    Width="420" Height="840"
+                    CornerRadius="25"
+                    Background="#D9362F2B"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="拖动到此处上传附件"
+                               Foreground="White" FontSize="18" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="最多10个附件，每个最多100MB"
+                               Foreground="#CCFFFFFF" FontSize="12" Margin="0,10,0,0"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </Window>

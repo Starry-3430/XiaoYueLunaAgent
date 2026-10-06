@@ -97,6 +97,32 @@ public partial class MainViewModel : ObservableObject
     {
         var picked = AttachmentHelper.PickFiles();
         if (picked.Count == 0) return;
+        await LoadAttachmentsAsync(picked);
+    }
+
+    /// <summary>接收拖拽进来的文件。</summary>
+    public Task AddDroppedFilesAsync(IEnumerable<string> paths)
+        => LoadAttachmentsAsync(AttachmentHelper.FromPaths(paths));
+
+    /// <summary>按数量/大小规则筛选后读取内容并加入待发送列表。</summary>
+    private async Task LoadAttachmentsAsync(IReadOnlyList<Attachment> candidates)
+    {
+        if (candidates.Count == 0) return;
+
+        var accepted = new List<Attachment>();
+        var skipped = 0;
+        foreach (var attachment in candidates)
+        {
+            if (PendingAttachments.Count + accepted.Count >= AttachmentHelper.MaxCount) { skipped++; continue; }
+            if (attachment.FileSize > AttachmentHelper.MaxBytes) { skipped++; continue; }
+            accepted.Add(attachment);
+        }
+
+        if (accepted.Count == 0)
+        {
+            Status = $"没有可添加的附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）";
+            return;
+        }
 
         _attachmentCts?.Cancel();
         _attachmentCts?.Dispose();
@@ -107,7 +133,7 @@ public partial class MainViewModel : ObservableObject
         Status = "正在读取附件…";
         try
         {
-            foreach (var attachment in picked)
+            foreach (var attachment in accepted)
             {
                 if (cts.IsCancellationRequested) break;
                 await LoadAttachmentContentAsync(attachment, cts.Token);
@@ -128,7 +154,9 @@ public partial class MainViewModel : ObservableObject
             if (ReferenceEquals(_attachmentCts, cts))
             {
                 IsLoadingAttachments = false;
-                Status = "就绪";
+                Status = skipped > 0
+                    ? $"已忽略 {skipped} 个附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）"
+                    : "就绪";
             }
         }
     }

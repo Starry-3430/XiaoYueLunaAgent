@@ -898,4 +898,51 @@ public partial class HomeWindow : Window
             e.Handled = true;
         }
     }
+
+    // ===== 拖拽上传附件 =====
+
+    private void ChatArea_DragEnter(object sender, DragEventArgs e) => UpdateDropState(e);
+
+    private void ChatArea_DragOver(object sender, DragEventArgs e) => UpdateDropState(e);
+
+    private void UpdateDropState(DragEventArgs e)
+    {
+        // 仅在聊天状态（非设置/日记/工具页）允许拖拽上传
+        if (!_isSettingsMode && TryGetDroppedFiles(e, out _))
+        {
+            DropOverlay.Visibility = Visibility.Visible;
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            DropOverlay.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private void ChatArea_DragLeave(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private async void ChatArea_Drop(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+        if (_isSettingsMode) return;
+        if (!TryGetDroppedFiles(e, out var files)) return;
+
+        e.Handled = true;
+        await _viewModel.AddDroppedFilesAsync(files);
+    }
+
+    private static bool TryGetDroppedFiles(DragEventArgs e, out string[] files)
+    {
+        files = Array.Empty<string>();
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] data || data.Length == 0) return false;
+
+        files = data;
+        return true;
+    }
 }
