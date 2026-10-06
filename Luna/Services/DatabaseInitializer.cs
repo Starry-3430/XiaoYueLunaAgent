@@ -42,6 +42,7 @@ public class DatabaseInitializer
             throw new InvalidOperationException("数据库损坏");
         }
 
+        MigrateAttachmentsTable(conn);   // 必须在 CreateTablesSql 建索引前重建旧结构
         conn.Execute(CreateTablesSql);  // 全部 IF NOT EXISTS
         AddReasoningContentColumn(conn);
         AddToolCallsJsonColumn(conn);
@@ -172,6 +173,21 @@ public class DatabaseInitializer
         }
     }
 
+    /// <summary>
+    /// 一次性迁移：早期 Attachments 表以 MessageId 关联消息（且从未启用写入）。
+    /// 现改为按 SessionId/TurnId 关联轮次，并新增 FileExtension/FileSize/ConvertedMarkdown 列。
+    /// 由于旧表没有数据，直接重建；在 <see cref="CreateTablesSql"/> 建索引之前执行，避免索引引用不存在的列。
+    /// </summary>
+    private void MigrateAttachmentsTable(SqliteConnection conn)
+    {
+        var columns = conn.Query<string>("SELECT name FROM pragma_table_info('Attachments')").ToList();
+        if (columns.Count == 0) return; // 表尚不存在
+        if (!columns.Contains("MessageId", StringComparer.OrdinalIgnoreCase)) return; // 已是新结构
+
+        conn.Execute("DROP TABLE Attachments;");
+        _logger.LogInformation("已重建 Attachments 表（MessageId 结构 → SessionId/TurnId 结构）");
+    }
+
     private const string CreateTablesSql = """
         CREATE TABLE IF NOT EXISTS Sessions (
             Id            TEXT PRIMARY KEY,
@@ -227,16 +243,20 @@ public class DatabaseInitializer
         );
 
         CREATE TABLE IF NOT EXISTS Attachments (
-            Id            TEXT PRIMARY KEY,
-            MessageId     INTEGER NOT NULL,
-            FileName      TEXT NOT NULL,
-            MimeType      TEXT,
-            SizeBytes     INTEGER,
-            Sha256        TEXT,
-            StoredPath    TEXT,
-            CreatedAtUtc  TEXT NOT NULL
+            Id                TEXT PRIMARY KEY,
+            SessionId         TEXT NOT NULL,
+            TurnId            TEXT,
+            FileName          TEXT NOT NULL,
+            FileExtension     TEXT,
+            FileSize          INTEGER,
+            Sha256            TEXT,
+            StoredPath        TEXT,
+            ConvertedMarkdown TEXT,
+            CreatedAtUtc      TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS IX_Attachments_MessageId ON Attachments(MessageId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_SessionId ON Attachments(SessionId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_TurnId ON Attachments(TurnId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_Sha256 ON Attachments(Sha256);
 
         CREATE TABLE IF NOT EXISTS Tasks (
             Id                TEXT PRIMARY KEY,

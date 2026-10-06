@@ -15,8 +15,10 @@ using Serilog;
 using Luna.Data;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Data;
 using Luna.Services.Tools;
 using Luna.ViewModels;
+using MarkItDown.DependencyInjection;
 using System.NativeTray;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -142,6 +144,16 @@ public partial class App : Application
                 }));
                 services.AddSingleton<HotkeyService>();
                 services.AddSingleton<IAiService, OpenAiService>();
+
+                // 文档转换（MarkItDown）：注册 IMarkItDownClient，并把转换工作区定向到 Luna 缓存目录，
+                // 避免转换过程中的临时文件污染用户目录。
+                var converterCacheDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Luna", "cache", "markitdown");
+                Directory.CreateDirectory(converterCacheDir);
+                services.AddMarkItDown().UseRootPath(converterCacheDir);
+                services.AddSingleton<IDocumentConverterService, MarkItDownConverterService>();
+
                 services.AddSingleton(sp => new NotificationService(
                     _trayIcon, sp.GetRequiredService<ILogger<NotificationService>>()));
                 services.AddSingleton<ITool, ClipboardReadTool>();
@@ -168,6 +180,8 @@ public partial class App : Application
                 services.AddSingleton<SessionRepository>();
                 services.AddSingleton<MessageRepository>();
                 services.AddSingleton<TaskRepository>();
+                services.AddSingleton<AttachmentRepository>();
+                services.AddSingleton<FileStorageService>();
                 services.AddSingleton<TurnSummaryService>();
                 services.AddSingleton<ChatGenerationService>();
                 services.AddSingleton<ReminderService>();
