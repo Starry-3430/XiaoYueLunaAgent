@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
+using Luna.Services.Data;
 using Luna.Services.Tools;
 
 namespace Luna.Services;
@@ -44,6 +45,7 @@ public sealed class ChatGenerationService
     private readonly IAiService _aiService;
     private readonly SessionRepository _sessionRepo;
     private readonly MessageRepository _messageRepo;
+    private readonly AttachmentRepository _attachmentRepo;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly TurnSummaryService _turnSummaryService;
@@ -56,13 +58,14 @@ public sealed class ChatGenerationService
     private const int MaxSafetyToolRounds = 200;
 
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
-        MessageRepository messageRepo, ToolRegistry toolRegistry,
+        MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
+        _attachmentRepo = attachmentRepo;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _turnSummaryService = turnSummaryService;
@@ -110,7 +113,14 @@ public sealed class ChatGenerationService
     /// <summary>
     /// 发送用户消息并启动（后台）生成。用户消息在写库后立即加入运行期集合。
     /// </summary>
-    public async Task SendAsync(string sessionId, string userText)
+    public Task SendAsync(string sessionId, string userText)
+        => SendAsync(sessionId, userText, null);
+
+    /// <summary>
+    /// 发送用户消息并启动（后台）生成。<paramref name="attachments"/> 非空时，
+    /// 先把附件记录落库，并把转换后的 Markdown 作为 system 消息注入会话供 AI 参考。
+    /// </summary>
+    public async Task SendAsync(string sessionId, string userText, IReadOnlyList<Attachment>? attachments)
     {
         var runtime = await GetOrLoadAsync(sessionId);
         if (runtime.IsBusy) return;
@@ -131,7 +141,70 @@ public sealed class ChatGenerationService
 
         runtime.Messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userMsgDbId });
 
+        if (attachments is { Count: > 0 })
+        {
+            // 附件与本次轮次关联后落库
+            foreach (var attachment in attachments)
+            {
+                attachment.SessionId = sessionId;
+                attachment.TurnId = turnId;
+                await _attachmentRepo.AddAsync(attachment);
+            }
+
+            // 把转换后的 Markdown 作为 system 消息注入会话（界面可见，AI 也会读取）
+            var context = BuildAttachmentContext(attachments);
+            var systemMsg = new Message
+            {
+                SessionId = sessionId,
+                TurnId = turnId,
+                Role = "system",
+                Content = context,
+                CreatedAtUtc = DateTime.UtcNow,
+                LogicalDate = logicalDate,
+            };
+            var systemMsgDbId = await _messageRepo.InsertAsync(systemMsg);
+            runtime.Messages.Add(new ChatMessage
+            {
+                Role = "system",
+                Content = context,
+                AttachmentSummary = ExtractAttachmentSummary(context),
+                DbId = systemMsgDbId,
+            });
+        }
+
         await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+    }
+
+    /// <summary>把附件转换结果拼装成注入会话的 system 内容。</summary>
+    private static string BuildAttachmentContext(IReadOnlyList<Attachment> attachments)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("用户上传了以下附件，请结合其内容回答后续问题。");
+        foreach (var a in attachments)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"### 附件：{a.FileName} · {AttachmentHelper.FormatSize(a.FileSize)}");
+            if (!string.IsNullOrWhiteSpace(a.SourcePath))
+                sb.AppendLine($"原始路径：{a.SourcePath}");
+            sb.AppendLine();
+            var body = string.IsNullOrWhiteSpace(a.InjectedMarkdown) ? a.ConvertedMarkdown : a.InjectedMarkdown;
+            sb.AppendLine(string.IsNullOrWhiteSpace(body)
+                ? "（未能提取到文本内容，如需可依据上面的原始路径读取该文件。）"
+                : body);
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    private const string AttachmentHeaderPrefix = "### 附件：";
+
+    /// <summary>从 system 附件内容中提取“文件名 · 大小”摘要，用于界面展示。</summary>
+    private static string ExtractAttachmentSummary(string content)
+    {
+        var lines = content
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => l.StartsWith(AttachmentHeaderPrefix, StringComparison.Ordinal))
+            .Select(l => l[AttachmentHeaderPrefix.Length..].Trim());
+        return string.Join("\n", lines);
     }
 
     /// <summary>重写某条 AI 回复：截断其后内容并重新生成。</summary>
@@ -160,6 +233,14 @@ public sealed class ChatGenerationService
 
         var userDbId = messages[userIndex].DbId;
 
+        // 重写前先保留该轮次注入的附件上下文（system 消息），重写后原样带回去
+        var attachmentContexts = new List<string>();
+        for (var i = userIndex + 1; i < messages.Count; i++)
+        {
+            if (messages[i].Role == "system" && !string.IsNullOrWhiteSpace(messages[i].Content))
+                attachmentContexts.Add(messages[i].Content);
+        }
+
         while (messages.Count > userIndex)
             messages.RemoveAt(userIndex);
 
@@ -175,6 +256,32 @@ public sealed class ChatGenerationService
         }
 
         messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userDbId });
+
+        // 重新注入保留的附件上下文（引用与转换内容），使重写仍能基于文件作答
+        foreach (var context in attachmentContexts)
+        {
+            var contextDbId = 0L;
+            if (userDbId > 0)
+            {
+                contextDbId = await _messageRepo.InsertAsync(new Message
+                {
+                    SessionId = sessionId,
+                    TurnId = turnId,
+                    Role = "system",
+                    Content = context,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    LogicalDate = logicalDate,
+                });
+            }
+
+            messages.Add(new ChatMessage
+            {
+                Role = "system",
+                Content = context,
+                AttachmentSummary = ExtractAttachmentSummary(context),
+                DbId = contextDbId,
+            });
+        }
 
         await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
     }
@@ -340,7 +447,7 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                activeReply.ErrorMessage = "已取消";
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "已取消");
             }
         }
         catch (Exception ex)
@@ -350,7 +457,7 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                activeReply.ErrorMessage = "出错：" + ex.Message;
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "发送失败：" + ex.Message);
             }
         }
         finally
@@ -392,6 +499,29 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = "就绪";
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
+    }
+
+    /// <summary>
+    /// 持久化一条“提示”消息（已取消 / 发送失败）。正文留空、错误信息写入 ErrorMessage 列，
+    /// 因此它会在会话中一直显示，但不会作为 AI 上下文（OpenAiService 会跳过正文为空的 assistant 消息）。
+    /// </summary>
+    private async Task PersistNoticeAsync(string sessionId, string turnId, string logicalDate,
+        ChatMessage msg, string text)
+    {
+        msg.ErrorMessage = text;
+
+        var id = await _messageRepo.InsertAsync(new Message
+        {
+            SessionId = sessionId,
+            TurnId = turnId,
+            Role = "assistant",
+            Content = string.Empty,
+            ErrorMessage = text,
+            ContentType = "error",
+            CreatedAtUtc = DateTime.UtcNow,
+            LogicalDate = logicalDate,
+        });
+        msg.DbId = id;
     }
 
     private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls)>
@@ -495,7 +625,11 @@ public sealed class ChatGenerationService
             Reasoning = m.ReasoningContent,
             DbId = m.Id,
             ToolCallId = m.ToolCallId,
+            ErrorMessage = m.ErrorMessage,
         };
+
+        if (m.Role == "system")
+            msg.AttachmentSummary = ExtractAttachmentSummary(m.Content);
 
         if (!string.IsNullOrEmpty(m.ToolCallsJson))
         {
@@ -535,7 +669,7 @@ public sealed class ChatGenerationService
             if (m.Role != "assistant") continue;
 
             var isTurnEnd = i == messages.Count - 1 || messages[i + 1].Role == "user";
-            if (isTurnEnd && !string.IsNullOrEmpty(m.Content))
+            if (isTurnEnd && (!string.IsNullOrEmpty(m.Content) || !string.IsNullOrEmpty(m.ErrorMessage)))
                 m.IsFinalReply = true;
         }
     }

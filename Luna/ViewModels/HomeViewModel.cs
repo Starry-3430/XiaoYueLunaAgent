@@ -1,16 +1,20 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
+using Luna.Controls;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Data;
 using Luna.Services.Tools;
 
 namespace Luna.ViewModels;
@@ -24,9 +28,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly ToolPermissionService _toolPermission;
     private readonly SettingsService _settingsService;
     private readonly ChatGenerationService _generation;
+    private readonly FileStorageService _fileStorage;
+    private readonly IDocumentConverterService _documentConverter;
     private readonly ILogger<HomeViewModel> _logger;
     private string? _currentSessionId;
     private readonly Dictionary<string, string> _sessionDrafts = new();
+    private readonly Dictionary<string, List<Attachment>> _sessionAttachments = new();
     private SessionRuntime? _runtime;
     private readonly ObservableCollection<ChatMessage> _emptyMessages = new();
 
@@ -38,6 +45,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     [ObservableProperty]
     private bool _isBusy;
+
+    [ObservableProperty]
+    private bool _isLoadingAttachments;
+
+    private CancellationTokenSource? _attachmentCts;
 
     [ObservableProperty]
     private ChatSessionItem? _selectedSession;
@@ -56,10 +68,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     public ObservableCollection<ChatSessionItem> ChatSessions { get; } = new();
     public ObservableCollection<ToolCategory> ToolCategories { get; } = new();
 
+    /// <summary>待发送附件列表（发送前暂存，发送成功后清空）。</summary>
+    public ObservableCollection<Attachment> PendingAttachments { get; } = new();
+
     public HomeViewModel(SessionRepository sessionRepo, AiSettings aiSettings,
         ToolRegistry toolRegistry, ToolSettingsService toolSettings,
         ToolPermissionService toolPermission, SettingsService settingsService,
-        ChatGenerationService generation, ILogger<HomeViewModel> logger)
+        ChatGenerationService generation, FileStorageService fileStorage,
+        IDocumentConverterService documentConverter, ILogger<HomeViewModel> logger)
     {
         _sessionRepo = sessionRepo;
         _aiSettings = aiSettings;
@@ -68,6 +84,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _toolPermission = toolPermission;
         _settingsService = settingsService;
         _generation = generation;
+        _fileStorage = fileStorage;
+        _documentConverter = documentConverter;
         _logger = logger;
 
         _tavilyApiKey = _aiSettings.TavilyApiKey;
@@ -295,8 +313,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     {
         SaveCurrentDraft();
         _toolPermission.ClearConversation(_currentSessionId);
+        _attachmentCts?.Cancel();
         Runtime = null;
         InputText = string.Empty;
+        PendingAttachments.Clear();
         Status = "就绪";
         _currentSessionId = null;
         SelectedSession = null;
@@ -315,6 +335,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         }
 
         SaveCurrentDraft();
+        PendingAttachments.Clear();
 
         _currentSessionId = session.Id;
         SelectedSession = session;
@@ -323,6 +344,13 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             InputText = draft;
         else
             InputText = string.Empty;
+
+        // 恢复该会话尚未发送的附件
+        if (_sessionAttachments.TryGetValue(session.Id, out var attachments))
+        {
+            foreach (var attachment in attachments)
+                PendingAttachments.Add(attachment);
+        }
 
         try
         {
@@ -338,20 +366,175 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     private void SaveCurrentDraft()
     {
-        if (_currentSessionId is not null)
-            _sessionDrafts[_currentSessionId] = InputText;
+        if (_currentSessionId is null) return;
+        _sessionDrafts[_currentSessionId] = InputText;
+        _sessionAttachments[_currentSessionId] = PendingAttachments.ToList();
+    }
+
+    /// <summary>选择附件（多选），读取内容并估算 Token，加入待发送列表。</summary>
+    [RelayCommand]
+    private async Task AddAttachmentAsync()
+    {
+        var picked = AttachmentHelper.PickFiles();
+        if (picked.Count == 0) return;
+        await LoadAttachmentsAsync(picked);
+    }
+
+    /// <summary>接收拖拽进来的文件。</summary>
+    public Task AddDroppedFilesAsync(IEnumerable<string> paths)
+        => LoadAttachmentsAsync(AttachmentHelper.FromPaths(paths));
+
+    /// <summary>按数量/大小规则筛选后读取内容并加入待发送列表。</summary>
+    private async Task LoadAttachmentsAsync(IReadOnlyList<Attachment> candidates)
+    {
+        if (candidates.Count == 0) return;
+
+        // 规则：最多 10 个附件，每个不超过 100 MB
+        var accepted = new List<Attachment>();
+        var skipped = 0;
+        foreach (var attachment in candidates)
+        {
+            if (PendingAttachments.Count + accepted.Count >= AttachmentHelper.MaxCount) { skipped++; continue; }
+            if (attachment.FileSize > AttachmentHelper.MaxBytes) { skipped++; continue; }
+            accepted.Add(attachment);
+        }
+
+        if (accepted.Count == 0)
+        {
+            Status = $"没有可添加的附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）";
+            return;
+        }
+
+        _attachmentCts?.Cancel();
+        _attachmentCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _attachmentCts = cts;
+
+        IsLoadingAttachments = true;
+        Status = "正在读取附件…";
+        try
+        {
+            foreach (var attachment in accepted)
+            {
+                if (cts.IsCancellationRequested) break;
+                await LoadAttachmentContentAsync(attachment, cts.Token);
+                if (cts.IsCancellationRequested) break;
+                PendingAttachments.Add(attachment);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("附件读取已取消");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "读取附件失败");
+        }
+        finally
+        {
+            if (ReferenceEquals(_attachmentCts, cts))
+            {
+                IsLoadingAttachments = false;
+                Status = skipped > 0
+                    ? $"已忽略 {skipped} 个附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）"
+                    : "就绪";
+            }
+        }
+    }
+
+    /// <summary>取消正在进行的附件转换。</summary>
+    [RelayCommand]
+    private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
+
+    /// <summary>转换附件内容并估算 Token。</summary>
+    private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
+    {
+        var sourcePath = attachment.StoredPath;
+        if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
+
+        attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(sourcePath, ct);
+        attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
+    }
+
+    /// <summary>从待发送列表移除附件。</summary>
+    [RelayCommand]
+    private void RemoveAttachment(Attachment? attachment)
+    {
+        if (attachment is not null) PendingAttachments.Remove(attachment);
+    }
+
+    /// <summary>清空待发送附件。</summary>
+    [RelayCommand]
+    private void ClearAttachments() => PendingAttachments.Clear();
+
+    private static Window? ActiveWindow =>
+        Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+        ?? Application.Current?.MainWindow;
+
+    /// <summary>保存文件到内容寻址存储；内容与 Token 已在导入时准备好。</summary>
+    private async Task<List<Attachment>> PrepareAttachmentsAsync()
+    {
+        var prepared = new List<Attachment>();
+        foreach (var attachment in PendingAttachments.ToList())
+        {
+            var sourcePath = attachment.StoredPath;
+            if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) continue;
+
+            try
+            {
+                var stored = await _fileStorage.StoreAsync(sourcePath);
+                attachment.Sha256 = stored.Sha256;
+                attachment.StoredPath = stored.StoredPath;
+                attachment.FileSize = stored.FileSize;
+
+                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                    attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
+                if (attachment.TokenEstimate == 0)
+                    attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
+
+                prepared.Add(attachment);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "准备附件失败：{File}", attachment.FileName);
+            }
+        }
+        return prepared;
+    }
+
+    /// <summary>超过 Token 预算时询问用户，按选择决定是否智能截断。</summary>
+    private static void ApplyTokenBudget(IReadOnlyList<Attachment> prepared)
+    {
+        var overLimit = prepared
+            .Where(a => a.TokenEstimate > AttachmentContentProcessor.DefaultMaxTokens)
+            .ToList();
+        if (overLimit.Count == 0) return;
+
+        var mode = AttachmentTruncationDialog.Show(ActiveWindow);
+        if (mode != AttachmentImportMode.SmartTruncate) return;
+
+        foreach (var attachment in overLimit)
+            attachment.InjectedMarkdown = AttachmentContentProcessor.Truncate(attachment.ConvertedMarkdown);
     }
 
     [RelayCommand]
     private async Task SendAsync()
     {
-        if (string.IsNullOrWhiteSpace(InputText) || IsBusy) return;
+        var hasAttachments = PendingAttachments.Count > 0;
+        if (IsBusy) return;
+        if (string.IsNullOrWhiteSpace(InputText) && !hasAttachments) return;
 
         var userText = InputText.Trim();
         InputText = string.Empty;
 
         try
         {
+            // 先保存文件并转换 Markdown（可能耗时），再启动 AI 循环
+            var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
+            if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
+                userText = "请阅读我发送的附件内容。";
+            ApplyTokenBudget(prepared);
+
             if (_currentSessionId is null)
             {
                 var session = new Session();
@@ -370,12 +553,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Runtime = await _generation.GetOrLoadAsync(sessionId);
 
             // 生成在服务中后台执行：切换界面/会话不会中断，用户消息与 AI 输出由服务写库并推进。
-            await _generation.SendAsync(sessionId, userText);
+            await _generation.SendAsync(sessionId, userText, prepared);
+
+            // 发送成功后清空待发送附件（并清掉该会话的暂存）
+            PendingAttachments.Clear();
+            _sessionAttachments[sessionId] = new List<Attachment>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送消息失败");
-            Status = "出错：" + ex.Message;
+            Status = "发送失败：" + ex.Message;
         }
     }
 

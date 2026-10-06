@@ -11,6 +11,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Luna.Controls;
 using Luna.Models;
@@ -60,6 +61,12 @@ private readonly MainViewModel _viewModel;
     private EventHandler? _renderingHandler;
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
 
+    // ===== 胶囊悬停展开 =====
+    private bool _capsuleAwake;        // 唤醒动画是否已播放完成
+    private bool _hoverExpanded;       // 悬停展开区是否已展开
+    private bool _suppressDeactivate;  // 文件对话框打开期间禁止失焦隐藏胶囊
+    private const double CapsuleHoverHeight = 36;
+
     // ===== 提醒模式 =====
     private readonly Queue<TaskItem> _reminderQueue = new();
     private readonly DispatcherTimer _reminderAutoTimer;
@@ -107,6 +114,13 @@ private readonly MainViewModel _viewModel;
         // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(CompactInputBox);
         _ = new EditorContextMenu(InputBox);
+
+        // 胶囊悬停展开（添加附件）
+        IslandBorder.MouseEnter += IslandBorder_MouseEnter;
+        IslandBorder.MouseLeave += IslandBorder_MouseLeave;
+
+        // 待发送附件变化时刷新胶囊拓展区（导入后常驻展开，发送后收起）
+        _viewModel.PendingAttachments.CollectionChanged += (_, _) => RefreshCapsuleAttachmentPanel();
 
         Loaded += (_, _) =>
         {
@@ -424,6 +438,8 @@ private readonly MainViewModel _viewModel;
                 // 布局尺寸不可用时直接显示，避免窗口卡在透明/裁剪状态
                 CompactContent.Opacity = 1;
                 IslandBorder.Clip = null;
+                _capsuleAwake = true;
+                RefreshCapsuleAttachmentPanel();
             }
 
             CompactInputBox.Focus();
@@ -629,6 +645,10 @@ private readonly MainViewModel _viewModel;
             RadiusX = 0,
             RadiusY = 0
         };
+
+        // 唤醒动画完成前不允许悬停展开
+        _capsuleAwake = false;
+        CollapseCapsuleHover(immediate: true);
     }
     
     // 隐藏时也调用
@@ -681,6 +701,8 @@ private void HideInternal()
             {
                 CompactContent.Opacity = 1;
                 IslandBorder.Clip = null;
+                _capsuleAwake = true;
+                RefreshCapsuleAttachmentPanel();
             }
 
             CompactInputBox.Focus();
@@ -797,6 +819,8 @@ private void HideInternal()
             {
                 StopAnimation();
                 IslandBorder.CornerRadius = new CornerRadius(Math.Min(IslandBorder.ActualHeight / 2.0, 25));
+                _capsuleAwake = true; // 唤醒动画播放完成，允许悬停展开
+                RefreshCapsuleAttachmentPanel();
             }
         };
 
@@ -822,6 +846,7 @@ private void HideInternal()
     {
         // 重新计算占位符与输入框尺寸
         StopAnimation();
+        CollapseCapsuleHover(immediate: true);
         ReminderContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Visible;
@@ -838,6 +863,7 @@ private void HideInternal()
     private void SwitchToExpanded()
     {
         StopAnimation();
+        CollapseCapsuleHover(immediate: true);
         ReminderContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Opacity = 0;
@@ -852,6 +878,96 @@ private void HideInternal()
             ScrollMessagesToEnd();
             MarkdownViewerRefresher.RefreshStreaming(this);
         }, DispatcherPriority.Loaded);
+    }
+
+    // ===== 胶囊悬停展开（添加附件） =====
+
+    private bool HasPendingAttachments => _viewModel.PendingAttachments.Count > 0;
+
+    private void IslandBorder_MouseEnter(object sender, MouseEventArgs e)
+    {
+        // 仅在胶囊被唤醒、唤醒动画完成、且处于紧凑态时生效
+        if (_reminderActive || _animating) return;
+        if (HasPendingAttachments) return; // 已导入附件时常驻展开
+        if (!_capsuleAwake) return;
+        if (CurrentMode() != CapsuleMode.Compact) return;
+
+        ExpandCapsuleHover();
+    }
+
+    private void IslandBorder_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_reminderActive) return;
+        if (HasPendingAttachments) return; // 导入附件后保持展开，直到发送
+        CollapseCapsuleHover(immediate: false);
+    }
+
+    /// <summary>下边缘向下拓展，露出按钮/计数条（S 曲线缓动 + 不透明度渐显）。</summary>
+    private void ExpandCapsuleHover()
+    {
+        if (ExpandedContent.Visibility == Visibility.Visible) return;
+        if (_hoverExpanded) return;
+        _hoverExpanded = true;
+
+        var ease = new SmoothStepEase();
+        CapsuleAttachmentPanel.BeginAnimation(HeightProperty,
+            new DoubleAnimation(CapsuleHoverHeight, TimeSpan.FromSeconds(0.18)) { EasingFunction = ease });
+        CapsuleAttachmentPanel.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, TimeSpan.FromSeconds(0.22)) { EasingFunction = ease });
+    }
+
+    /// <summary>收起拓展区（S 曲线缓动 + 淡出）。immediate 为 true 时立即归零。</summary>
+    private void CollapseCapsuleHover(bool immediate)
+    {
+        _hoverExpanded = false;
+
+        if (immediate)
+        {
+            CapsuleAttachmentPanel.BeginAnimation(HeightProperty, null);
+            CapsuleAttachmentPanel.Height = 0;
+            CapsuleAttachmentPanel.BeginAnimation(OpacityProperty, null);
+            CapsuleAttachmentPanel.Opacity = 0;
+            return;
+        }
+
+        if (HasPendingAttachments) return;
+
+        var ease = new SmoothStepEase();
+        CapsuleAttachmentPanel.BeginAnimation(HeightProperty,
+            new DoubleAnimation(0, TimeSpan.FromSeconds(0.18)) { EasingFunction = ease });
+        CapsuleAttachmentPanel.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, TimeSpan.FromSeconds(0.15)) { EasingFunction = ease });
+    }
+
+    /// <summary>根据待发送附件数量刷新拓展区：有附件时常驻展开并显示计数与“全部删除”（与“添加附件”并存）。</summary>
+    private void RefreshCapsuleAttachmentPanel()
+    {
+        var count = _viewModel.PendingAttachments.Count;
+        var has = count > 0;
+
+        CapsuleAttachmentCount.Text = has ? $"{count} 个附件" : string.Empty;
+        CapsuleClearButton.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
+
+        if (CurrentMode() != CapsuleMode.Compact) return;
+
+        if (has)
+            ExpandCapsuleHover();
+        else if (!IslandBorder.IsMouseOver)
+            CollapseCapsuleHover(immediate: false);
+    }
+
+    /// <summary>添加附件：文件对话框会令窗口失焦，期间抑制自动隐藏。</summary>
+    private void AttachFile_Click(object sender, RoutedEventArgs e)
+    {
+        _suppressDeactivate = true;
+        try
+        {
+            _viewModel.AddAttachmentCommand.Execute(null);
+        }
+        finally
+        {
+            _suppressDeactivate = false;
+        }
     }
 
     // ===== 定时提醒 =====
@@ -1043,6 +1159,9 @@ private void HideInternal()
 
     private void Window_Deactivated(object? sender, EventArgs e)
     {
+        // 文件选择对话框打开期间，窗口失活不应隐藏胶囊
+        if (_suppressDeactivate) return;
+
         // AI 正在回复（发送中）或正在提醒时，禁止失焦关闭胶囊
         if (_viewModel.IsBusy || _reminderActive) return;
 
@@ -1067,5 +1186,50 @@ private void HideInternal()
 
         HideInternal();
         e.Handled = true;
+    }
+
+    // ===== 拖拽上传附件（展开态） =====
+
+    private void ExpandedContent_DragEnter(object sender, DragEventArgs e) => UpdateExpandedDropState(e);
+
+    private void ExpandedContent_DragOver(object sender, DragEventArgs e) => UpdateExpandedDropState(e);
+
+    private void UpdateExpandedDropState(DragEventArgs e)
+    {
+        if (!_reminderActive && TryGetDroppedFiles(e, out _))
+        {
+            DropOverlay.Visibility = Visibility.Visible;
+            e.Effects = DragDropEffects.Copy;
+        }
+        else
+        {
+            DropOverlay.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.None;
+        }
+        e.Handled = true;
+    }
+
+    private void ExpandedContent_DragLeave(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private async void ExpandedContent_Drop(object sender, DragEventArgs e)
+    {
+        DropOverlay.Visibility = Visibility.Collapsed;
+        if (!TryGetDroppedFiles(e, out var files)) return;
+
+        e.Handled = true;
+        await _viewModel.AddDroppedFilesAsync(files);
+    }
+
+    private static bool TryGetDroppedFiles(DragEventArgs e, out string[] files)
+    {
+        files = Array.Empty<string>();
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] data || data.Length == 0) return false;
+
+        files = data;
+        return true;
     }
 }

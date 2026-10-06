@@ -17,6 +17,8 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:SubtractConverter x:Key="SubtractConverter"/>
+        <converters:FileSizeConverter x:Key="FileSizeConverter"/>
+        <converters:AttachmentMetaConverter x:Key="AttachmentMetaConverter"/>
 
         <Style TargetType="ScrollBar">
             <Setter Property="Background" Value="Transparent"/>
@@ -125,6 +127,47 @@
             </Setter>
         </Style>
         
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Opacity" Value="0.85"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Opacity" Value="0.7"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RemoveChipButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#88FFFFFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="9" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#26FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
     </Window.Resources>
     <Border x:Name="IslandBorder"
             Background="#362F2B"
@@ -132,7 +175,13 @@
             Padding="12"
             MinWidth="280" MinHeight="50">
         <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
             <Grid x:Name="CompactContent"
+                  Grid.Row="0"
                   VerticalAlignment="Center">
                 <TextBox x:Name="CompactInputBox"
                          Width="156" Height="30"
@@ -159,12 +208,53 @@
                            Visibility="Visible"/>
             </Grid>
 
+            <!-- 胶囊悬停展开区：左侧计数；右侧“添加附件”与“全部删除”（导入后两者并存） -->
+            <Grid x:Name="CapsuleAttachmentPanel"
+                  Grid.Row="1"
+                  Height="0" Opacity="0"
+                  ClipToBounds="True"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Bottom">
+                <TextBlock x:Name="CapsuleAttachmentCount"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Margin="4,4,0,0"
+                           Foreground="#CCE4E0CA" FontSize="12"/>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Margin="0,4,0,0">
+                    <Button x:Name="CapsuleAttachButton"
+                            Content="添加附件"
+                            Height="28" Padding="12,0"
+                            FontSize="12"
+                            Style="{StaticResource PillButton}"
+                            Foreground="White" Background="#4A4A4A"
+                            Click="AttachFile_Click"/>
+                    <Button x:Name="CapsuleClearButton"
+                            Content="全部删除"
+                            Height="28" Padding="12,0" Margin="6,0,0,0"
+                            FontSize="12"
+                            Visibility="Collapsed"
+                            Style="{StaticResource PillButton}"
+                            Foreground="White" Background="#5A4A42"
+                            Command="{Binding ClearAttachmentsCommand}"/>
+                </StackPanel>
+            </Grid>
+
             <!-- 展开态：完整交互 -->
             <Grid x:Name="ExpandedContent"
+                  Grid.RowSpan="2"
                   Width="420" Height="840"
-                  Visibility="Collapsed">
+                  Visibility="Collapsed"
+                  AllowDrop="True"
+                  DragEnter="ExpandedContent_DragEnter"
+                  DragOver="ExpandedContent_DragOver"
+                  DragLeave="ExpandedContent_DragLeave"
+                  Drop="ExpandedContent_Drop">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -198,6 +288,9 @@
                                                     <Setter Property="HorizontalAlignment" Value="Right"/>
                                                     <Setter Property="Background" Value="#E4E0CA"/>
                                                     <Setter Property="MaxWidth" Value="500"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Role}" Value="system">
+                                                    <Setter Property="HorizontalAlignment" Value="Right"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -517,7 +610,7 @@
                                                     </md:MarkdownDocumentView.Style>
                                                 </md:MarkdownDocumentView>
                                                 <!-- 出错 / 取消提示 -->
-                                                <Border Margin="8,4,8,0" Padding="10,7" CornerRadius="6"
+                                                <Border Margin="8,4,8,10" Padding="10,7" CornerRadius="6"
                                                         Background="#33FD7956"
                                                         HorizontalAlignment="Left"
                                                         Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -540,15 +633,28 @@
                                                     </Style>
                                                 </StackPanel.Style>
                                                 <Button Content="复制" FontSize="12" Height="26" Width="50"
+                                                        Style="{StaticResource PillButton}"
                                                         Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
                                                         Background="#333333" Margin="0,0,6,0"
                                                         Click="CopyMessage_Click"/>
                                                 <Button Content="重写" FontSize="12" Height="26" Width="50"
+                                                        Style="{StaticResource PillButton}"
                                                         Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
                                                         Background="#333333"
                                                         Click="RewriteMessage_Click"/>
                                             </StackPanel>
                                         </StackPanel>
+
+                                        <!-- 附件详情（system 消息）：仅显示“文件名 · 大小”，紧跟用户气泡下方 -->
+                                        <TextBlock Margin="8,0,8,8"
+                                                   HorizontalAlignment="Right"
+                                                   TextAlignment="Right"
+                                                   TextWrapping="Wrap"
+                                                   MaxWidth="500"
+                                                   Foreground="#88FFFFFF"
+                                                   FontSize="11"
+                                                   Text="{Binding AttachmentSummary}"
+                                                   Visibility="{Binding HasAttachmentSummary, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -556,8 +662,53 @@
                     </ItemsControl>
                 </ScrollViewer>
 
+                <!-- 待发送附件列表 -->
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding PendingAttachments}" Margin="0,6,0,0">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PendingAttachments.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:Attachment}">
+                            <Border Background="#33FFFFFF" CornerRadius="8" Padding="8,4" Margin="0,0,6,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding FileName}"
+                                               VerticalAlignment="Center"
+                                               Foreground="#E4E0CA" FontSize="12"
+                                               MaxWidth="200" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Foreground="#88FFFFFF" FontSize="11" Margin="4,0,0,0">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource AttachmentMetaConverter}">
+                                                <Binding Path="FileSize"/>
+                                                <Binding Path="TokenEstimate"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                    <Button Content="✕" Width="18" Height="18" Margin="6,0,0,0"
+                                            Style="{StaticResource RemoveChipButton}"
+                                            FontSize="11"
+                                            Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <!-- 输入区 -->
-                <Grid Grid.Row="1" Margin="0,8,0,0">
+                <Grid Grid.Row="2" Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -605,15 +756,39 @@
                 </Grid>
 
                 <!-- 状态 -->
-                <TextBlock Grid.Row="2"
-                           Text="{Binding Status}"
-                           Foreground="#88FFFFFF"
-                           FontSize="11"
-                           Margin="4,6,0,0"/>
+                <Grid Grid.Row="3" Margin="4,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Status}"
+                               Foreground="#88FFFFFF"
+                               FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
+                                Visibility="{Binding IsLoadingAttachments, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ProgressBar IsIndeterminate="True" Width="80" Height="5" VerticalAlignment="Center"
+                                     Foreground="#88FFFFFF" Background="#33FFFFFF" BorderThickness="0"/>
+                        <Button Content="取消" Margin="6,0,0,0" Height="26" Padding="12,0"
+                                FontSize="12" Style="{StaticResource PillButton}"
+                                Foreground="#88FFFFFF" Background="#33FFFFFF"
+                                Command="{Binding CancelAttachmentLoadCommand}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2"
+                            Content="添加附件"
+                            Height="26" Padding="12,0"
+                            FontSize="12"
+                            Style="{StaticResource PillButton}"
+                            Foreground="#88FFFFFF" Background="#33FFFFFF"
+                            VerticalAlignment="Center"
+                            Click="AttachFile_Click"/>
+                </Grid>
             </Grid>
 
             <!-- 提醒模式 -->
-            <Grid x:Name="ReminderContent" Width="320" Visibility="Collapsed">
+            <Grid x:Name="ReminderContent" Grid.RowSpan="2" Width="320" Visibility="Collapsed">
                 <StackPanel Margin="14,12,14,10">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                         <TextBlock Text="⏰" FontSize="15" VerticalAlignment="Center"/>
@@ -632,6 +807,23 @@
                     </StackPanel>
                 </StackPanel>
             </Grid>
+
+            <!-- 拖拽上传遮罩（仅展开态显示） -->
+            <Border x:Name="DropOverlay" Grid.RowSpan="2"
+                    Width="420" Height="840"
+                    CornerRadius="25"
+                    Background="#D9362F2B"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="拖动到此处上传附件"
+                               Foreground="White" FontSize="18" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="最多10个附件，每个最多100MB"
+                               Foreground="#CCFFFFFF" FontSize="12" Margin="0,10,0,0"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </Window>

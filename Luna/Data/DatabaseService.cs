@@ -60,16 +60,20 @@ public class DatabaseService
         );
 
         CREATE TABLE IF NOT EXISTS Attachments (
-            Id            TEXT PRIMARY KEY,
-            MessageId     INTEGER NOT NULL,
-            FileName      TEXT NOT NULL,
-            MimeType      TEXT,
-            SizeBytes     INTEGER,
-            Sha256        TEXT,
-            StoredPath    TEXT,
-            CreatedAtUtc  TEXT NOT NULL
+            Id                TEXT PRIMARY KEY,
+            SessionId         TEXT NOT NULL,
+            TurnId            TEXT,
+            FileName          TEXT NOT NULL,
+            FileExtension     TEXT,
+            FileSize          INTEGER,
+            Sha256            TEXT,
+            StoredPath        TEXT,
+            ConvertedMarkdown TEXT,
+            CreatedAtUtc      TEXT NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS IX_Attachments_MessageId ON Attachments(MessageId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_SessionId ON Attachments(SessionId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_TurnId ON Attachments(TurnId);
+        CREATE INDEX IF NOT EXISTS IX_Attachments_Sha256 ON Attachments(Sha256);
         """;
 
     private const string CreateFtsSql = """
