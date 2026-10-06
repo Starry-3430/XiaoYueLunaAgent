@@ -504,7 +504,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送消息失败");
-            Status = "出错：" + ex.Message;
+            Status = "发送失败：" + ex.Message;
         }
     }
 

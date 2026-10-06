@@ -13,4 +13,5 @@ public class Message
     public string ContentType { get; set; } = "text";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string LogicalDate { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
 }

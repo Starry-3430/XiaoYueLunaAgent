@@ -214,7 +214,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送失败");
-            Status = "出错：" + ex.Message;
+            Status = "发送失败：" + ex.Message;
         }
     }
 

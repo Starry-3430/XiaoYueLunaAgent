@@ -411,7 +411,7 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                activeReply.ErrorMessage = "已取消";
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "已取消");
             }
         }
         catch (Exception ex)
@@ -421,7 +421,7 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                activeReply.ErrorMessage = "出错：" + ex.Message;
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "发送失败：" + ex.Message);
             }
         }
         finally
@@ -463,6 +463,29 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = "就绪";
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
+    }
+
+    /// <summary>
+    /// 持久化一条“提示”消息（已取消 / 发送失败）。正文留空、错误信息写入 ErrorMessage 列，
+    /// 因此它会在会话中一直显示，但不会作为 AI 上下文（OpenAiService 会跳过正文为空的 assistant 消息）。
+    /// </summary>
+    private async Task PersistNoticeAsync(string sessionId, string turnId, string logicalDate,
+        ChatMessage msg, string text)
+    {
+        msg.ErrorMessage = text;
+
+        var id = await _messageRepo.InsertAsync(new Message
+        {
+            SessionId = sessionId,
+            TurnId = turnId,
+            Role = "assistant",
+            Content = string.Empty,
+            ErrorMessage = text,
+            ContentType = "error",
+            CreatedAtUtc = DateTime.UtcNow,
+            LogicalDate = logicalDate,
+        });
+        msg.DbId = id;
     }
 
     private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls)>
@@ -566,6 +589,7 @@ public sealed class ChatGenerationService
             Reasoning = m.ReasoningContent,
             DbId = m.Id,
             ToolCallId = m.ToolCallId,
+            ErrorMessage = m.ErrorMessage,
         };
 
         if (m.Role == "system")
@@ -609,7 +633,7 @@ public sealed class ChatGenerationService
             if (m.Role != "assistant") continue;
 
             var isTurnEnd = i == messages.Count - 1 || messages[i + 1].Role == "user";
-            if (isTurnEnd && !string.IsNullOrEmpty(m.Content))
+            if (isTurnEnd && (!string.IsNullOrEmpty(m.Content) || !string.IsNullOrEmpty(m.ErrorMessage)))
                 m.IsFinalReply = true;
         }
     }
