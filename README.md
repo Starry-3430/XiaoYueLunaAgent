@@ -20,6 +20,8 @@
 
 ### 🧰 工具
 
+<img width="4800" height="400" alt="IMG_9814" src="https://github.com/user-attachments/assets/f34bddc4-d293-44a3-b45d-ca56e3f71c4a" />
+
 > 去看远方，光便替你带来答案。
 
 Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决定调用哪些工具。目前支持或已规划的工具分类如下：
@@ -42,6 +44,9 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 
 ### 📔 日记与记忆
 
+<img width="4800" height="400" alt="5C735DEE39EA5CE92BCF7B0101696B40" src="https://github.com/user-attachments/assets/bf0e734f-c7e1-410c-8200-bf572a74dd93" />
+
+
 > 有人替你记得那些，被时间轻轻带走的日子。
 
 - **轮次摘要**：每轮对话结束后异步生成结构化摘要（关键点、涉及文件、工具调用等），存入数据库。
@@ -50,6 +55,8 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - **长期事实**：🧪 规划中——尚未实现记忆的写入与自动引用。
 
 ### ⏰ 待办与提醒
+
+<img width="4800" height="400" alt="9FCD168FE8C36F8FE20C3BEAB10E6453" src="https://github.com/user-attachments/assets/5dc836c7-169f-4f71-bfbe-cbd3de5e9231" />
 
 > 把还没做完的事交给明天，把今天留给眼前的风。
 
