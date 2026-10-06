@@ -69,6 +69,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 | 依赖注入 / 托管 | Microsoft.Extensions.Hosting / DependencyInjection |
 | 数据库 | SQLite（Microsoft.Data.Sqlite） + Dapper |
 | 全文检索 | SQLite FTS5 |
+| 文档转换 | ManagedCode.MarkItDown（PDF / Office Open XML / HTML / 文本等转 Markdown） |
 | Markdown 渲染 | WpfMarkdownViewer（Markdig 内核，含高亮 / 数学 / SVG / Mermaid 扩展） |
 | 日志 | Serilog（File + Debug Sink） |
 | 全局快捷键 | Win32 `RegisterHotKey` + 底层键盘钩子（`WH_KEYBOARD_LL`，user32 P/Invoke） |
@@ -118,13 +119,16 @@ Luna/
 │   ├── App.xaml.cs                  # 应用入口，DI / Host / 单实例
 │   ├── MainWindow.xaml              # 灵动岛胶囊窗口
 │   ├── HomeWindow.xaml              # 主界面（聊天 / 设置 / 日记 / 工具）
-│   ├── Views/                       # AiConnectionView、GeneralSettingsView、DiaryView
+│   ├── Views/                       # AiConnectionView、GeneralSettingsView、DiaryView、AttachmentManagerView
 │   ├── ViewModels/                  # MVVM ViewModel
 │   ├── Models/                      # 数据模型与默认提示词
 │   ├── Services/
 │   │   ├── Tools/                   # ITool、ToolRegistry、各工具实现
+│   │   ├── Data/                    # AttachmentRepository、FileStorageService（内容寻址存储）
 │   │   ├── OpenAiService.cs         # AI 服务与流式对话
 │   │   ├── ChatGenerationService.cs # 对话/工具调用编排
+│   │   ├── MarkItDownConverterService.cs # 附件文档转换（重试 / 取消 / 后台线程）
+│   │   ├── AttachmentHelper.cs      # 附件选择、上传规则、大小格式化
 │   │   ├── DiaryService.cs          # 日记生成
 │   │   ├── TurnSummaryService.cs    # 轮次摘要
 │   │   ├── *Repository.cs           # Session / Message / Task 仓储
@@ -150,6 +154,7 @@ Luna/
 - [x] 设置界面（AI 连接、通用、工具配置）
 - [x] SQLite 持久化（会话、消息、轮次）
 - [x] 轮次摘要与日记生成、日记本 UI（按逻辑日聚合、翻页、FTS5 搜索）
+- [x] 附件与文档（多格式转换、内容寻址存储、Token 预算与智能截断、拖拽上传、附件管理）
 
 ### 进行中
 
