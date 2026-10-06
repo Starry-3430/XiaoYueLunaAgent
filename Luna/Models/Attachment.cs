@@ -17,4 +17,10 @@ public class Attachment
     public string? StoredPath { get; set; }
     public string? ConvertedMarkdown { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    /// <summary>转换内容的 Token 估算值（仅界面展示使用，不入库）。</summary>
+    public int TokenEstimate { get; set; }
+
+    /// <summary>本次注入使用的 Markdown（截断后）。为 null 时使用 <see cref="ConvertedMarkdown"/>（仅运行期使用，不入库）。</summary>
+    public string? InjectedMarkdown { get; set; }
 }

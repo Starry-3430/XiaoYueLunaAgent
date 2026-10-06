@@ -18,6 +18,7 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <converters:SubtractConverter x:Key="SubtractConverter"/>
         <converters:FileSizeConverter x:Key="FileSizeConverter"/>
+        <converters:AttachmentMetaConverter x:Key="AttachmentMetaConverter"/>
 
         <Style TargetType="ScrollBar">
             <Setter Property="Background" Value="Transparent"/>
@@ -677,12 +678,19 @@
                         <DataTemplate DataType="{x:Type models:Attachment}">
                             <Border Background="#33FFFFFF" CornerRadius="8" Padding="8,4" Margin="0,0,6,6">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding FileName}" Foreground="#E4E0CA" FontSize="12"
-                                               MaxWidth="180" TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
-                                               Foreground="#88FFFFFF" FontSize="11" Margin="6,0,0,0"
-                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FileName}"
+                                               VerticalAlignment="Center"
+                                               Foreground="#E4E0CA" FontSize="12"
+                                               MaxWidth="200" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock VerticalAlignment="Center"
+                                               Foreground="#88FFFFFF" FontSize="11" Margin="4,0,0,0">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource AttachmentMetaConverter}">
+                                                <Binding Path="FileSize"/>
+                                                <Binding Path="TokenEstimate"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                     <Button Content="✕" Width="18" Height="18" Margin="6,0,0,0"
                                             Style="{StaticResource RemoveChipButton}"
                                             FontSize="11"

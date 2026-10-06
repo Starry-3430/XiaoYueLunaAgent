@@ -5,11 +5,13 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
+using Luna.Controls;
 using Luna.Models;
 using Luna.Services;
 using Luna.Services.Data;
@@ -363,12 +365,37 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _sessionAttachments[_currentSessionId] = PendingAttachments.ToList();
     }
 
-    /// <summary>选择附件（多选），加入待发送列表。</summary>
+    /// <summary>选择附件（多选），读取内容并估算 Token，加入待发送列表。</summary>
     [RelayCommand]
-    private void AddAttachment()
+    private async Task AddAttachmentAsync()
     {
-        foreach (var attachment in AttachmentHelper.PickFiles())
+        var picked = AttachmentHelper.PickFiles();
+        if (picked.Count == 0) return;
+
+        Status = "正在读取附件…";
+        foreach (var attachment in picked)
+        {
+            await LoadAttachmentContentAsync(attachment);
             PendingAttachments.Add(attachment);
+        }
+        Status = "就绪";
+    }
+
+    /// <summary>转换附件内容并估算 Token。</summary>
+    private async Task LoadAttachmentContentAsync(Attachment attachment)
+    {
+        var sourcePath = attachment.StoredPath;
+        if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
+
+        try
+        {
+            attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(sourcePath);
+            attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "读取附件失败：{File}", attachment.FileName);
+        }
     }
 
     /// <summary>从待发送列表移除附件。</summary>
@@ -382,7 +409,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [RelayCommand]
     private void ClearAttachments() => PendingAttachments.Clear();
 
-    /// <summary>保存文件到内容寻址存储并转换为 Markdown。</summary>
+    private static Window? ActiveWindow =>
+        Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+        ?? Application.Current?.MainWindow;
+
+    /// <summary>保存文件到内容寻址存储；内容与 Token 已在导入时准备好。</summary>
     private async Task<List<Attachment>> PrepareAttachmentsAsync()
     {
         var prepared = new List<Attachment>();
@@ -397,7 +428,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 attachment.Sha256 = stored.Sha256;
                 attachment.StoredPath = stored.StoredPath;
                 attachment.FileSize = stored.FileSize;
-                attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
+
+                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                    attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
+                if (attachment.TokenEstimate == 0)
+                    attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
+
                 prepared.Add(attachment);
             }
             catch (Exception ex)
@@ -406,6 +442,21 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             }
         }
         return prepared;
+    }
+
+    /// <summary>超过 Token 预算时询问用户，按选择决定是否智能截断。</summary>
+    private static void ApplyTokenBudget(IReadOnlyList<Attachment> prepared)
+    {
+        var overLimit = prepared
+            .Where(a => a.TokenEstimate > AttachmentContentProcessor.DefaultMaxTokens)
+            .ToList();
+        if (overLimit.Count == 0) return;
+
+        var mode = AttachmentTruncationDialog.Show(ActiveWindow);
+        if (mode != AttachmentImportMode.SmartTruncate) return;
+
+        foreach (var attachment in overLimit)
+            attachment.InjectedMarkdown = AttachmentContentProcessor.Truncate(attachment.ConvertedMarkdown);
     }
 
     [RelayCommand]
@@ -424,6 +475,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
             if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
                 userText = "请阅读我发送的附件内容。";
+            ApplyTokenBudget(prepared);
 
             if (_currentSessionId is null)
             {

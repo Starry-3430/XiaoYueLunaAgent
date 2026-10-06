@@ -185,9 +185,10 @@ public sealed class ChatGenerationService
             sb.AppendLine();
             sb.AppendLine($"### 附件：{a.FileName} · {AttachmentHelper.FormatSize(a.FileSize)}");
             sb.AppendLine();
-            sb.AppendLine(string.IsNullOrWhiteSpace(a.ConvertedMarkdown)
+            var body = string.IsNullOrWhiteSpace(a.InjectedMarkdown) ? a.ConvertedMarkdown : a.InjectedMarkdown;
+            sb.AppendLine(string.IsNullOrWhiteSpace(body)
                 ? "（未能提取到文本内容）"
-                : a.ConvertedMarkdown);
+                : body);
         }
         return sb.ToString().TrimEnd();
     }
