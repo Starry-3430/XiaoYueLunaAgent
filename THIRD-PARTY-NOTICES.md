@@ -21,6 +21,7 @@
 | Serilog.Sinks.Debug | Apache-2.0 | Serilog Contributors — https://github.com/serilog/serilog-sinks-debug |
 | Serilog.Sinks.File | Apache-2.0 | Serilog Contributors — https://github.com/serilog/serilog-sinks-file |
 | Dapper | Apache-2.0 | Sam Saffron, Marc Gravell, Nick Craver — https://github.com/DapperLib/Dapper |
+| ManagedCode.MarkItDown | MIT | ManagedCode — https://github.com/managedcode/markitdown |
 
 ## Markdown 渲染库（`lib/WpfMarkdownViewer`，MIT 分支）
 
@@ -37,6 +38,29 @@
 | Mermaider | MIT | Nullean and contributors — https://github.com/nullean/mermaider |
 | Mostlylucid.Dagre | MIT | scottgal — https://github.com/scottgal/mostlylucid.dagre |
 | SharpVectors.Reloaded | BSD-3-Clause | Elinam LLC — https://github.com/ElinamLLC/SharpVectors |
+
+## 文档转换库（ManagedCode.MarkItDown，MIT）
+
+[ManagedCode.MarkItDown](https://github.com/managedcode/markitdown) 遵循 MIT 许可证（版权归 ManagedCode SAS 所有），
+用于把 PDF / Office Open XML / HTML / 文本等文档转换为 Markdown。其自身依赖如下
+（其中各云服务商的 OCR / 语音 SDK 仅在启用相应功能时才会实际使用）：
+
+| 组件 | 许可证 | 版权 / 项目 |
+|------|--------|-------------|
+| AngleSharp | MIT | AngleSharp contributors — https://github.com/AngleSharp/AngleSharp |
+| DocumentFormat.OpenXml | MIT | Microsoft — https://github.com/dotnet/Open-XML-SDK |
+| PdfPig | Apache-2.0 | UglyToad and contributors — https://github.com/UglyToad/PdfPig |
+| PDFtoImage | MIT | Dtronix — https://github.com/sungaila/PDFtoImage |
+| SkiaSharp | MIT | Microsoft / Mono Project — https://github.com/mono/SkiaSharp |
+| MimeKit | MIT | Jeffrey Stedfast — https://github.com/jstedfast/MimeKit |
+| Sep | MIT | Nietras — https://github.com/nietras/Sep |
+| YoutubeExplode | MIT | Oleksii Holub — https://github.com/Tyrrrz/YoutubeExplode |
+| ManagedCode.MimeTypes | MIT | ManagedCode — https://github.com/managedcode/MimeTypes |
+| ManagedCode.Storage.Core / .FileSystem / .Azure / .Aws / .Gcp | MIT | ManagedCode — https://github.com/managedcode/Storage |
+| Microsoft.Extensions.AI | MIT | Microsoft — https://github.com/dotnet/extensions |
+| AWSSDK.S3 / .Rekognition / .Textract / .TranscribeService | Apache-2.0 | Amazon Web Services — https://github.com/aws/aws-sdk-net |
+| Azure.Identity / Azure.AI.FormRecognizer / Azure.AI.Vision.ImageAnalysis | MIT | Microsoft — https://github.com/Azure/azure-sdk-for-net |
+| Google.Cloud.DocumentAI.V1 / .Vision.V1 / .Speech.V1 | Apache-2.0 | Google — https://github.com/googleapis/google-cloud-dotnet |
 
 ## 构建期依赖
 
