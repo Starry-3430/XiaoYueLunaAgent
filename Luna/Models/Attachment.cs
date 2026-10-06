@@ -23,4 +23,7 @@ public class Attachment
 
     /// <summary>本次注入使用的 Markdown（截断后）。为 null 时使用 <see cref="ConvertedMarkdown"/>（仅运行期使用，不入库）。</summary>
     public string? InjectedMarkdown { get; set; }
+
+    /// <summary>用户选择时的原始文件路径（内容寻址后 <see cref="StoredPath"/> 会变为 blob 路径，此字段保留原路径，仅运行期使用）。</summary>
+    public string? SourcePath { get; set; }
 }

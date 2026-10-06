@@ -38,6 +38,15 @@ public class AttachmentRepository
             new { Sha256 = sha256 });
     }
 
+    /// <summary>查询全部附件（按创建时间倒序），用于附件管理界面。</summary>
+    public async Task<List<Attachment>> GetAllAsync()
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        var rows = await conn.QueryAsync<Attachment>(
+            "SELECT * FROM Attachments ORDER BY CreatedAtUtc DESC");
+        return rows.ToList();
+    }
+
     /// <summary>查询某个会话下的全部附件。</summary>
     public async Task<List<Attachment>> GetBySessionAsync(string sessionId)
     {

@@ -47,6 +47,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private bool _isBusy;
 
     [ObservableProperty]
+    private bool _isLoadingAttachments;
+
+    private CancellationTokenSource? _attachmentCts;
+
+    [ObservableProperty]
     private ChatSessionItem? _selectedSession;
 
     /// <summary>Tavily 搜索 API Key（明文，编辑后立即加密持久化）。</summary>
@@ -308,6 +313,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     {
         SaveCurrentDraft();
         _toolPermission.ClearConversation(_currentSessionId);
+        _attachmentCts?.Cancel();
         Runtime = null;
         InputText = string.Empty;
         PendingAttachments.Clear();
@@ -372,30 +378,53 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         var picked = AttachmentHelper.PickFiles();
         if (picked.Count == 0) return;
 
+        _attachmentCts?.Cancel();
+        _attachmentCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _attachmentCts = cts;
+
+        IsLoadingAttachments = true;
         Status = "正在读取附件…";
-        foreach (var attachment in picked)
+        try
         {
-            await LoadAttachmentContentAsync(attachment);
-            PendingAttachments.Add(attachment);
+            foreach (var attachment in picked)
+            {
+                if (cts.IsCancellationRequested) break;
+                await LoadAttachmentContentAsync(attachment, cts.Token);
+                if (cts.IsCancellationRequested) break;
+                PendingAttachments.Add(attachment);
+            }
         }
-        Status = "就绪";
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("附件读取已取消");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "读取附件失败");
+        }
+        finally
+        {
+            if (ReferenceEquals(_attachmentCts, cts))
+            {
+                IsLoadingAttachments = false;
+                Status = "就绪";
+            }
+        }
     }
 
+    /// <summary>取消正在进行的附件转换。</summary>
+    [RelayCommand]
+    private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
+
     /// <summary>转换附件内容并估算 Token。</summary>
-    private async Task LoadAttachmentContentAsync(Attachment attachment)
+    private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
     {
         var sourcePath = attachment.StoredPath;
         if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
 
-        try
-        {
-            attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(sourcePath);
-            attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "读取附件失败：{File}", attachment.FileName);
-        }
+        attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(sourcePath, ct);
+        attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
     }
 
     /// <summary>从待发送列表移除附件。</summary>

@@ -77,6 +77,25 @@ public class FileStorageService
     public string? GetBlobPath(string? sha256) =>
         string.IsNullOrWhiteSpace(sha256) ? null : Path.Combine(BlobsRoot, sha256);
 
+    /// <summary>删除内容哈希对应的 blob 文件，释放磁盘空间。返回是否实际删除。</summary>
+    public bool DeleteBlob(string? sha256)
+    {
+        var path = GetBlobPath(sha256);
+        if (path is null || !File.Exists(path)) return false;
+
+        try
+        {
+            File.Delete(path);
+            _logger.LogInformation("已删除附件 blob：{Path}", path);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "删除附件 blob 失败：{Path}", path);
+            return false;
+        }
+    }
+
     private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
     {
         await using var stream = File.OpenRead(path);

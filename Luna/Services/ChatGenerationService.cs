@@ -184,10 +184,12 @@ public sealed class ChatGenerationService
         {
             sb.AppendLine();
             sb.AppendLine($"### 附件：{a.FileName} · {AttachmentHelper.FormatSize(a.FileSize)}");
+            if (!string.IsNullOrWhiteSpace(a.SourcePath))
+                sb.AppendLine($"原始路径：{a.SourcePath}");
             sb.AppendLine();
             var body = string.IsNullOrWhiteSpace(a.InjectedMarkdown) ? a.ConvertedMarkdown : a.InjectedMarkdown;
             sb.AppendLine(string.IsNullOrWhiteSpace(body)
-                ? "（未能提取到文本内容）"
+                ? "（未能提取到文本内容，如需可依据上面的原始路径读取该文件。）"
                 : body);
         }
         return sb.ToString().TrimEnd();
@@ -231,6 +233,14 @@ public sealed class ChatGenerationService
 
         var userDbId = messages[userIndex].DbId;
 
+        // 重写前先保留该轮次注入的附件上下文（system 消息），重写后原样带回去
+        var attachmentContexts = new List<string>();
+        for (var i = userIndex + 1; i < messages.Count; i++)
+        {
+            if (messages[i].Role == "system" && !string.IsNullOrWhiteSpace(messages[i].Content))
+                attachmentContexts.Add(messages[i].Content);
+        }
+
         while (messages.Count > userIndex)
             messages.RemoveAt(userIndex);
 
@@ -246,6 +256,32 @@ public sealed class ChatGenerationService
         }
 
         messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userDbId });
+
+        // 重新注入保留的附件上下文（引用与转换内容），使重写仍能基于文件作答
+        foreach (var context in attachmentContexts)
+        {
+            var contextDbId = 0L;
+            if (userDbId > 0)
+            {
+                contextDbId = await _messageRepo.InsertAsync(new Message
+                {
+                    SessionId = sessionId,
+                    TurnId = turnId,
+                    Role = "system",
+                    Content = context,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    LogicalDate = logicalDate,
+                });
+            }
+
+            messages.Add(new ChatMessage
+            {
+                Role = "system",
+                Content = context,
+                AttachmentSummary = ExtractAttachmentSummary(context),
+                DbId = contextDbId,
+            });
+        }
 
         await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
     }

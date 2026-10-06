@@ -667,6 +667,10 @@ Background="#E4E0CA"
                         <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
                         <views:AiConnectionView x:Name="AiConnectionPanel"/>
 
+                        <!-- 附件 -->
+                        <TextBlock Text="附件" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <views:AttachmentManagerView x:Name="AttachmentManagerPanel"/>
+
                         <!-- 调试 -->
                         <TextBlock Text="调试" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
                         <Button x:Name="OpenLogsButton"
@@ -960,13 +964,22 @@ Background="#E4E0CA"
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Text="{Binding Status}"
                            Foreground="#5B4833"
                            FontSize="12"
                            VerticalAlignment="Center"/>
-                <Button Grid.Column="1"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                            Visibility="{Binding IsLoadingAttachments, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ProgressBar IsIndeterminate="True" Width="90" Height="5" VerticalAlignment="Center"
+                                 Foreground="#78ACAD" Background="#D4D0BA" BorderThickness="0"/>
+                    <Button Content="取消" Margin="8,0,0,0" Height="26" Padding="12,0"
+                            Style="{StaticResource PillButton}" Background="#D4D0BA"
+                            Command="{Binding CancelAttachmentLoadCommand}"/>
+                </StackPanel>
+                <Button Grid.Column="2"
                         Content="添加附件"
                         Command="{Binding AddAttachmentCommand}"
                         Cursor="Hand"

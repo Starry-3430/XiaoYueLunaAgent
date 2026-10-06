@@ -755,13 +755,23 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0"
                                Text="{Binding Status}"
                                Foreground="#88FFFFFF"
                                FontSize="11"
                                VerticalAlignment="Center"/>
-                    <Button Grid.Column="1"
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
+                                Visibility="{Binding IsLoadingAttachments, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ProgressBar IsIndeterminate="True" Width="80" Height="5" VerticalAlignment="Center"
+                                     Foreground="#88FFFFFF" Background="#33FFFFFF" BorderThickness="0"/>
+                        <Button Content="取消" Margin="6,0,0,0" Height="26" Padding="12,0"
+                                FontSize="12" Style="{StaticResource PillButton}"
+                                Foreground="#88FFFFFF" Background="#33FFFFFF"
+                                Command="{Binding CancelAttachmentLoadCommand}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2"
                             Content="添加附件"
                             Height="26" Padding="12,0"
                             FontSize="12"

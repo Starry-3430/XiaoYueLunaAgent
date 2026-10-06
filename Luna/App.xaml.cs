@@ -129,6 +129,7 @@ public partial class App : Application
                 services.AddSingleton<AiConnectionViewModel>();
                 services.AddSingleton<GeneralSettingsViewModel>();
                 services.AddSingleton<DiaryViewModel>();
+                services.AddSingleton<AttachmentManagerViewModel>();
                 
                 // AI 服务配置（从 settings.json 加载）
                 services.AddSingleton<SettingsService>();

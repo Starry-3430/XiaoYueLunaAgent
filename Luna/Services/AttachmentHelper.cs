@@ -36,6 +36,7 @@ public static class AttachmentHelper
                 FileExtension = Path.GetExtension(path),
                 FileSize = size,
                 StoredPath = path,
+                SourcePath = path,
             });
         }
 
