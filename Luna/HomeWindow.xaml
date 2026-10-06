@@ -4,6 +4,7 @@
         xmlns:models="clr-namespace:Luna.Models"
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
         xmlns:views="clr-namespace:Luna.Views"
+        xmlns:converters="clr-namespace:Luna.Converters"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
@@ -27,6 +28,7 @@ Background="#E4E0CA"
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            <converters:FileSizeConverter x:Key="FileSizeConverter"/>
 
         
 
@@ -98,6 +100,47 @@ Background="#E4E0CA"
                                 <Setter TargetName="Bg" Property="Background" Value="#F1E8B2"/>
                                 <Setter TargetName="TitleText" Property="Foreground" Value="#5B4833"/>
                                 <Setter TargetName="PreviewText" Property="Foreground" Value="#8B7B6B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Opacity" Value="0.85"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Opacity" Value="0.7"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RemoveChipButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#8B7B6B"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="9" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#1A5B4833"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -231,6 +274,9 @@ Background="#E4E0CA"
                                                 <Setter Property="Background" Value="#78ACAD"/>
                                                 <Setter Property="Padding" Value="0"/>
                                                 <Setter Property="Margin" Value="0,0,10,16"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Role}" Value="system">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -576,15 +622,28 @@ Background="#E4E0CA"
                                                 </Style>
                                             </StackPanel.Style>
                                             <Button Content="复制" FontSize="12" Height="26" Width="50"
+                                                    Style="{StaticResource PillButton}"
                                                     Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
                                                     Background="#D4D0BA" Margin="0,0,6,0"
                                                     Click="CopyMessage_Click"/>
                                             <Button Content="重写" FontSize="12" Height="26" Width="50"
+                                                    Style="{StaticResource PillButton}"
                                                     Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
                                                     Background="#D4D0BA"
                                                     Click="RewriteMessage_Click"/>
                                         </StackPanel>
                                     </StackPanel>
+
+                                    <!-- 附件详情（system 消息）：仅显示“文件名 · 大小”，紧跟用户气泡下方 -->
+                                    <TextBlock Margin="10,0,10,8"
+                                               HorizontalAlignment="Right"
+                                               TextAlignment="Right"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="560"
+                                               Foreground="#8B7B6B"
+                                               FontSize="11"
+                                               Text="{Binding AttachmentSummary}"
+                                               Visibility="{Binding HasAttachmentSummary, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             </Grid>
                             </Border>
                         </DataTemplate>
@@ -763,12 +822,56 @@ Background="#E4E0CA"
 
             <!-- 输入区 -->
             <Grid Grid.Row="2" x:Name="InputArea" Margin="20,0,20,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0"
+                <!-- 待发送附件列表 -->
+                <ItemsControl Grid.Row="0" Grid.ColumnSpan="2"
+                              ItemsSource="{Binding PendingAttachments}"
+                              Margin="0,0,0,6">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PendingAttachments.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:Attachment}">
+                            <Border Background="#D4D0BA" CornerRadius="8" Padding="10,6" Margin="0,0,8,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding FileName}" Foreground="#5B4833" FontSize="12"
+                                               MaxWidth="220" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FileSize, Converter={StaticResource FileSizeConverter}}"
+                                               Foreground="#8B7B6B" FontSize="11" Margin="8,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                    <Button Content="✕" Width="18" Height="18" Margin="8,0,0,0"
+                                            Style="{StaticResource RemoveChipButton}"
+                                            FontSize="11"
+                                            Command="{Binding DataContext.RemoveAttachmentCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Grid.Row="1" Grid.Column="0"
                         Background="#CC372F29"
                         CornerRadius="10"
                         Padding="12,8"
@@ -788,7 +891,7 @@ Background="#E4E0CA"
                              PreviewKeyDown="InputBox_KeyDown"/>
                 </Border>
 
-                <Button Grid.Column="1"
+                <Button Grid.Row="1" Grid.Column="1"
                         Content="发送"
                         Command="{Binding SendCommand}"
                         Width="64" Height="36"
@@ -820,7 +923,7 @@ Background="#E4E0CA"
                     </Button.Style>
                 </Button>
 
-                <Button Grid.Column="1"
+                <Button Grid.Row="1" Grid.Column="1"
                         Content="取消"
                         Background="#FD7956"
                         Foreground="White"
@@ -845,11 +948,41 @@ Background="#E4E0CA"
                 </Button>
             </Grid>
 
-            <TextBlock x:Name="StatusText" Grid.Row="3"
-                       Text="{Binding Status}"
-                       Foreground="#5B4833"
-                       FontSize="12"
-                       Margin="24,0,0,12"/>
+            <Grid x:Name="StatusText" Grid.Row="3" Margin="24,0,20,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Status}"
+                           Foreground="#5B4833"
+                           FontSize="12"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        Content="添加附件"
+                        Command="{Binding AddAttachmentCommand}"
+                        Cursor="Hand"
+                        Height="26"
+                        Padding="12,0"
+                        FontSize="12"
+                        BorderThickness="0"
+                        Foreground="#5B4833"
+                        Background="#D4D0BA"
+                        VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                    CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#DDD9C5"/></Trigger>
+                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
         </Grid>
 
     <!-- 通知浮层 -->

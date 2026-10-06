@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -11,6 +12,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Data;
 using Luna.Services.Tools;
 
 namespace Luna.ViewModels;
@@ -24,9 +26,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly ToolPermissionService _toolPermission;
     private readonly SettingsService _settingsService;
     private readonly ChatGenerationService _generation;
+    private readonly FileStorageService _fileStorage;
+    private readonly IDocumentConverterService _documentConverter;
     private readonly ILogger<HomeViewModel> _logger;
     private string? _currentSessionId;
     private readonly Dictionary<string, string> _sessionDrafts = new();
+    private readonly Dictionary<string, List<Attachment>> _sessionAttachments = new();
     private SessionRuntime? _runtime;
     private readonly ObservableCollection<ChatMessage> _emptyMessages = new();
 
@@ -56,10 +61,14 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     public ObservableCollection<ChatSessionItem> ChatSessions { get; } = new();
     public ObservableCollection<ToolCategory> ToolCategories { get; } = new();
 
+    /// <summary>待发送附件列表（发送前暂存，发送成功后清空）。</summary>
+    public ObservableCollection<Attachment> PendingAttachments { get; } = new();
+
     public HomeViewModel(SessionRepository sessionRepo, AiSettings aiSettings,
         ToolRegistry toolRegistry, ToolSettingsService toolSettings,
         ToolPermissionService toolPermission, SettingsService settingsService,
-        ChatGenerationService generation, ILogger<HomeViewModel> logger)
+        ChatGenerationService generation, FileStorageService fileStorage,
+        IDocumentConverterService documentConverter, ILogger<HomeViewModel> logger)
     {
         _sessionRepo = sessionRepo;
         _aiSettings = aiSettings;
@@ -68,6 +77,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _toolPermission = toolPermission;
         _settingsService = settingsService;
         _generation = generation;
+        _fileStorage = fileStorage;
+        _documentConverter = documentConverter;
         _logger = logger;
 
         _tavilyApiKey = _aiSettings.TavilyApiKey;
@@ -297,6 +308,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _toolPermission.ClearConversation(_currentSessionId);
         Runtime = null;
         InputText = string.Empty;
+        PendingAttachments.Clear();
         Status = "就绪";
         _currentSessionId = null;
         SelectedSession = null;
@@ -315,6 +327,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         }
 
         SaveCurrentDraft();
+        PendingAttachments.Clear();
 
         _currentSessionId = session.Id;
         SelectedSession = session;
@@ -323,6 +336,13 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             InputText = draft;
         else
             InputText = string.Empty;
+
+        // 恢复该会话尚未发送的附件
+        if (_sessionAttachments.TryGetValue(session.Id, out var attachments))
+        {
+            foreach (var attachment in attachments)
+                PendingAttachments.Add(attachment);
+        }
 
         try
         {
@@ -338,20 +358,73 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     private void SaveCurrentDraft()
     {
-        if (_currentSessionId is not null)
-            _sessionDrafts[_currentSessionId] = InputText;
+        if (_currentSessionId is null) return;
+        _sessionDrafts[_currentSessionId] = InputText;
+        _sessionAttachments[_currentSessionId] = PendingAttachments.ToList();
+    }
+
+    /// <summary>选择附件（多选），加入待发送列表。</summary>
+    [RelayCommand]
+    private void AddAttachment()
+    {
+        foreach (var attachment in AttachmentHelper.PickFiles())
+            PendingAttachments.Add(attachment);
+    }
+
+    /// <summary>从待发送列表移除附件。</summary>
+    [RelayCommand]
+    private void RemoveAttachment(Attachment? attachment)
+    {
+        if (attachment is not null) PendingAttachments.Remove(attachment);
+    }
+
+    /// <summary>清空待发送附件。</summary>
+    [RelayCommand]
+    private void ClearAttachments() => PendingAttachments.Clear();
+
+    /// <summary>保存文件到内容寻址存储并转换为 Markdown。</summary>
+    private async Task<List<Attachment>> PrepareAttachmentsAsync()
+    {
+        var prepared = new List<Attachment>();
+        foreach (var attachment in PendingAttachments.ToList())
+        {
+            var sourcePath = attachment.StoredPath;
+            if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) continue;
+
+            try
+            {
+                var stored = await _fileStorage.StoreAsync(sourcePath);
+                attachment.Sha256 = stored.Sha256;
+                attachment.StoredPath = stored.StoredPath;
+                attachment.FileSize = stored.FileSize;
+                attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
+                prepared.Add(attachment);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "准备附件失败：{File}", attachment.FileName);
+            }
+        }
+        return prepared;
     }
 
     [RelayCommand]
     private async Task SendAsync()
     {
-        if (string.IsNullOrWhiteSpace(InputText) || IsBusy) return;
+        var hasAttachments = PendingAttachments.Count > 0;
+        if (IsBusy) return;
+        if (string.IsNullOrWhiteSpace(InputText) && !hasAttachments) return;
 
         var userText = InputText.Trim();
         InputText = string.Empty;
 
         try
         {
+            // 先保存文件并转换 Markdown（可能耗时），再启动 AI 循环
+            var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
+            if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
+                userText = "请阅读我发送的附件内容。";
+
             if (_currentSessionId is null)
             {
                 var session = new Session();
@@ -370,7 +443,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Runtime = await _generation.GetOrLoadAsync(sessionId);
 
             // 生成在服务中后台执行：切换界面/会话不会中断，用户消息与 AI 输出由服务写库并推进。
-            await _generation.SendAsync(sessionId, userText);
+            await _generation.SendAsync(sessionId, userText, prepared);
+
+            // 发送成功后清空待发送附件（并清掉该会话的暂存）
+            PendingAttachments.Clear();
+            _sessionAttachments[sessionId] = new List<Attachment>();
         }
         catch (Exception ex)
         {

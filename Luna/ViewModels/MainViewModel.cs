@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
 using Luna.Services;
+using Luna.Services.Data;
 
 namespace Luna.ViewModels;
 
@@ -13,6 +15,8 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly SessionRepository _sessionRepo;
     private readonly ChatGenerationService _generation;
+    private readonly FileStorageService _fileStorage;
+    private readonly IDocumentConverterService _documentConverter;
     private readonly ILogger<MainViewModel> _logger;
     private string? _currentSessionId;
     private SessionRuntime? _runtime;
@@ -34,11 +38,17 @@ public partial class MainViewModel : ObservableObject
         private set => SetProperty(ref _messages, value);
     }
 
+    /// <summary>待发送附件列表（发送前暂存，发送成功后清空）。</summary>
+    public ObservableCollection<Attachment> PendingAttachments { get; } = new();
+
     public MainViewModel(SessionRepository sessionRepo, ChatGenerationService generation,
+        FileStorageService fileStorage, IDocumentConverterService documentConverter,
         ILogger<MainViewModel> logger)
     {
         _sessionRepo = sessionRepo;
         _generation = generation;
+        _fileStorage = fileStorage;
+        _documentConverter = documentConverter;
         _logger = logger;
         _logger.LogInformation("MainViewModel 已创建");
     }
@@ -73,16 +83,66 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>选择附件（多选），加入待发送列表。</summary>
+    [RelayCommand]
+    private void AddAttachment()
+    {
+        foreach (var attachment in AttachmentHelper.PickFiles())
+            PendingAttachments.Add(attachment);
+    }
+
+    /// <summary>从待发送列表移除附件。</summary>
+    [RelayCommand]
+    private void RemoveAttachment(Attachment? attachment)
+    {
+        if (attachment is not null) PendingAttachments.Remove(attachment);
+    }
+
+    /// <summary>清空待发送附件。</summary>
+    [RelayCommand]
+    private void ClearAttachments() => PendingAttachments.Clear();
+
+    private async Task<List<Attachment>> PrepareAttachmentsAsync()
+    {
+        var prepared = new List<Attachment>();
+        foreach (var attachment in PendingAttachments.ToList())
+        {
+            var sourcePath = attachment.StoredPath;
+            if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) continue;
+
+            try
+            {
+                var stored = await _fileStorage.StoreAsync(sourcePath);
+                attachment.Sha256 = stored.Sha256;
+                attachment.StoredPath = stored.StoredPath;
+                attachment.FileSize = stored.FileSize;
+                attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
+                prepared.Add(attachment);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "准备附件失败：{File}", attachment.FileName);
+            }
+        }
+        return prepared;
+    }
+
     [RelayCommand]
     private async Task SendAsync()
     {
-        if (string.IsNullOrWhiteSpace(InputText) || IsBusy) return;
+        var hasAttachments = PendingAttachments.Count > 0;
+        if (IsBusy) return;
+        if (string.IsNullOrWhiteSpace(InputText) && !hasAttachments) return;
 
         var userText = InputText.Trim();
         InputText = string.Empty;
 
         try
         {
+            var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
+            if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
+                userText = "请阅读我发送的附件内容。";
+
             if (_currentSessionId is null)
             {
                 var session = new Session();
@@ -94,7 +154,9 @@ public partial class MainViewModel : ObservableObject
             Runtime = await _generation.GetOrLoadAsync(sessionId);
 
             // 生成在服务中后台执行：即使窗口隐藏/切换，输出也会继续并写库。
-            await _generation.SendAsync(sessionId, userText);
+            await _generation.SendAsync(sessionId, userText, prepared);
+
+            PendingAttachments.Clear();
         }
         catch (Exception ex)
         {
@@ -115,6 +177,7 @@ public partial class MainViewModel : ObservableObject
         _currentSessionId = null;
         Runtime = null;
         InputText = string.Empty;
+        PendingAttachments.Clear();
         Status = "就绪";
     }
 

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
+using Luna.Services.Data;
 using Luna.Services.Tools;
 
 namespace Luna.Services;
@@ -44,6 +45,7 @@ public sealed class ChatGenerationService
     private readonly IAiService _aiService;
     private readonly SessionRepository _sessionRepo;
     private readonly MessageRepository _messageRepo;
+    private readonly AttachmentRepository _attachmentRepo;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly TurnSummaryService _turnSummaryService;
@@ -56,13 +58,14 @@ public sealed class ChatGenerationService
     private const int MaxSafetyToolRounds = 200;
 
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
-        MessageRepository messageRepo, ToolRegistry toolRegistry,
+        MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
         _aiService = aiService;
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
+        _attachmentRepo = attachmentRepo;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _turnSummaryService = turnSummaryService;
@@ -110,7 +113,14 @@ public sealed class ChatGenerationService
     /// <summary>
     /// 发送用户消息并启动（后台）生成。用户消息在写库后立即加入运行期集合。
     /// </summary>
-    public async Task SendAsync(string sessionId, string userText)
+    public Task SendAsync(string sessionId, string userText)
+        => SendAsync(sessionId, userText, null);
+
+    /// <summary>
+    /// 发送用户消息并启动（后台）生成。<paramref name="attachments"/> 非空时，
+    /// 先把附件记录落库，并把转换后的 Markdown 作为 system 消息注入会话供 AI 参考。
+    /// </summary>
+    public async Task SendAsync(string sessionId, string userText, IReadOnlyList<Attachment>? attachments)
     {
         var runtime = await GetOrLoadAsync(sessionId);
         if (runtime.IsBusy) return;
@@ -131,7 +141,67 @@ public sealed class ChatGenerationService
 
         runtime.Messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userMsgDbId });
 
+        if (attachments is { Count: > 0 })
+        {
+            // 附件与本次轮次关联后落库
+            foreach (var attachment in attachments)
+            {
+                attachment.SessionId = sessionId;
+                attachment.TurnId = turnId;
+                await _attachmentRepo.AddAsync(attachment);
+            }
+
+            // 把转换后的 Markdown 作为 system 消息注入会话（界面可见，AI 也会读取）
+            var context = BuildAttachmentContext(attachments);
+            var systemMsg = new Message
+            {
+                SessionId = sessionId,
+                TurnId = turnId,
+                Role = "system",
+                Content = context,
+                CreatedAtUtc = DateTime.UtcNow,
+                LogicalDate = logicalDate,
+            };
+            var systemMsgDbId = await _messageRepo.InsertAsync(systemMsg);
+            runtime.Messages.Add(new ChatMessage
+            {
+                Role = "system",
+                Content = context,
+                AttachmentSummary = ExtractAttachmentSummary(context),
+                DbId = systemMsgDbId,
+            });
+        }
+
         await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+    }
+
+    /// <summary>把附件转换结果拼装成注入会话的 system 内容。</summary>
+    private static string BuildAttachmentContext(IReadOnlyList<Attachment> attachments)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("用户上传了以下附件，请结合其内容回答后续问题。");
+        foreach (var a in attachments)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"### 附件：{a.FileName} · {AttachmentHelper.FormatSize(a.FileSize)}");
+            sb.AppendLine();
+            sb.AppendLine(string.IsNullOrWhiteSpace(a.ConvertedMarkdown)
+                ? "（未能提取到文本内容）"
+                : a.ConvertedMarkdown);
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    private const string AttachmentHeaderPrefix = "### 附件：";
+
+    /// <summary>从 system 附件内容中提取“文件名 · 大小”摘要，用于界面展示。</summary>
+    private static string ExtractAttachmentSummary(string content)
+    {
+        var lines = content
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => l.StartsWith(AttachmentHeaderPrefix, StringComparison.Ordinal))
+            .Select(l => l[AttachmentHeaderPrefix.Length..].Trim());
+        return string.Join("\n", lines);
     }
 
     /// <summary>重写某条 AI 回复：截断其后内容并重新生成。</summary>
@@ -496,6 +566,9 @@ public sealed class ChatGenerationService
             DbId = m.Id,
             ToolCallId = m.ToolCallId,
         };
+
+        if (m.Role == "system")
+            msg.AttachmentSummary = ExtractAttachmentSummary(m.Content);
 
         if (!string.IsNullOrEmpty(m.ToolCallsJson))
         {

@@ -77,6 +77,11 @@ public partial class ChatMessage : ObservableObject
 
     public bool HasContent => !string.IsNullOrWhiteSpace(Content);
 
+    /// <summary>system 附件消息：用于界面显示的“文件名 · 大小”摘要（不包含完整 Markdown）。</summary>
+    public string AttachmentSummary { get; set; } = string.Empty;
+
+    public bool HasAttachmentSummary => !string.IsNullOrWhiteSpace(AttachmentSummary);
+
     public ChatMessage()
     {
         ToolCalls.CollectionChanged += (_, _) =>
