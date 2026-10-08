@@ -50,6 +50,7 @@ public class SettingsService
             {
                 LastLoadWasReset = false;
                 RestoreApiKey(settings);
+                MigrateLegacyDefaults(settings);
                 _logger.LogInformation("已加载配置文件：{Path}", _settingsPath);
                 return settings;
             }
@@ -67,6 +68,13 @@ public class SettingsService
         Save(reset);
         _logger.LogWarning("配置文件结构损坏，已重置为默认配置：{Path}", _settingsPath);
         return reset;
+    }
+
+    /// <summary>把历史遗留配置迁移到新的默认值（如旧的 4096 输出上限）。</summary>
+    private static void MigrateLegacyDefaults(AiSettings settings)
+    {
+        if (settings.MaxTokens == AiSettings.LegacyDefaultMaxTokens)
+            settings.MaxTokens = AiSettings.DefaultMaxTokens;
     }
 
     public void Save(AiSettings settings)

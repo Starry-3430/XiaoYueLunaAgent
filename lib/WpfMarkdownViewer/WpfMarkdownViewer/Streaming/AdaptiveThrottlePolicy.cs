@@ -14,8 +14,8 @@ public sealed class AdaptiveThrottlePolicy
     public double MidMaxRate { get; init; } = 60;
 
     public TimeSpan SlowInterval { get; init; } = TimeSpan.FromMilliseconds(16);
-    public TimeSpan MidInterval { get; init; } = TimeSpan.FromMilliseconds(33);
-    public TimeSpan FastInterval { get; init; } = TimeSpan.FromMilliseconds(75);
+    public TimeSpan MidInterval { get; init; } = TimeSpan.FromMilliseconds(16);
+    public TimeSpan FastInterval { get; init; } = TimeSpan.FromMilliseconds(20);
 
     /// <summary>If no input arrives for longer than this, the pump flushes immediately and may refine the Active Block.</summary>
     public TimeSpan IdleThreshold { get; init; } = TimeSpan.FromMilliseconds(150);

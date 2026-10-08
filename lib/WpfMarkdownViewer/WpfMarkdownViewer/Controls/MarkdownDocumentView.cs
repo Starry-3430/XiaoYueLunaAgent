@@ -106,7 +106,7 @@ public class MarkdownDocumentView : Panel, IVirtualizingContent, IScrollHostAwar
         Focusable = true;
         _selection = new SelectionController(this);
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy, (_, _) => CopySelection()));
-        _pump = new DispatcherTimer(DispatcherPriority.Background) { Interval = _policy.MidInterval };
+        _pump = new DispatcherTimer(DispatcherPriority.Input) { Interval = _policy.MidInterval };
         _pump.Tick += OnPumpTick;
         _caretBlink = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(530) };
         _caretBlink.Tick += OnCaretBlink;
@@ -520,6 +520,7 @@ public class MarkdownDocumentView : Panel, IVirtualizingContent, IScrollHostAwar
         double width = double.IsInfinity(availW) ? natural
             : ShrinkToContentWidth ? Math.Min(availW, natural)
             : availW;
+
         return new Size(width, contentBottom + pad.Bottom);
     }
 

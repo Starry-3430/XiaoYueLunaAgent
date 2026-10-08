@@ -67,6 +67,13 @@ public partial class ChatMessage : ObservableObject
 
     public string ToolCallId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// 流式渲染进度，挂在消息上而不是视图上。视图（MarkdownDocumentView）只是它的投影：
+    /// 切换会话导致视图销毁重建时进度不会随视图丢失。
+    /// 注意：假定同一时刻每个消息只有一个活动视图在渲染（当前 HomeWindow/MainWindow 不会同时显示同一会话）。
+    /// </summary>
+    public StreamingRenderState StreamingState { get; } = new();
+
     public ObservableCollection<ToolCallEntry> ToolCalls { get; } = new();
 
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);
@@ -117,4 +124,17 @@ public partial class ChatMessage : ObservableObject
     {
         OnPropertyChanged(nameof(HasError));
     }
+}
+
+/// <summary>
+/// 单条消息的流式渲染进度（从视图中剥离）。Content 在单条消息生命周期内只追加，
+/// 因此只需要记录“已渲染到的字符数”即可推算新增 delta。
+/// </summary>
+public sealed class StreamingRenderState
+{
+    /// <summary>已经渲染到 <see cref="ChatMessage.Content"/> 的字符数。</summary>
+    public int RenderedLength { get; set; }
+
+    /// <summary>是否有尚未渲染的新增内容（等待 flush）。</summary>
+    public bool Pending { get; set; }
 }

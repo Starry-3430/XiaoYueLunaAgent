@@ -17,6 +17,7 @@ using Luna.Controls;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
+using Microsoft.Extensions.Logging;
 
 namespace Luna;
 
@@ -42,6 +43,7 @@ public partial class HomeWindow : Window
     private readonly DiaryService _diaryService;
     private readonly DiaryViewModel _diaryViewModel;
     private readonly AttachmentManagerViewModel _attachmentManagerViewModel;
+    private readonly ILogger<HomeWindow> _logger;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
     private const int ToastGap = 2;                 // 通知之间的间距
@@ -50,6 +52,7 @@ public partial class HomeWindow : Window
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
+    private DispatcherTimer? _scrollThrottle;                  // 流式滚动节流计时器
 
     private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
     private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
@@ -73,7 +76,7 @@ public partial class HomeWindow : Window
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
         GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService,
         DiaryService diaryService, DiaryViewModel diaryViewModel,
-        AttachmentManagerViewModel attachmentManagerViewModel)
+        AttachmentManagerViewModel attachmentManagerViewModel, ILogger<HomeWindow> logger)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -82,6 +85,7 @@ public partial class HomeWindow : Window
         _diaryService = diaryService;
         _diaryViewModel = diaryViewModel;
         _attachmentManagerViewModel = attachmentManagerViewModel;
+        _logger = logger;
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
         DiaryPanel.DataContext = diaryViewModel;
@@ -137,25 +141,81 @@ public partial class HomeWindow : Window
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
-
-        // 窗口重新激活时刷新仍在流式输出的消息渲染
-        Activated += (_, _) => MarkdownViewerRefresher.RefreshStreaming(this);
     }
 
     /// <summary>把自动滚动挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
     private void BindMessages()
     {
         if (_boundMessages is not null)
+        {
             _boundMessages.CollectionChanged -= OnMessagesChanged;
+            // 切换会话时先解绑旧集合中每条消息的属性监听，避免监听泄漏
+            foreach (var message in _boundMessages)
+                message.PropertyChanged -= OnMessagePropertyChanged;
+        }
 
         _boundMessages = _viewModel.Messages;
         _boundMessages.CollectionChanged += OnMessagesChanged;
+
+        foreach (var message in _boundMessages)
+            message.PropertyChanged += OnMessagePropertyChanged;
+
+        // 打开/切换会话时立即滚到底部
+        ScrollMessagesToEnd();
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        MessageScrollViewer.Dispatcher.BeginInvoke(() =>
-            MessageScrollViewer.ScrollToEnd());
+        // 新消息加入时订阅属性变化，旧消息移除时取消订阅
+        if (e.NewItems != null)
+            foreach (ChatMessage message in e.NewItems)
+                message.PropertyChanged += OnMessagePropertyChanged;
+
+        if (e.OldItems != null)
+            foreach (ChatMessage message in e.OldItems)
+                message.PropertyChanged -= OnMessagePropertyChanged;
+
+        ScrollMessagesToEnd();
+    }
+
+    // 保持视图滚动到底部（流式内容变化时）
+    private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(ChatMessage.Content) or nameof(ChatMessage.Role)))
+            return;
+
+        // 用户手动上滑离开底部时停止自动滚动，避免把用户拽回底部
+        if (!IsNearBottom()) return;
+
+        // 节流：100ms 内只调度一次滚动
+        if (_scrollThrottle is null)
+        {
+            _scrollThrottle = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _scrollThrottle.Tick += (_, _) =>
+            {
+                _scrollThrottle.Stop();
+                ScrollMessagesToEnd();
+            };
+        }
+
+        if (!_scrollThrottle.IsEnabled)
+            _scrollThrottle.Start();
+    }
+
+    /// <summary>消息区是否已接近底部（距底部小于 40px）。</summary>
+    private bool IsNearBottom()
+    {
+        if (MessageScrollViewer is null) return true;
+        return MessageScrollViewer.ScrollableHeight - MessageScrollViewer.VerticalOffset < 40;
+    }
+
+    /// <summary>把消息区滚动到底部；延迟到布局完成后执行，确保内容高度已确定。</summary>
+    private void ScrollMessagesToEnd()
+    {
+        if (MessageScrollViewer is null) return;
+        MessageScrollViewer.Dispatcher.BeginInvoke(
+            () => MessageScrollViewer.ScrollToEnd(),
+            DispatcherPriority.Background);
     }
 
     /// <summary>
@@ -199,10 +259,6 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
-
-        // 切回聊天时刷新仍在流式输出的消息
-        Dispatcher.BeginInvoke(() => MarkdownViewerRefresher.RefreshStreaming(MessageScrollViewer),
-            System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -227,14 +283,25 @@ public partial class HomeWindow : Window
     }
 
     // ===== 气泡 Markdown 渲染 =====
+
+    /// <summary>每个 Markdown 视图当前订阅的清理动作，避免重复 Loaded 时重复挂钩导致重复渲染。</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+        WpfMarkdownViewer.Controls.MarkdownDocumentView, Action> ViewerBindings = new();
+
     private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
 {
     if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+    if (viewer.DataContext is not ChatMessage msg) return;
+
+    // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
+    if (ViewerBindings.TryGetValue(viewer, out var previous))
+        previous();
 
     _ = new BubbleContextMenu(viewer);
 
-    viewer.LinkClicked += (_, args) =>
+    System.EventHandler<WpfMarkdownViewer.Controls.LinkClickedEventArgs> linkHandler = (_, args) =>
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+    viewer.LinkClicked += linkHandler;
 
     // ===== 构建主题（只构建一次，反复复用）=====
     var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
@@ -260,88 +327,102 @@ public partial class HomeWindow : Window
     // 首次进入时先应用一次
     ApplyStyle();
 
-    if (viewer.DataContext is not ChatMessage msg) return;
-
-    var rendered = string.Empty;
+        // 流式渲染进度挂在消息上（msg.StreamingState），视图只做投影。
+        // Input 优先级避免被饿死；实测单次 flush 仅 0.1–0.7ms，故与流式批次同频（16ms），
+        // 让 Markdown 更新频率和“思考内容”一致（都每批刷新一次），不再每 120ms 跳一大块。
+        var flushTimer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
 
     void RenderFromScratch()
     {
-        rendered = msg.Content;
+        msg.StreamingState.RenderedLength = msg.Content.Length;
+        msg.StreamingState.Pending = false;
         if (msg.IsStreaming)
         {
             viewer.Reset();
             ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
-            if (!string.IsNullOrEmpty(rendered))
-                viewer.AppendDelta(rendered);
+            if (!string.IsNullOrEmpty(msg.Content))
+                viewer.AppendDelta(msg.Content);
         }
         else
         {
-            viewer.SetMarkdown(rendered);
+            viewer.SetMarkdown(msg.Content);
             ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
         }
     }
 
-    void AppendNewContent()
+    void FlushPending()
     {
+        if (!msg.StreamingState.Pending) return;
+        // 不可见时保留 Pending，等视图可见时由 visibility 处理器一次性补齐
         if (!viewer.IsVisible) return;
+        msg.StreamingState.Pending = false;
 
         var content = msg.Content;
-        if (!content.StartsWith(rendered, StringComparison.Ordinal))
+        if (content.Length < msg.StreamingState.RenderedLength)
         {
             RenderFromScratch();
             return;
         }
 
-        var delta = content[rendered.Length..];
+        var delta = content[msg.StreamingState.RenderedLength..];
         if (delta.Length > 0)
+        {
             viewer.AppendDelta(delta);
-        rendered = content;
+            msg.StreamingState.RenderedLength = content.Length;
+        }
     }
 
+    // delta 到来只标脏，由 flushTimer 统一节流渲染，避免每个 token 都触发重排
     PropertyChangedEventHandler handler = (_, args) =>
     {
         try
         {
             if (args.PropertyName == nameof(ChatMessage.Content))
             {
-                AppendNewContent();
+                // 不可见时不驱动渲染，切回可见时由 visibility 处理器一次性补齐
+                if (!viewer.IsVisible) return;
+                msg.StreamingState.Pending = true;
+                if (!flushTimer.IsEnabled) flushTimer.Start();
             }
             else if (args.PropertyName == nameof(ChatMessage.IsStreaming) && !msg.IsStreaming)
             {
-                if (viewer.IsVisible)
-                {
-                    AppendNewContent();
-                    viewer.Complete();
-                }
+                // 流式结束时立即 flush 剩余内容
+                flushTimer.Stop();
+                FlushPending();
+                if (viewer.IsVisible) viewer.Complete();
             }
         }
         catch { }
     };
 
+    flushTimer.Tick += (_, _) =>
+    {
+        flushTimer.Stop();
+        FlushPending();
+    };
+
     System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
     {
         if (!viewer.IsVisible) return;
-
-        if (msg.IsStreaming)
-        {
-            RenderFromScratch();
-        }
-        else
-        {
-            rendered = msg.Content;
-            viewer.SetMarkdown(rendered);
-            ApplyStyle();                       // ★ 同样要重新应用
-        }
+        // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
+        if (msg.StreamingState.RenderedLength == msg.Content.Length) return;
+        RenderFromScratch();
     };
+
+    void Unbind()
+    {
+        flushTimer.Stop();
+        msg.PropertyChanged -= handler;
+        viewer.IsVisibleChanged -= visibility;
+        viewer.LinkClicked -= linkHandler;
+        viewer.Unloaded -= OnUnloaded;
+    }
+    void OnUnloaded(object? _, RoutedEventArgs __) => Unbind();
 
     msg.PropertyChanged += handler;
     viewer.IsVisibleChanged += visibility;
-
-    viewer.Unloaded += (_, _) =>
-    {
-        msg.PropertyChanged -= handler;
-        viewer.IsVisibleChanged -= visibility;
-    };
+    viewer.Unloaded += OnUnloaded;
+    ViewerBindings.AddOrUpdate(viewer, Unbind);
 
     RenderFromScratch();
 }

@@ -49,6 +49,7 @@ public sealed class ChatGenerationService
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly TurnSummaryService _turnSummaryService;
+    private readonly SessionTitleService _sessionTitleService;
     private readonly DiaryService _diaryService;
     private readonly ILogger<ChatGenerationService> _logger;
 
@@ -60,6 +61,7 @@ public sealed class ChatGenerationService
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
+        SessionTitleService sessionTitleService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
         _aiService = aiService;
@@ -69,6 +71,7 @@ public sealed class ChatGenerationService
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _turnSummaryService = turnSummaryService;
+        _sessionTitleService = sessionTitleService;
         _diaryService = diaryService;
         _logger = logger;
     }
@@ -296,6 +299,7 @@ public sealed class ChatGenerationService
 
         var replyContent = "";
         var replyReasoning = "";
+        string? replyFinishReason = null;
         ChatMessage? lastAssistantMsg = null;
         ChatMessage? activeReply = null;
 
@@ -317,7 +321,7 @@ public sealed class ChatGenerationService
 
                 // 以快照调用接口，避免流式枚举期间集合被界面/其它逻辑修改
                 var snapshot = messages.ToList();
-                var (content, reasoning, pendingToolCalls) =
+                var (content, reasoning, pendingToolCalls, finishReason) =
                     await StreamOneRoundAsync(uiReply, snapshot, ct);
 
                 if (pendingToolCalls.Count == 0)
@@ -336,6 +340,7 @@ public sealed class ChatGenerationService
 
                     replyContent = content;
                     replyReasoning = reasoning;
+                    replyFinishReason = finishReason;
                     lastAssistantMsg = uiReply;
                     break;
                 }
@@ -478,6 +483,11 @@ public sealed class ChatGenerationService
 
         if (lastAssistantMsg is not null)
         {
+            // 达到输出上限被截断：在回复末尾追加红色提示（同时持久化，重开会话仍可见）
+            var truncated = IsOutputTruncated(replyFinishReason);
+            if (truncated)
+                lastAssistantMsg.ErrorMessage = OutputTruncatedNotice;
+
             await _messageRepo.InsertAsync(new Message
             {
                 SessionId = sessionId,
@@ -485,6 +495,8 @@ public sealed class ChatGenerationService
                 Role = "assistant",
                 Content = replyContent,
                 ReasoningContent = replyReasoning,
+                ErrorMessage = truncated ? OutputTruncatedNotice : string.Empty,
+                ContentType = truncated ? "error" : "text",
                 CreatedAtUtc = DateTime.UtcNow,
                 LogicalDate = logicalDate,
             });
@@ -494,12 +506,31 @@ public sealed class ChatGenerationService
 
             // 顺带触发一次日记检查（补齐历史积压；当天不会提前生成）
             _diaryService.Trigger();
+
+            // 首轮完成且尚无标题时，异步生成会话标题
+            var session = await _sessionRepo.GetByIdAsync(sessionId);
+            if (session is not null && string.IsNullOrWhiteSpace(session.Title))
+            {
+                var firstUserText = messages.FirstOrDefault(m => m.Role == "user")?.Content ?? string.Empty;
+                _sessionTitleService.Trigger(sessionId, firstUserText, replyContent);
+            }
         }
 
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = "就绪";
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
     }
+
+    /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>
+    private const string OutputTruncatedNotice =
+        "本次回复已达到输出长度上限，内容可能不完整。可以回复“继续”让 Luna 接着往下说。";
+
+    /// <summary>判断流式结束原因是否表示被输出上限截断（不同提供商用词不一）。</summary>
+    private static bool IsOutputTruncated(string? finishReason)
+        => finishReason is not null &&
+           (finishReason.Equals("length", StringComparison.OrdinalIgnoreCase) ||
+            finishReason.Equals("max_tokens", StringComparison.OrdinalIgnoreCase) ||
+            finishReason.Equals("max_output_tokens", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// 持久化一条“提示”消息（已取消 / 发送失败）。正文留空、错误信息写入 ErrorMessage 列，
@@ -524,7 +555,7 @@ public sealed class ChatGenerationService
         msg.DbId = id;
     }
 
-    private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls)>
+    private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls, string? finishReason)>
         StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages, CancellationToken ct)
     {
         var lockObj = new object();
@@ -532,41 +563,60 @@ public sealed class ChatGenerationService
         var contentBuf = new StringBuilder();
         var reasoningBuf = new StringBuilder();
         var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        string? finishReason = null;
+        // 批次定时器用 Input 优先级：高于 Background 的 Markdown pump，
+        // 这样文档变大、pump 变重时也不会把流式文本的更新节奏饿死（避免 16ms 拖成几百 ms 的大块）。
+        var timer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
 
-        void ApplyEvent(StreamEvent evt)
+        // 把一批事件合并处理：文本只在外层累加，批次结束后统一 set 一次。
+        // 这样 ChatMessage.Content/Reasoning 的 PropertyChanged 从“每个 token 一次”降为“每批一次”。
+        void ApplyBatch(StreamEvent[] batch)
         {
-            switch (evt)
+            var contentChanged = false;
+            var reasoningChanged = false;
+
+            foreach (var evt in batch)
             {
-                case ReasoningDelta r:
-                    reasoningBuf.Append(r.Text);
-                    uiReply.Reasoning = reasoningBuf.ToString();
-                    break;
-                case ContentDelta c:
-                    contentBuf.Append(c.Text);
-                    uiReply.Content = contentBuf.ToString();
-                    break;
-                case ToolCallDelta t:
-                    if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
-                    {
-                        entry = new ToolCallEntry
+                switch (evt)
+                {
+                    case ReasoningDelta r:
+                        reasoningBuf.Append(r.Text);
+                        reasoningChanged = true;
+                        break;
+                    case ContentDelta c:
+                        contentBuf.Append(c.Text);
+                        contentChanged = true;
+                        break;
+                    case StreamFinish f:
+                        finishReason = f.Reason;
+                        break;
+                    case ToolCallDelta t:
+                        if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
                         {
-                            ToolName = t.Name ?? "",
-                            DisplayName = GetToolDisplayName(t.Name),
-                            Status = ToolCallStatus.Pending,
-                        };
-                        pendingToolCalls[t.Index] = entry;
-                        uiReply.ToolCalls.Add(entry);
-                    }
-                    if (t.Id is not null) entry.ToolCallId = t.Id;
-                    if (t.Name is not null)
-                    {
-                        entry.ToolName = t.Name;
-                        entry.DisplayName = GetToolDisplayName(t.Name);
-                    }
-                    if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
-                    break;
+                            entry = new ToolCallEntry
+                            {
+                                ToolName = t.Name ?? "",
+                                DisplayName = GetToolDisplayName(t.Name),
+                                Status = ToolCallStatus.Pending,
+                            };
+                            pendingToolCalls[t.Index] = entry;
+                            uiReply.ToolCalls.Add(entry);
+                        }
+                        if (t.Id is not null) entry.ToolCallId = t.Id;
+                        if (t.Name is not null)
+                        {
+                            entry.ToolName = t.Name;
+                            entry.DisplayName = GetToolDisplayName(t.Name);
+                        }
+                        if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
+                        break;
+                }
             }
+
+            if (contentChanged)
+                uiReply.Content = contentBuf.ToString();
+            if (reasoningChanged)
+                uiReply.Reasoning = reasoningBuf.ToString();
         }
 
         timer.Tick += (_, _) =>
@@ -578,8 +628,7 @@ public sealed class ChatGenerationService
                 batch = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var evt in batch)
-                ApplyEvent(evt);
+            ApplyBatch(batch);
         };
 
         try
@@ -604,8 +653,7 @@ public sealed class ChatGenerationService
                 remaining = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var evt in remaining)
-                ApplyEvent(evt);
+            ApplyBatch(remaining);
         }
         finally
         {
@@ -613,7 +661,7 @@ public sealed class ChatGenerationService
             timer.Stop();
         }
 
-        return (uiReply.Content, uiReply.Reasoning, pendingToolCalls);
+        return (uiReply.Content, uiReply.Reasoning, pendingToolCalls, finishReason);
     }
 
     private ChatMessage MapToChatMessage(Message m)

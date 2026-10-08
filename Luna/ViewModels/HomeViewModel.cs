@@ -541,12 +541,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 await _sessionRepo.InsertAsync(session);
                 _currentSessionId = session.Id;
 
-                ChatSessions.Insert(0, new ChatSessionItem
+                var item = new ChatSessionItem
                 {
                     Id = session.Id,
                     Title = "新对话",
                     Preview = userText,
-                });
+                };
+                ChatSessions.Insert(0, item);
+
+                // 立即选中新会话，让界面跳转到它的历史记录，而不是停留在“新对话”状态
+                SelectedSession = item;
             }
 
             var sessionId = _currentSessionId;
