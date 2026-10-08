@@ -132,46 +132,58 @@ public class OpenAiService : IAiService
                 var choices = doc.RootElement.GetProperty("choices");
                 if (choices.GetArrayLength() == 0) continue;
 
-                var delta = choices[0].GetProperty("delta");
+                var choice = choices[0];
                 events = new List<StreamEvent>();
 
-                if (delta.TryGetProperty("reasoning_content", out var r))
+                // finish_reason 可能单独成块（此时没有 delta）：用于判断是否被输出上限截断
+                if (choice.TryGetProperty("finish_reason", out var finishProp) &&
+                    finishProp.ValueKind == JsonValueKind.String)
                 {
-                    var text = r.GetString();
-                    if (!string.IsNullOrEmpty(text))
-                        events.Add(new ReasoningDelta(text));
+                    var reason = finishProp.GetString();
+                    if (!string.IsNullOrEmpty(reason))
+                        events.Add(new StreamFinish(reason));
                 }
 
-                if (delta.TryGetProperty("content", out var c))
+                if (choice.TryGetProperty("delta", out var delta))
                 {
-                    var text = c.GetString();
-                    if (!string.IsNullOrEmpty(text))
-                        events.Add(new ContentDelta(text));
-                }
-
-                if (delta.TryGetProperty("tool_calls", out var t))
-                {
-                    foreach (var call in t.EnumerateArray())
+                    if (delta.TryGetProperty("reasoning_content", out var r))
                     {
-                        var index = call.TryGetProperty("index", out var idxProp)
-                            ? idxProp.GetInt32()
-                            : 0;
+                        var text = r.GetString();
+                        if (!string.IsNullOrEmpty(text))
+                            events.Add(new ReasoningDelta(text));
+                    }
 
-                        string? id = null;
-                        if (call.TryGetProperty("id", out var idProp))
-                            id = idProp.GetString();
+                    if (delta.TryGetProperty("content", out var c))
+                    {
+                        var text = c.GetString();
+                        if (!string.IsNullOrEmpty(text))
+                            events.Add(new ContentDelta(text));
+                    }
 
-                        string? name = null;
-                        if (call.TryGetProperty("function", out var funcProp) &&
-                            funcProp.TryGetProperty("name", out var nameProp))
-                            name = nameProp.GetString();
+                    if (delta.TryGetProperty("tool_calls", out var t))
+                    {
+                        foreach (var call in t.EnumerateArray())
+                        {
+                            var index = call.TryGetProperty("index", out var idxProp)
+                                ? idxProp.GetInt32()
+                                : 0;
 
-                        string? argsFragment = null;
-                        if (call.TryGetProperty("function", out var funcProp2) &&
-                            funcProp2.TryGetProperty("arguments", out var argsProp))
-                            argsFragment = argsProp.GetString();
+                            string? id = null;
+                            if (call.TryGetProperty("id", out var idProp))
+                                id = idProp.GetString();
 
-                        events.Add(new ToolCallDelta(index, id, name, argsFragment));
+                            string? name = null;
+                            if (call.TryGetProperty("function", out var funcProp) &&
+                                funcProp.TryGetProperty("name", out var nameProp))
+                                name = nameProp.GetString();
+
+                            string? argsFragment = null;
+                            if (call.TryGetProperty("function", out var funcProp2) &&
+                                funcProp2.TryGetProperty("arguments", out var argsProp))
+                                argsFragment = argsProp.GetString();
+
+                            events.Add(new ToolCallDelta(index, id, name, argsFragment));
+                        }
                     }
                 }
             }

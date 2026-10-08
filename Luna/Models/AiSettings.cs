@@ -7,7 +7,10 @@ public class AiSettings
     public const string DefaultProvider = "deepseek";
     public const string DefaultBaseUrl = "https://api.deepseek.com/v1";
     public const string DefaultModel = "deepseek-chat";
-    public const int DefaultMaxTokens = 4096;
+    public const int DefaultMaxTokens = 8192;
+
+    /// <summary>旧版本的默认输出上限；加载配置时若仍为该值，自动迁移到新的默认值。</summary>
+    public const int LegacyDefaultMaxTokens = 4096;
     public const double DefaultTemperature = 1.0;
     public const double DefaultTopP = 0.9;
     public const double DefaultFrequencyPenalty = 0.1;

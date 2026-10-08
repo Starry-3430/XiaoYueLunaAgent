@@ -150,12 +150,26 @@ public partial class HomeWindow : Window
 
         _boundMessages = _viewModel.Messages;
         _boundMessages.CollectionChanged += OnMessagesChanged;
+
+        // 打开/切换会话时立即滚到底部（布局完成后再补一次，覆盖长会话与图片加载）
+        ScrollMessagesToEnd();
     }
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        ScrollMessagesToEnd();
+    }
+
+    /// <summary>把消息区滚动到底部；延迟到布局完成后执行，确保内容高度已确定。</summary>
+    private void ScrollMessagesToEnd()
+    {
         MessageScrollViewer.Dispatcher.BeginInvoke(() =>
-            MessageScrollViewer.ScrollToEnd());
+        {
+            MessageScrollViewer.ScrollToEnd();
+            MessageScrollViewer.Dispatcher.BeginInvoke(
+                () => MessageScrollViewer.ScrollToEnd(),
+                DispatcherPriority.Background);
+        }, DispatcherPriority.Loaded);
     }
 
     /// <summary>
@@ -199,10 +213,6 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
-
-        // 切回聊天时刷新仍在流式输出的消息
-        Dispatcher.BeginInvoke(() => MarkdownViewerRefresher.RefreshStreaming(MessageScrollViewer),
-            System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -227,14 +237,25 @@ public partial class HomeWindow : Window
     }
 
     // ===== 气泡 Markdown 渲染 =====
+
+    /// <summary>每个 Markdown 视图当前订阅的清理动作，避免重复 Loaded 时重复挂钩导致重复渲染。</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+        WpfMarkdownViewer.Controls.MarkdownDocumentView, Action> ViewerBindings = new();
+
     private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
 {
     if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+    if (viewer.DataContext is not ChatMessage msg) return;
+
+    // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
+    if (ViewerBindings.TryGetValue(viewer, out var previous))
+        previous();
 
     _ = new BubbleContextMenu(viewer);
 
-    viewer.LinkClicked += (_, args) =>
+    System.EventHandler<WpfMarkdownViewer.Controls.LinkClickedEventArgs> linkHandler = (_, args) =>
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(args.Url) { UseShellExecute = true });
+    viewer.LinkClicked += linkHandler;
 
     // ===== 构建主题（只构建一次，反复复用）=====
     var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Light with
@@ -259,8 +280,6 @@ public partial class HomeWindow : Window
 
     // 首次进入时先应用一次
     ApplyStyle();
-
-    if (viewer.DataContext is not ChatMessage msg) return;
 
     var rendered = string.Empty;
 
@@ -321,27 +340,24 @@ public partial class HomeWindow : Window
     System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
     {
         if (!viewer.IsVisible) return;
-
-        if (msg.IsStreaming)
-        {
-            RenderFromScratch();
-        }
-        else
-        {
-            rendered = msg.Content;
-            viewer.SetMarkdown(rendered);
-            ApplyStyle();                       // ★ 同样要重新应用
-        }
+        // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
+        if (rendered == msg.Content) return;
+        RenderFromScratch();
     };
 
-    msg.PropertyChanged += handler;
-    viewer.IsVisibleChanged += visibility;
-
-    viewer.Unloaded += (_, _) =>
+    void Unbind()
     {
         msg.PropertyChanged -= handler;
         viewer.IsVisibleChanged -= visibility;
-    };
+        viewer.LinkClicked -= linkHandler;
+        viewer.Unloaded -= OnUnloaded;
+    }
+    void OnUnloaded(object? _, RoutedEventArgs __) => Unbind();
+
+    msg.PropertyChanged += handler;
+    viewer.IsVisibleChanged += visibility;
+    viewer.Unloaded += OnUnloaded;
+    ViewerBindings.AddOrUpdate(viewer, Unbind);
 
     RenderFromScratch();
 }

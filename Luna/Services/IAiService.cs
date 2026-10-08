@@ -7,6 +7,7 @@ public record ReasoningDelta(string Text) : StreamEvent;
 public record ContentDelta(string Text) : StreamEvent;
 public record ToolCallDelta(int Index, string? Id, string? Name, string? ArgumentsFragment) : StreamEvent;
 public record ToolCallCompleted(int Index, string Id, string Name, string ArgumentsJson) : StreamEvent;
+public record StreamFinish(string Reason) : StreamEvent;
 public record StreamDone : StreamEvent;
 
 /// <summary>单次补全请求的可选参数；未设置时回退到用户配置。</summary>

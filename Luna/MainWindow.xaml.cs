@@ -140,14 +140,24 @@ private readonly MainViewModel _viewModel;
             _ = new BubbleContextMenu(tb);
     }
 
+    /// <summary>每个 Markdown 视图当前订阅的清理动作，避免重复 Loaded 时重复挂钩导致重复渲染。</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<
+        WpfMarkdownViewer.Controls.MarkdownDocumentView, Action> ViewerBindings = new();
+
     private void MessageViewer_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
+        if (viewer.DataContext is not ChatMessage msg) return;
+
+        // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
+        if (ViewerBindings.TryGetValue(viewer, out var previous))
+            previous();
 
         _ = new BubbleContextMenu(viewer);
 
-        viewer.LinkClicked += (_, args) =>
+        System.EventHandler<WpfMarkdownViewer.Controls.LinkClickedEventArgs> linkHandler = (_, args) =>
             Process.Start(new ProcessStartInfo(args.Url) { UseShellExecute = true });
+        viewer.LinkClicked += linkHandler;
 
         var markdownStyle = WpfMarkdownViewer.Rendering.MarkdownStyle.Dark with
         {
@@ -168,8 +178,6 @@ private readonly MainViewModel _viewModel;
         viewer.ApplyTheme(markdownStyle);
 
         ApplyLightScrollBarStyle(viewer);
-
-        if (viewer.DataContext is not ChatMessage msg) return;
 
         var rendered = string.Empty;
 
@@ -226,19 +234,26 @@ private readonly MainViewModel _viewModel;
 
         System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
         {
-            if (viewer.IsVisible)
-                RenderFromScratch();
+            if (!viewer.IsVisible) return;
+            // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
+            if (rendered == msg.Content) return;
+            RenderFromScratch();
         };
+
+        void Unbind()
+        {
+            msg.PropertyChanged -= handler;
+            viewer.IsVisibleChanged -= visibility;
+            viewer.LinkClicked -= linkHandler;
+            viewer.Unloaded -= OnUnloaded;
+        }
+        void OnUnloaded(object? _, RoutedEventArgs __) => Unbind();
 
         msg.PropertyChanged += handler;
         // 视图重新可见时整体重绘，避免流式文本卡住
         viewer.IsVisibleChanged += visibility;
-
-        viewer.Unloaded += (_, _) =>
-        {
-            msg.PropertyChanged -= handler;
-            viewer.IsVisibleChanged -= visibility;
-        };
+        viewer.Unloaded += OnUnloaded;
+        ViewerBindings.AddOrUpdate(viewer, Unbind);
 
         RenderFromScratch();
     }
@@ -523,7 +538,12 @@ private readonly MainViewModel _viewModel;
     private void BindMessages()
     {
         if (_boundMessages is not null)
+        {
             _boundMessages.CollectionChanged -= OnMessagesChanged;
+            // 切换会话时先解绑旧集合中每条消息的属性监听，避免监听泄漏导致重复滚动/渲染
+            foreach (var message in _boundMessages)
+                message.PropertyChanged -= OnMessagePropertyChanged;
+        }
 
         _boundMessages = _viewModel.Messages;
         _boundMessages.CollectionChanged += OnMessagesChanged;

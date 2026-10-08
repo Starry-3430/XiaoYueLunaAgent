@@ -299,6 +299,7 @@ public sealed class ChatGenerationService
 
         var replyContent = "";
         var replyReasoning = "";
+        string? replyFinishReason = null;
         ChatMessage? lastAssistantMsg = null;
         ChatMessage? activeReply = null;
 
@@ -320,7 +321,7 @@ public sealed class ChatGenerationService
 
                 // 以快照调用接口，避免流式枚举期间集合被界面/其它逻辑修改
                 var snapshot = messages.ToList();
-                var (content, reasoning, pendingToolCalls) =
+                var (content, reasoning, pendingToolCalls, finishReason) =
                     await StreamOneRoundAsync(uiReply, snapshot, ct);
 
                 if (pendingToolCalls.Count == 0)
@@ -339,6 +340,7 @@ public sealed class ChatGenerationService
 
                     replyContent = content;
                     replyReasoning = reasoning;
+                    replyFinishReason = finishReason;
                     lastAssistantMsg = uiReply;
                     break;
                 }
@@ -481,6 +483,11 @@ public sealed class ChatGenerationService
 
         if (lastAssistantMsg is not null)
         {
+            // 达到输出上限被截断：在回复末尾追加红色提示（同时持久化，重开会话仍可见）
+            var truncated = IsOutputTruncated(replyFinishReason);
+            if (truncated)
+                lastAssistantMsg.ErrorMessage = OutputTruncatedNotice;
+
             await _messageRepo.InsertAsync(new Message
             {
                 SessionId = sessionId,
@@ -488,6 +495,8 @@ public sealed class ChatGenerationService
                 Role = "assistant",
                 Content = replyContent,
                 ReasoningContent = replyReasoning,
+                ErrorMessage = truncated ? OutputTruncatedNotice : string.Empty,
+                ContentType = truncated ? "error" : "text",
                 CreatedAtUtc = DateTime.UtcNow,
                 LogicalDate = logicalDate,
             });
@@ -512,6 +521,17 @@ public sealed class ChatGenerationService
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
     }
 
+    /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>
+    private const string OutputTruncatedNotice =
+        "本次回复已达到输出长度上限，内容可能不完整。可以回复“继续”让 Luna 接着往下说。";
+
+    /// <summary>判断流式结束原因是否表示被输出上限截断（不同提供商用词不一）。</summary>
+    private static bool IsOutputTruncated(string? finishReason)
+        => finishReason is not null &&
+           (finishReason.Equals("length", StringComparison.OrdinalIgnoreCase) ||
+            finishReason.Equals("max_tokens", StringComparison.OrdinalIgnoreCase) ||
+            finishReason.Equals("max_output_tokens", StringComparison.OrdinalIgnoreCase));
+
     /// <summary>
     /// 持久化一条“提示”消息（已取消 / 发送失败）。正文留空、错误信息写入 ErrorMessage 列，
     /// 因此它会在会话中一直显示，但不会作为 AI 上下文（OpenAiService 会跳过正文为空的 assistant 消息）。
@@ -535,7 +555,7 @@ public sealed class ChatGenerationService
         msg.DbId = id;
     }
 
-    private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls)>
+    private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls, string? finishReason)>
         StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages, CancellationToken ct)
     {
         var lockObj = new object();
@@ -543,6 +563,7 @@ public sealed class ChatGenerationService
         var contentBuf = new StringBuilder();
         var reasoningBuf = new StringBuilder();
         var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
+        string? finishReason = null;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
 
         void ApplyEvent(StreamEvent evt)
@@ -556,6 +577,9 @@ public sealed class ChatGenerationService
                 case ContentDelta c:
                     contentBuf.Append(c.Text);
                     uiReply.Content = contentBuf.ToString();
+                    break;
+                case StreamFinish f:
+                    finishReason = f.Reason;
                     break;
                 case ToolCallDelta t:
                     if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
@@ -624,7 +648,7 @@ public sealed class ChatGenerationService
             timer.Stop();
         }
 
-        return (uiReply.Content, uiReply.Reasoning, pendingToolCalls);
+        return (uiReply.Content, uiReply.Reasoning, pendingToolCalls, finishReason);
     }
 
     private ChatMessage MapToChatMessage(Message m)
