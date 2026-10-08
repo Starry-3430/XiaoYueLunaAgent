@@ -564,44 +564,59 @@ public sealed class ChatGenerationService
         var reasoningBuf = new StringBuilder();
         var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
         string? finishReason = null;
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        // 批次定时器用 Input 优先级：高于 Background 的 Markdown pump，
+        // 这样文档变大、pump 变重时也不会把流式文本的更新节奏饿死（避免 16ms 拖成几百 ms 的大块）。
+        var timer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
 
-        void ApplyEvent(StreamEvent evt)
+        // 把一批事件合并处理：文本只在外层累加，批次结束后统一 set 一次。
+        // 这样 ChatMessage.Content/Reasoning 的 PropertyChanged 从“每个 token 一次”降为“每批一次”。
+        void ApplyBatch(StreamEvent[] batch)
         {
-            switch (evt)
+            var contentChanged = false;
+            var reasoningChanged = false;
+
+            foreach (var evt in batch)
             {
-                case ReasoningDelta r:
-                    reasoningBuf.Append(r.Text);
-                    uiReply.Reasoning = reasoningBuf.ToString();
-                    break;
-                case ContentDelta c:
-                    contentBuf.Append(c.Text);
-                    uiReply.Content = contentBuf.ToString();
-                    break;
-                case StreamFinish f:
-                    finishReason = f.Reason;
-                    break;
-                case ToolCallDelta t:
-                    if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
-                    {
-                        entry = new ToolCallEntry
+                switch (evt)
+                {
+                    case ReasoningDelta r:
+                        reasoningBuf.Append(r.Text);
+                        reasoningChanged = true;
+                        break;
+                    case ContentDelta c:
+                        contentBuf.Append(c.Text);
+                        contentChanged = true;
+                        break;
+                    case StreamFinish f:
+                        finishReason = f.Reason;
+                        break;
+                    case ToolCallDelta t:
+                        if (!pendingToolCalls.TryGetValue(t.Index, out var entry))
                         {
-                            ToolName = t.Name ?? "",
-                            DisplayName = GetToolDisplayName(t.Name),
-                            Status = ToolCallStatus.Pending,
-                        };
-                        pendingToolCalls[t.Index] = entry;
-                        uiReply.ToolCalls.Add(entry);
-                    }
-                    if (t.Id is not null) entry.ToolCallId = t.Id;
-                    if (t.Name is not null)
-                    {
-                        entry.ToolName = t.Name;
-                        entry.DisplayName = GetToolDisplayName(t.Name);
-                    }
-                    if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
-                    break;
+                            entry = new ToolCallEntry
+                            {
+                                ToolName = t.Name ?? "",
+                                DisplayName = GetToolDisplayName(t.Name),
+                                Status = ToolCallStatus.Pending,
+                            };
+                            pendingToolCalls[t.Index] = entry;
+                            uiReply.ToolCalls.Add(entry);
+                        }
+                        if (t.Id is not null) entry.ToolCallId = t.Id;
+                        if (t.Name is not null)
+                        {
+                            entry.ToolName = t.Name;
+                            entry.DisplayName = GetToolDisplayName(t.Name);
+                        }
+                        if (t.ArgumentsFragment is not null) entry.ArgumentsJson += t.ArgumentsFragment;
+                        break;
+                }
             }
+
+            if (contentChanged)
+                uiReply.Content = contentBuf.ToString();
+            if (reasoningChanged)
+                uiReply.Reasoning = reasoningBuf.ToString();
         }
 
         timer.Tick += (_, _) =>
@@ -613,8 +628,7 @@ public sealed class ChatGenerationService
                 batch = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var evt in batch)
-                ApplyEvent(evt);
+            ApplyBatch(batch);
         };
 
         try
@@ -639,8 +653,7 @@ public sealed class ChatGenerationService
                 remaining = buffer.ToArray();
                 buffer.Clear();
             }
-            foreach (var evt in remaining)
-                ApplyEvent(evt);
+            ApplyBatch(remaining);
         }
         finally
         {
