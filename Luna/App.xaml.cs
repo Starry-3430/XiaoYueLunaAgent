@@ -184,6 +184,7 @@ public partial class App : Application
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
                 services.AddSingleton<TurnSummaryService>();
+                services.AddSingleton<SessionTitleService>();
                 services.AddSingleton<ChatGenerationService>();
                 services.AddSingleton<ReminderService>();
                 services.AddSingleton<DiaryService>();

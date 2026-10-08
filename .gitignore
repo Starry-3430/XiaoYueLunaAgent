@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# Release publish output
+publish/
+
 # IDE / user-specific files
 .idea/
 *.user

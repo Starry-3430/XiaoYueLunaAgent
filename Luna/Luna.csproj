@@ -17,6 +17,17 @@
         <ApplicationIcon>Assets\Luna.ico</ApplicationIcon>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+        <CopyDebugSymbolFilesFromPackages>false</CopyDebugSymbolFilesFromPackages>
+        <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
+    </PropertyGroup>
+
     <ItemGroup>
         <Resource Include="Assets\AlibabaPuHuiTi-3-105-Heavy.ttf" />
         <Resource Include="Assets\CascadiaMono.ttf" />
@@ -42,5 +53,12 @@
         <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
         <ProjectReference Include="..\lib\WpfMarkdownViewer\WpfMarkdownViewer.All\WpfMarkdownViewer.All.csproj" />
     </ItemGroup>
+
+    <Target Name="RemoveDebugSymbolsFromPublish" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+        <ItemGroup>
+            <_PublishedPdb Include="$(PublishDir)**\*.pdb" />
+        </ItemGroup>
+        <Delete Files="@(_PublishedPdb)" ContinueOnError="true" />
+    </Target>
 
 </Project>

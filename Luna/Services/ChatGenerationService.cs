@@ -49,6 +49,7 @@ public sealed class ChatGenerationService
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly TurnSummaryService _turnSummaryService;
+    private readonly SessionTitleService _sessionTitleService;
     private readonly DiaryService _diaryService;
     private readonly ILogger<ChatGenerationService> _logger;
 
@@ -60,6 +61,7 @@ public sealed class ChatGenerationService
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
+        SessionTitleService sessionTitleService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
         _aiService = aiService;
@@ -69,6 +71,7 @@ public sealed class ChatGenerationService
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _turnSummaryService = turnSummaryService;
+        _sessionTitleService = sessionTitleService;
         _diaryService = diaryService;
         _logger = logger;
     }
@@ -494,6 +497,14 @@ public sealed class ChatGenerationService
 
             // 顺带触发一次日记检查（补齐历史积压；当天不会提前生成）
             _diaryService.Trigger();
+
+            // 首轮完成且尚无标题时，异步生成会话标题
+            var session = await _sessionRepo.GetByIdAsync(sessionId);
+            if (session is not null && string.IsNullOrWhiteSpace(session.Title))
+            {
+                var firstUserText = messages.FirstOrDefault(m => m.Role == "user")?.Content ?? string.Empty;
+                _sessionTitleService.Trigger(sessionId, firstUserText, replyContent);
+            }
         }
 
         await _sessionRepo.TouchAsync(sessionId);
