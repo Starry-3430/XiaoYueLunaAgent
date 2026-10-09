@@ -823,7 +823,7 @@ public partial class HomeWindow : Window
         var pos = e.GetPosition(this);
         var diff = pos - _headerDragStart.Value;
 
-        if (Math.Abs(diff.X) < 4 && Math.Abs(diff.Y) < 4)
+        if (Math.Abs(diff.X) < 2 && Math.Abs(diff.Y) < 2)
             return;
 
         _headerDragStart = null;
