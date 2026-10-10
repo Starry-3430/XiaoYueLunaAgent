@@ -1,4 +1,4 @@
-﻿<Window x:Class="Luna.HomeWindow"
+<Window x:Class="Luna.HomeWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
@@ -665,19 +665,19 @@ Background="#E4E0CA"
                               Padding="20,16">
                     <StackPanel>
                         <!-- 通用 -->
-                        <TextBlock Text="通用" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Text="通用" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
                         <views:GeneralSettingsView x:Name="GeneralSettingsPanel"/>
 
                         <!-- 聊天 -->
-                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <TextBlock Text="聊天" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,12,0,12"/>
                         <views:AiConnectionView x:Name="AiConnectionPanel"/>
 
                         <!-- 附件 -->
-                        <TextBlock Text="附件" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <TextBlock Text="附件" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,12,0,12"/>
                         <views:AttachmentManagerView x:Name="AttachmentManagerPanel"/>
 
                         <!-- 调试 -->
-                        <TextBlock Text="调试" Foreground="#5B4833" FontSize="18" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <TextBlock Text="调试" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,12,0,12"/>
                         <Button x:Name="OpenLogsButton"
                                 Content="打开日志文件夹"
                                 Click="OpenLogsButton_Click"
