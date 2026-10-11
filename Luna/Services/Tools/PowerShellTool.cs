@@ -1,3 +1,4 @@
+// 工具：执行只读 PowerShell 命令（写操作黑名单，每次需确认）。
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;

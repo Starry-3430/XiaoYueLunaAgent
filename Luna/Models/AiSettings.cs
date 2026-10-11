@@ -2,6 +2,9 @@ using System.Text.Json.Serialization;
 
 namespace Luna.Models;
 
+/// <summary>
+/// AI 与应用设置模型（提供商、密钥、采样参数、字体、快捷键、代理、工具开关、输出目录），并包含 OpenAI 兼容的请求/响应 DTO
+/// </summary>
 public class AiSettings
 {
     public const string DefaultProvider = "deepseek";

@@ -1,5 +1,8 @@
 ﻿namespace Luna.Models;
 
+/// <summary>
+/// 某个逻辑日的日记生成状态（Pending / Done / Failed）
+/// </summary>
 public class DiaryDay
 {
     public string LogicalDate { get; set; } = string.Empty;

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿// 工具：输出指定目录的文件树结构。
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;

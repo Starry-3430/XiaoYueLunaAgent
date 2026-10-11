@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿// 输入框右键菜单（剪切 / 复制 / 粘贴），替换系统默认菜单
+
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;

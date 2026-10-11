@@ -1,3 +1,4 @@
+// 工具：执行 Git 操作（只读查询与需确认的提交等）。
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;

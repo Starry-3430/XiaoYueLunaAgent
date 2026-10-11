@@ -1,3 +1,4 @@
+// 工具：在独立进程中运行 Python 代码（沙箱 + 超时 + 输出限制）。
 using System.Diagnostics;
 using System.IO;
 using System.Text;

@@ -14,6 +14,9 @@ using Luna.Services.Data;
 
 namespace Luna.ViewModels;
 
+/// <summary>
+/// 胶囊窗口视图模型：输入文本、忙碌状态、待发送附件、消息集合绑定，发送/取消命令，附件导入/移除/清空命令。
+/// </summary>
 public partial class MainViewModel : ObservableObject
 {
     private readonly SessionRepository _sessionRepo;

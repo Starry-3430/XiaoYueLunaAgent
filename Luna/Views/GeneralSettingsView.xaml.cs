@@ -13,6 +13,9 @@ using Luna.ViewModels;
 
 namespace Luna.Views;
 
+/// <summary>
+/// 通用设置页界面
+/// </summary>
 public partial class GeneralSettingsView : UserControl
 {
     public GeneralSettingsView()

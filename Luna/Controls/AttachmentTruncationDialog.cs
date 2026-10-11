@@ -1,3 +1,5 @@
+// “文档过长”确认弹窗：让用户选择「智能截断」或「继续导入整个文件」
+
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;

@@ -4,6 +4,9 @@ using Luna.Services.Tools;
 
 namespace Luna.Models;
 
+/// <summary>
+/// 工具定义视图模型（名称、说明、启用状态、风险等级与标签颜色）
+/// </summary>
 public partial class ToolDefinition : ObservableObject
 {
     private static readonly Brush MediumBrush = new SolidColorBrush(Color.FromRgb(0xFD, 0x79, 0x56));

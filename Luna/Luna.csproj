@@ -29,7 +29,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Resource Include="Assets\AlibabaPuHuiTi-3-105-Heavy.ttf" />
         <Resource Include="Assets\CascadiaMono.ttf" />
         <Resource Include="iconStream\icon.ico" />
         <Resource Include="iconStream\Luna.ico" />

@@ -1,6 +1,7 @@
 using Luna.Models;
 
 namespace Luna.Services;
+// AI 服务接口定义 + 流式事件类型 + 单次请求参数（AiRequestOptions）
 
 public abstract record StreamEvent;
 public record ReasoningDelta(string Text) : StreamEvent;

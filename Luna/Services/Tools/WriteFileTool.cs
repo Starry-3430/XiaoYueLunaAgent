@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿// 工具：写入文本文件（限定输出目录 + 扩展名黑名单）。
+using System.IO;
 using System.Text.Json;
 using Luna.Models;
 using Microsoft.Extensions.Logging;

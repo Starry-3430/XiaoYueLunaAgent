@@ -19,6 +19,9 @@ using Luna.Services.Tools;
 
 namespace Luna.ViewModels;
 
+/// <summary>
+/// 主界面视图模型：会话列表、当前会话、输入与发送、附件、导航状态
+/// </summary>
 public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateMessage>
 {
     private readonly SessionRepository _sessionRepo;

@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿// 聊天消息视图模型：内容、思考过程、工具调用条目、流式渲染状态
+
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Luna.Models;

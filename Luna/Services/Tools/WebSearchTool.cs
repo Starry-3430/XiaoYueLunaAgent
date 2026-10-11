@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿// 工具：联网搜索（Tavily API，含请求/响应/结果 DTO）。
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;

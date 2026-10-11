@@ -1,3 +1,4 @@
+// 工具：按文件名搜索文件（索引优先，回退目录扫描）。
 using System.Diagnostics;
 using System.IO;
 using System.Text;

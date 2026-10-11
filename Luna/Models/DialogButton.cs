@@ -2,6 +2,9 @@
 
 namespace Luna.Models;
 
+/// <summary>
+/// 弹窗按钮模型（文本、命令、样式键、是否主/取消按钮）
+/// </summary>
 public class DialogButton
 {
     public string Text { get; set; } = string.Empty;

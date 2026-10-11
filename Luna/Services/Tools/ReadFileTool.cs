@@ -1,3 +1,4 @@
+// 工具：读取文本/代码文件内容（受安全策略限制）。
 using System.IO;
 using System.Text.Json;
 using Luna.Services;

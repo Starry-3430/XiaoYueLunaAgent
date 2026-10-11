@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿// 会话表数据访问（列表、标题更新、置顶、级联删除）
+
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Luna.Models;
 

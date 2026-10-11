@@ -1,3 +1,5 @@
+// 待办事项实体（截止时间、提醒时间、状态、提醒次数）
+
 namespace Luna.Models;
 
 /// <summary>待办事项。所有时间以 UTC 存储。</summary>

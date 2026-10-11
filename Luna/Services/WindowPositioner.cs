@@ -1,3 +1,5 @@
+// 窗口定位：顶部居中、跟随鼠标所在显示器、处理 DPI 缩放
+
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;

@@ -1,3 +1,5 @@
+// 左侧会话列表右键菜单（重命名 / 删除）
+
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;

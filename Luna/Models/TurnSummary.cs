@@ -1,5 +1,8 @@
 ﻿namespace Luna.Models;
 
+/// <summary>
+/// 轮次摘要实体（JSON 摘要、逻辑日期、模型、Token 数）
+/// </summary>
 public class TurnSummary
 {
     public string TurnId { get; set; } = Guid.NewGuid().ToString("N");

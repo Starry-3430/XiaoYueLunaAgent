@@ -1,3 +1,5 @@
+// S 曲线用于胶囊展开/收起等需要柔和过渡的动画。
+
 using System.Windows;
 using System.Windows.Media.Animation;
 
