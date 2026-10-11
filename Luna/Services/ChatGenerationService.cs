@@ -113,6 +113,16 @@ public sealed class ChatGenerationService
         catch { /* 忽略 */ }
     }
 
+    /// <summary>移除会话运行期缓存（会话被删除时调用）。</summary>
+    public void RemoveRuntime(string sessionId)
+    {
+        if (!_runtimes.TryRemove(sessionId, out var runtime)) return;
+
+        try { runtime.Cts?.Cancel(); } catch { /* 忽略 */ }
+        runtime.Cts?.Dispose();
+        runtime.Cts = null;
+    }
+
     /// <summary>
     /// 发送用户消息并启动（后台）生成。用户消息在写库后立即加入运行期集合。
     /// </summary>

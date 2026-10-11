@@ -106,6 +106,10 @@ public partial class ChatMessage : ObservableObject
     partial void OnIsStreamingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsThinking));
+
+        // 思考阶段结束（本轮流式输出完成）后自动收起，避免智能体任务结束后堆积大量展开的思考过程。
+        if (!value && IsReasoningExpanded)
+            IsReasoningExpanded = false;
     }
 
     partial void OnReasoningChanged(string value)

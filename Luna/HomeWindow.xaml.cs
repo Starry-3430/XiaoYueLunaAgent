@@ -59,6 +59,7 @@ public partial class HomeWindow : Window
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列
+    private readonly HistoryContextMenu _historyMenu; // 左侧历史记录右键菜单
 
     /// <summary>通知类型：成功、警告、错误。</summary>
     public enum ToastType { Success, Warning, Error }
@@ -132,6 +133,9 @@ public partial class HomeWindow : Window
         
         // "新对话"按钮：回到聊天模式并重置标题
         NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+
+        // 左侧历史记录右键菜单：重命名 / 删除
+        _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
 
         // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(InputBox);
@@ -1003,6 +1007,92 @@ public partial class HomeWindow : Window
         };
 
         dialog.ShowDialog();
+    }
+
+    // ===== 左侧历史记录：重命名 / 删除 =====
+
+    /// <summary>重命名会话：弹输入框，确认后写库并就地刷新标题。</summary>
+    private async void RenameSession(ChatSessionItem session)
+    {
+        var box = new TextBox
+        {
+            Text = session.Title,
+            Width = 260,
+            FontSize = 13,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            CaretBrush = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            Background = new SolidColorBrush(Color.FromRgb(0xD4, 0xD0, 0xBA)),
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(10, 8, 10, 8),
+        };
+        box.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
+
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = "重命名会话",
+            DialogContent = box,
+        };
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new() { Text = "取消", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = "确定", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+        };
+        dialog.ShowDialog();
+
+        var newTitle = box.Text?.Trim();
+        if (!string.IsNullOrEmpty(newTitle))
+            await _viewModel.RenameSessionAsync(session, newTitle);
+    }
+
+    /// <summary>删除会话：二次确认后删除全部关联数据。</summary>
+    private async void DeleteSession(ChatSessionItem session)
+    {
+        if (!ConfirmDeleteSession(session)) return;
+
+        await _viewModel.DeleteSessionAsync(session);
+
+        // 若删除的是当前会话，回到新对话状态
+        if (HistoryList.SelectedItem is null)
+        {
+            BindSelectedSession(null);
+            ChatTitle.Text = "新聊天";
+            SwitchToChat();
+        }
+    }
+
+    private bool ConfirmDeleteSession(ChatSessionItem session)
+    {
+        var confirmed = false;
+
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = "删除会话",
+            DialogContent = new TextBlock
+            {
+                Text = $"确定删除会话「{session.Title}」吗？\n将删除其全部对话记录、附件引用与摘要记忆，且不可恢复。已生成的日记不受影响。",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new() { Text = "取消", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new()
+            {
+                Text = "删除",
+                StyleKey = "StyleDangerSoft",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+        dialog.ShowDialog();
+        return confirmed;
     }
 
     // ===== 设置项交互 =====
