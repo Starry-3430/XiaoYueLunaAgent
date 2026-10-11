@@ -164,6 +164,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, ReadFileTool>();
                 services.AddSingleton<ITool, FileTreeTool>();
                 services.AddSingleton<ITool, WriteFileTool>();
+                services.AddSingleton<ITool, GitTool>();
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
