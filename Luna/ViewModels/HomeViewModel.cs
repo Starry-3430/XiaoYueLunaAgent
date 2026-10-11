@@ -517,9 +517,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [RelayCommand]
     private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
 
-    /// <summary>转换附件内容并估算 Token。</summary>
+    /// <summary>转换附件内容并估算 Token。图片不做转换，交由 AI 的识图能力直接识别。</summary>
     private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
     {
+        if (AttachmentHelper.IsImage(attachment))
+        {
+            attachment.ConvertedMarkdown = null;
+            attachment.TokenEstimate = 0;
+            return;
+        }
+
         var sourcePath = attachment.StoredPath;
         if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
 
@@ -558,9 +565,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 attachment.StoredPath = stored.StoredPath;
                 attachment.FileSize = stored.FileSize;
 
-                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                // 图片不转换，交由 AI 识图；其余文档按需转换 Markdown
+                if (!AttachmentHelper.IsImage(attachment) && string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
                     attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
-                if (attachment.TokenEstimate == 0)
+                if (!AttachmentHelper.IsImage(attachment) && attachment.TokenEstimate == 0)
                     attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
 
                 prepared.Add(attachment);

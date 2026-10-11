@@ -152,7 +152,7 @@ public sealed class ChatGenerationService
         };
         var userMsgDbId = await _messageRepo.InsertAsync(userMsg);
 
-        runtime.Messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userMsgDbId });
+        var userChatMessage = new ChatMessage { Role = "user", Content = userText, DbId = userMsgDbId };
 
         if (attachments is { Count: > 0 })
         {
@@ -164,25 +164,42 @@ public sealed class ChatGenerationService
                 await _attachmentRepo.AddAsync(attachment);
             }
 
-            // 把转换后的 Markdown 作为 system 消息注入会话（界面可见，AI 也会读取）
+            // 图片：直接作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
+            foreach (var attachment in attachments.Where(AttachmentHelper.IsImage))
+            {
+                if (AttachmentHelper.TryBuildImageDataUrl(attachment, out var dataUrl, out var imageError))
+                    userChatMessage.Images.Add(dataUrl);
+                else
+                    _logger.LogWarning("图片附件无法作为图像发送：{File}（{Error}）", attachment.FileName, imageError);
+            }
+        }
+
+        runtime.Messages.Add(userChatMessage);
+
+        if (attachments is { Count: > 0 })
+        {
+            // 文档/其它附件把转换后的文本作为 system 消息注入会话（界面可见，AI 也会读取）
             var context = BuildAttachmentContext(attachments);
-            var systemMsg = new Message
+            if (!string.IsNullOrWhiteSpace(context))
             {
-                SessionId = sessionId,
-                TurnId = turnId,
-                Role = "system",
-                Content = context,
-                CreatedAtUtc = DateTime.UtcNow,
-                LogicalDate = logicalDate,
-            };
-            var systemMsgDbId = await _messageRepo.InsertAsync(systemMsg);
-            runtime.Messages.Add(new ChatMessage
-            {
-                Role = "system",
-                Content = context,
-                AttachmentSummary = ExtractAttachmentSummary(context),
-                DbId = systemMsgDbId,
-            });
+                var systemMsg = new Message
+                {
+                    SessionId = sessionId,
+                    TurnId = turnId,
+                    Role = "system",
+                    Content = context,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    LogicalDate = logicalDate,
+                };
+                var systemMsgDbId = await _messageRepo.InsertAsync(systemMsg);
+                runtime.Messages.Add(new ChatMessage
+                {
+                    Role = "system",
+                    Content = context,
+                    AttachmentSummary = ExtractAttachmentSummary(context),
+                    DbId = systemMsgDbId,
+                });
+            }
         }
 
         await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
@@ -197,6 +214,14 @@ public sealed class ChatGenerationService
         {
             sb.AppendLine();
             sb.AppendLine($"### 附件：{a.FileName} · {AttachmentHelper.FormatSize(a.FileSize)}");
+
+            // 图片已作为图像随用户消息直接发送，这里只做展示，提示模型直接查看、不要读取文件
+            if (AttachmentHelper.IsImage(a))
+            {
+                sb.AppendLine("（图片，已随本条消息作为图像直接发送，请直接查看图像内容，不要尝试读取本地文件。）");
+                continue;
+            }
+
             if (!string.IsNullOrWhiteSpace(a.SourcePath))
                 sb.AppendLine($"原始路径：{a.SourcePath}");
             sb.AppendLine();
@@ -245,6 +270,7 @@ public sealed class ChatGenerationService
         if (string.IsNullOrEmpty(userText) || userIndex < 0) return;
 
         var userDbId = messages[userIndex].DbId;
+        var userImages = messages[userIndex].Images.ToList(); // 保留原用户消息携带的图片，重写时继续作为图像发送
 
         // 重写前先保留该轮次注入的附件上下文（system 消息），重写后原样带回去
         var attachmentContexts = new List<string>();
@@ -268,7 +294,10 @@ public sealed class ChatGenerationService
             await _turnSummaryService.DeleteOrphanedAsync(sessionId);
         }
 
-        messages.Add(new ChatMessage { Role = "user", Content = userText, DbId = userDbId });
+        var newUserMessage = new ChatMessage { Role = "user", Content = userText, DbId = userDbId };
+        foreach (var image in userImages)
+            newUserMessage.Images.Add(image);
+        messages.Add(newUserMessage);
 
         // 重新注入保留的附件上下文（引用与转换内容），使重写仍能基于文件作答
         foreach (var context in attachmentContexts)
