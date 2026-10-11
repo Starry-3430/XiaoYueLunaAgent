@@ -326,7 +326,7 @@ public partial class DiaryView : UserControl
 
         var nickname = Vm?.Nickname ?? "Luna";
         var message = day.IsPending
-            ? $"{nickname}还在记录\n明天再来看看吧！"
+            ? $"{nickname}还在记录\n稍后再来看看吧！"
             : $"这一天没有和\n{nickname}互动过哦！";
 
         return new TextBlock
