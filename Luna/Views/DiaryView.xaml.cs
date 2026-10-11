@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -34,6 +35,7 @@ public partial class DiaryView : UserControl
     private readonly Dictionary<int, Border> _visuals = new();
     private bool _hooked;
     private bool _relayoutQueued;
+    private bool _entrancePlayed;
     private double _lastMaskWidth = -1;
 
     private double _position = double.NaN;
@@ -47,6 +49,9 @@ public partial class DiaryView : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) => Hook();
         Loaded += (_, _) => { Hook(); Layout(); };
+
+        // 页面被切到可见时才播放入场动画（预加载时内容在后台已就绪，隐藏期间尺寸为 0 不会构建卡片）。
+        IsVisibleChanged += (_, _) => { if (IsVisible) Layout(); };
     }
 
     private DiaryViewModel? Vm => DataContext as DiaryViewModel;
@@ -167,6 +172,40 @@ public partial class DiaryView : UserControl
             card.Opacity = 1 - t * 0.25;
             Panel.SetZIndex(card, 100 - (int)Math.Round(Math.Abs(delta) * 10));
         }
+
+        PlayEntrance();
+    }
+
+    /// <summary>首次显示时给卡片加入场动画：淡入 + 轻微放大回弹。</summary>
+    private void PlayEntrance()
+    {
+        if (_entrancePlayed || _visuals.Count == 0) return;
+        _entrancePlayed = true;
+
+        var fade = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var grow = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.35 };
+
+        foreach (var wrapper in _visuals.Values)
+        {
+            // 动画作用在整张卡片（白色背景 + 文本）上，而不是只动内部内容。
+            if (wrapper.Visibility != Visibility.Visible) continue;
+            if (wrapper.Child is not FrameworkElement card) continue;
+
+            card.RenderTransformOrigin = new Point(0.5, 0.5);
+            var scale = new ScaleTransform(0.9, 0.9);
+            card.RenderTransform = scale;
+            card.Opacity = 0;
+
+            card.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = fade });
+
+            var growAnimation = new DoubleAnimation(0.9, 1.0, TimeSpan.FromMilliseconds(380))
+            {
+                EasingFunction = grow,
+            };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, growAnimation);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, growAnimation);
+        }
     }
 
     private Border GetOrCreate(int index)
@@ -174,10 +213,12 @@ public partial class DiaryView : UserControl
         if (_visuals.TryGetValue(index, out var existing))
             return existing;
 
-        var card = BuildCard(Days[index]);
-        _visuals[index] = card;
-        PagerCanvas.Children.Add(card);
-        return card;
+        // 用一个透明外壳承载布局的定位/缩放/透明度，内部才是真正的卡片（背景 + 文本），
+        // 这样入场动画可以整张卡片一起做，而不会被布局每帧写入的变换覆盖。
+        var wrapper = new Border { Child = BuildCard(Days[index]) };
+        _visuals[index] = wrapper;
+        PagerCanvas.Children.Add(wrapper);
+        return wrapper;
     }
 
     private Border BuildCard(DiaryDayView day)
@@ -285,7 +326,7 @@ public partial class DiaryView : UserControl
 
         var nickname = Vm?.Nickname ?? "Luna";
         var message = day.IsPending
-            ? $"{nickname}还在记录\n明天再来看看吧！"
+            ? $"{nickname}还在记录\n稍后再来看看吧！"
             : $"这一天没有和\n{nickname}互动过哦！";
 
         return new TextBlock

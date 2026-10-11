@@ -371,11 +371,31 @@ public class OpenAiService : IAiService
             {
                 // user / system 等：重置工具上下文
                 pendingToolCallIds = null;
-                messagesArray.Add(new JsonObject
+
+                var obj = new JsonObject { ["role"] = msg.Role };
+
+                if (msg.HasImages)
                 {
-                    ["role"] = msg.Role,
-                    ["content"] = msg.Content,
-                });
+                    // 多模态：文本 + 图片（data URL），交由模型识图
+                    var parts = new JsonArray();
+                    if (!string.IsNullOrEmpty(msg.Content))
+                        parts.Add(new JsonObject { ["type"] = "text", ["text"] = msg.Content });
+                    foreach (var url in msg.Images)
+                    {
+                        parts.Add(new JsonObject
+                        {
+                            ["type"] = "image_url",
+                            ["image_url"] = new JsonObject { ["url"] = url },
+                        });
+                    }
+                    obj["content"] = parts;
+                }
+                else
+                {
+                    obj["content"] = msg.Content;
+                }
+
+                messagesArray.Add(obj);
             }
         }
         root["messages"] = messagesArray;

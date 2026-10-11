@@ -5,7 +5,7 @@
     <Style x:Key="DialogBorder" TargetType="Border">
         <Setter Property="Background" Value="#FAFAF0"/>
         <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="24,20,24,16"/>
+        <Setter Property="Padding" Value="30,24,30,16"/>
         <Setter Property="MinWidth" Value="320"/>
         <Setter Property="MaxWidth" Value="480"/>
     </Style>

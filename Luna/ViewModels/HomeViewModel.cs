@@ -367,11 +367,71 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         {
             // 复用会话运行期对象：正在后台生成的内容会原样显示，不会因切换而丢失。
             Runtime = await _generation.GetOrLoadAsync(session.Id);
+
+            // 打开会话时收起所有历史思考过程（正在流式输出的那条除外，保持实时展开）。
+            foreach (var message in Runtime.Messages)
+            {
+                if (!message.IsStreaming)
+                    message.IsReasoningExpanded = false;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载会话消息失败");
             Status = "加载失败";
+        }
+    }
+
+    /// <summary>重命名会话：写入数据库并就地刷新界面标题。</summary>
+    public async Task RenameSessionAsync(ChatSessionItem session, string newTitle)
+    {
+        newTitle = newTitle.Trim();
+        if (string.IsNullOrEmpty(newTitle) || newTitle == session.Title) return;
+
+        try
+        {
+            await _sessionRepo.UpdateTitleAsync(session.Id, newTitle);
+            session.Title = newTitle; // 可观察属性：左侧列表与顶部标题会立即刷新
+            _logger.LogInformation("会话已重命名：{Id} -> {Title}", session.Id, newTitle);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重命名会话失败：{Id}", session.Id);
+            Status = "重命名失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>删除会话及其全部关联数据（消息 / 附件引用 / 轮次摘要），日记不受影响。</summary>
+    public async Task DeleteSessionAsync(ChatSessionItem session)
+    {
+        try
+        {
+            _generation.Cancel(session.Id);
+            await _sessionRepo.DeleteAsync(session.Id);
+            _toolPermission.ClearConversation(session.Id);
+            _generation.RemoveRuntime(session.Id);
+
+            var wasSelected = ReferenceEquals(SelectedSession, session) || session.Id == _currentSessionId;
+            ChatSessions.Remove(session);
+            _sessionDrafts.Remove(session.Id);
+            _sessionAttachments.Remove(session.Id);
+
+            if (wasSelected)
+            {
+                Runtime = null;
+                _currentSessionId = null;
+                SelectedSession = null;
+                InputText = string.Empty;
+                PendingAttachments.Clear();
+                Status = "就绪";
+            }
+
+            _logger.LogInformation("会话已删除：{Id}", session.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "删除会话失败：{Id}", session.Id);
+            Status = "删除失败：" + ex.Message;
         }
     }
 
@@ -457,9 +517,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [RelayCommand]
     private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
 
-    /// <summary>转换附件内容并估算 Token。</summary>
+    /// <summary>转换附件内容并估算 Token。图片不做转换，交由 AI 的识图能力直接识别。</summary>
     private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
     {
+        if (AttachmentHelper.IsImage(attachment))
+        {
+            attachment.ConvertedMarkdown = null;
+            attachment.TokenEstimate = 0;
+            return;
+        }
+
         var sourcePath = attachment.StoredPath;
         if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
 
@@ -498,9 +565,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 attachment.StoredPath = stored.StoredPath;
                 attachment.FileSize = stored.FileSize;
 
-                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                // 图片不转换，交由 AI 识图；其余文档按需转换 Markdown
+                if (!AttachmentHelper.IsImage(attachment) && string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
                     attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
-                if (attachment.TokenEstimate == 0)
+                if (!AttachmentHelper.IsImage(attachment) && attachment.TokenEstimate == 0)
                     attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
 
                 prepared.Add(attachment);

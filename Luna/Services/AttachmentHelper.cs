@@ -8,13 +8,78 @@ namespace Luna.Services;
 public static class AttachmentHelper
 {
     public const string DialogFilter =
-        "文档文件|*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html|所有文件|*.*";
+        "所有支持的附件|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html" +
+        "|图片|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp" +
+        "|文档文件|*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html|所有文件|*.*";
 
     /// <summary>单条消息可附带的最大附件数量。</summary>
     public const int MaxCount = 10;
 
     /// <summary>单个附件的最大字节数（100 MB）。</summary>
     public const long MaxBytes = 100L * 1024 * 1024;
+
+    /// <summary>单张图片的最大字节数（10 MB，多模态输入用）。</summary>
+    public const long MaxImageBytes = 10L * 1024 * 1024;
+
+    /// <summary>可交由 AI 直接识别的图片扩展名。</summary>
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+    };
+
+    /// <summary>该附件是否为图片。</summary>
+    public static bool IsImage(Attachment a)
+        => !string.IsNullOrEmpty(a.FileExtension) && ImageExtensions.Contains(a.FileExtension);
+
+    /// <summary>该扩展名是否为图片。</summary>
+    public static bool IsImageExtension(string? extension)
+        => !string.IsNullOrEmpty(extension) && ImageExtensions.Contains(extension);
+
+    /// <summary>
+    /// 把图片附件读取为 data URL（供多模态识图）。达到上限或读取失败时返回 false。
+    /// 优先使用内容寻址后的 <see cref="Attachment.StoredPath"/>，回退到原始 <see cref="Attachment.SourcePath"/>。
+    /// </summary>
+    public static bool TryBuildImageDataUrl(Attachment a, out string dataUrl, out string error)
+    {
+        dataUrl = string.Empty;
+        error = string.Empty;
+
+        var path = !string.IsNullOrEmpty(a.StoredPath) ? a.StoredPath : a.SourcePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            error = "图片文件不存在。";
+            return false;
+        }
+
+        try
+        {
+            var info = new FileInfo(path);
+            if (info.Length > MaxImageBytes)
+            {
+                error = $"图片过大（{FormatSize(info.Length)}），超过上限 {FormatSize(MaxImageBytes)}。";
+                return false;
+            }
+
+            var mime = GetImageMime(a.FileExtension ?? Path.GetExtension(path));
+            var bytes = File.ReadAllBytes(path);
+            dataUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static string GetImageMime(string? extension) => extension?.ToLowerInvariant() switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".gif" => "image/gif",
+        ".webp" => "image/webp",
+        ".bmp" => "image/bmp",
+        _ => "image/png",
+    };
 
     /// <summary>
     /// 弹出多选文件对话框。选中的文件以原始路径暂存在 <see cref="Attachment.StoredPath"/> / <see cref="Attachment.SourcePath"/>，
