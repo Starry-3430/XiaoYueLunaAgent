@@ -27,6 +27,15 @@ public static class FileSandbox
         ".sh", ".bat", ".cmd", ".ps1", ".psm1", ".gradle", ".dockerfile",
     };
 
+    /// <summary>写入黑名单：可执行 / 脚本 / 安装包 / 二进制类型，一律禁止写入。</summary>
+    public static HashSet<string> BlockedExtensions { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".dll", ".bat", ".ps1", ".psm1", ".cmd", ".scr", ".msi", ".com",
+        ".cpl", ".sys", ".drv", ".ocx", ".pif", ".vbs", ".vbe", ".wsf", ".wsh",
+        ".jse", ".hta", ".gadget", ".msc", ".lnk", ".jar", ".class",
+        ".apk", ".bin", ".iso", ".img", ".dmg", ".so", ".dylib",
+    };
+
     /// <summary>单文件大小上限（1024 KB）。</summary>
     public const long MaxBytes = 1024 * 1024;
 
@@ -196,6 +205,27 @@ public static class FileSandbox
         try
         {
             return IsInsideAllowedRoots(Path.GetFullPath(fullPath));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>路径是否位于指定目录内（含目录本身）。</summary>
+    public static bool IsInsideDirectory(string fullPath, string directory)
+    {
+        if (string.IsNullOrWhiteSpace(fullPath) || string.IsNullOrWhiteSpace(directory))
+            return false;
+
+        try
+        {
+            var normalizedDir = Path.GetFullPath(directory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var target = Path.GetFullPath(fullPath);
+
+            return target.Equals(normalizedDir, StringComparison.OrdinalIgnoreCase)
+                   || target.StartsWith(normalizedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
