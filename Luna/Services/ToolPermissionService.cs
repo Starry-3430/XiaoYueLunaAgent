@@ -27,7 +27,15 @@ public class ToolPermissionService
 
     /// <summary>该风险等级（或强制确认标记）是否需要弹窗确认。</summary>
     public static bool NeedsConfirmation(ITool tool)
-        => tool.RequiresUserConfirmation || tool.Risk is ToolRiskLevel.Medium or ToolRiskLevel.High;
+    {
+        // PowerShell 每次调用都必须确认，且不允许"始终允许"。
+        if (IsAlwaysConfirm(tool)) return true;
+        return tool.RequiresUserConfirmation || tool.Risk is ToolRiskLevel.Medium or ToolRiskLevel.High;
+    }
+
+    /// <summary>永不缓存授权、每次都需确认的工具（如 powershell）。</summary>
+    private static bool IsAlwaysConfirm(ITool tool)
+        => string.Equals(tool.Name, "powershell", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>当前对话是否已对本工具选择过“始终允许”。</summary>
     public bool IsAlwaysAllowed(string? conversationId, string toolName)
@@ -63,7 +71,7 @@ public class ToolPermissionService
                 DialogContent = BuildContent(tool, argumentsJson),
             };
 
-            dialog.Buttons = new ObservableCollection<DialogButton>
+            var buttons = new ObservableCollection<DialogButton>
             {
                 new()
                 {
@@ -75,7 +83,12 @@ public class ToolPermissionService
                         dialog.Close();
                     }),
                 },
-                new()
+            };
+
+            // powershell 不允许"始终允许"，因此不提供该选项。
+            if (!IsAlwaysConfirm(tool))
+            {
+                buttons.Add(new()
                 {
                     Text = "本轮对话始终允许",
                     StyleKey = "StyleDanger",
@@ -84,18 +97,21 @@ public class ToolPermissionService
                         decision = ToolPermissionDecision.AllowAlways;
                         dialog.Close();
                     }),
-                },
-                new()
+                });
+            }
+
+            buttons.Add(new()
+            {
+                Text = "拒绝",
+                StyleKey = "StyleCancel",
+                Command = new RelayCommand(() =>
                 {
-                    Text = "拒绝",
-                    StyleKey = "StyleCancel",
-                    Command = new RelayCommand(() =>
-                    {
-                        decision = ToolPermissionDecision.Deny;
-                        dialog.Close();
-                    }),
-                },
-            };
+                    decision = ToolPermissionDecision.Deny;
+                    dialog.Close();
+                }),
+            });
+
+            dialog.Buttons = buttons;
 
             dialog.ShowDialog();
         }

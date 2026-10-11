@@ -246,6 +246,29 @@
             </StackPanel>
         </Border>
 
+        <!-- 输出目录 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="输出目录" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="允许写入文件的目录，为空则不授权任何写入（write_file 将拒绝执行）。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBox Width="240" Style="{StaticResource SettingsInputWide}"
+                             Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center"/>
+                    <Button Content="浏览…" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Margin="6,0,0,0" Click="BrowseOutputDirectory_Click"/>
+                    <Button Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetOutputDirectoryCommand}" Margin="6,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 保存 -->
         <StackPanel Orientation="Horizontal" Margin="0,10,0,2">
             <Button Content="保存" Style="{StaticResource PrimaryActionButton}"

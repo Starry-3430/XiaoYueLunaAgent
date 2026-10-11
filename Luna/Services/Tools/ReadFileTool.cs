@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Luna.Services.Tools;
 
 /// <summary>
-/// 读取文本文件。受 <see cref="FileSandbox"/> 限制：限定目录、扩展名与大小。
+/// 读取文本文件。可访问全盘任意位置，受 <see cref="FileSandbox"/> 限制：限定扩展名与大小。
 /// 风险等级 Medium，执行前需要用户确认。
 /// </summary>
 public class ReadFileTool : ITool
