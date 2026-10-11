@@ -287,24 +287,35 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         try
         {
             var sessions = await _sessionRepo.GetAllAsync();
-            var selectedId = SelectedSession?.Id;
-            ChatSessions.Clear();
-            foreach (var s in sessions)
-            {
-                var item = new ChatSessionItem
-                {
-                    Id = s.Id,
-                    Title = s.Title ?? "新对话",
-                    Preview = s.Preview ?? "",
-                };
-                ChatSessions.Add(item);
-                if (item.Id == selectedId)
-                    SelectedSession = item;
-            }
+
+            // 集合变更必须在 UI 线程执行（可能由后台线程的通知触发）。
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null || dispatcher.CheckAccess())
+                ApplySessions(sessions);
+            else
+                await dispatcher.InvokeAsync(() => ApplySessions(sessions));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载会话列表失败");
+        }
+    }
+
+    private void ApplySessions(List<Session> sessions)
+    {
+        var selectedId = SelectedSession?.Id;
+        ChatSessions.Clear();
+        foreach (var s in sessions)
+        {
+            var item = new ChatSessionItem
+            {
+                Id = s.Id,
+                Title = s.Title ?? "新对话",
+                Preview = s.Preview ?? "",
+            };
+            ChatSessions.Add(item);
+            if (item.Id == selectedId)
+                SelectedSession = item;
         }
     }
 
@@ -587,13 +598,44 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public void Receive(SessionUpdateMessage message)
     {
+        // 通知可能来自后台线程（如标题生成），集合变更必须在 UI 线程执行，否则会破坏绑定。
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            ApplySessionUpdate(message);
+        else
+            dispatcher.BeginInvoke(() => ApplySessionUpdate(message));
+    }
+
+    /// <summary>就地更新会话列表（不重建），保持后台缓存不丢失。</summary>
+    private void ApplySessionUpdate(SessionUpdateMessage message)
+    {
+        if (!string.IsNullOrEmpty(message.SessionId))
+        {
+            var item = ChatSessions.FirstOrDefault(s => s.Id == message.SessionId);
+            if (item is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(message.Title))
+                    item.Title = message.Title!;
+
+                // 该会话刚刚有活动，置顶（与按 UpdatedAtUtc 倒序一致）
+                var index = ChatSessions.IndexOf(item);
+                if (index > 0) ChatSessions.Move(index, 0);
+                return;
+            }
+        }
+
+        // 找不到对应项（如新增会话）时才整体刷新
         _ = LoadSessionsAsync();
     }
 }
 
-public class ChatSessionItem
+public partial class ChatSessionItem : ObservableObject
 {
     public string Id { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Preview { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    private string _preview = string.Empty;
 }

@@ -518,7 +518,7 @@ public sealed class ChatGenerationService
 
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = "就绪";
-        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
+        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
     }
 
     /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>

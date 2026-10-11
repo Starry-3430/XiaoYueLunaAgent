@@ -104,17 +104,14 @@ public partial class HomeWindow : Window
             if (HistoryList.SelectedItem is ChatSessionItem session)
             {
                 _viewModel.SelectSessionCommand.Execute(session);
+                BindSelectedSession(session);
                 ChatTitle.Text = session.Title;
                 SwitchToChat();
             }
         };
 
         // 切换会话时消息集合会整体更换，需要重新绑定自动滚动
-        _viewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(HomeViewModel.Messages))
-                BindMessages();
-        };
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         BindMessages();
 
 // 左侧底部按钮：切换右侧内容区
@@ -134,13 +131,56 @@ public partial class HomeWindow : Window
         ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
 
         // 为输入框挂载自定义右键菜单
         _ = new EditorContextMenu(InputBox);
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+
+        // 窗口是 transient（关闭后重建），关闭时把挂到单例 VM / 运行期集合上的监听解绑，避免泄漏与陈旧窗口干扰。
+        Closed += (_, _) => DetachBindings();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(HomeViewModel.Messages))
+            BindMessages();
+    }
+
+    private void DetachBindings()
+    {
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        if (_boundMessages is not null)
+        {
+            _boundMessages.CollectionChanged -= OnMessagesChanged;
+            foreach (var message in _boundMessages)
+                message.PropertyChanged -= OnMessagePropertyChanged;
+            _boundMessages = null;
+        }
+        _scrollThrottle?.Stop();
+        BindSelectedSession(null);
+    }
+
+    private ChatSessionItem? _titleBoundSession;
+
+    /// <summary>订阅当前选中会话的标题变化，标题在后台生成后就地刷新顶部标题。</summary>
+    private void BindSelectedSession(ChatSessionItem? session)
+    {
+        if (_titleBoundSession is not null)
+            _titleBoundSession.PropertyChanged -= SelectedSession_PropertyChanged;
+        _titleBoundSession = session;
+        if (_titleBoundSession is not null)
+            _titleBoundSession.PropertyChanged += SelectedSession_PropertyChanged;
+    }
+
+    private void SelectedSession_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ChatSessionItem.Title)) return;
+        if (_isSettingsMode) return;
+        if (sender is ChatSessionItem session)
+            ChatTitle.Text = session.Title;
     }
 
     /// <summary>把自动滚动挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
