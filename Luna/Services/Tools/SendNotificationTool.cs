@@ -1,3 +1,4 @@
+// 工具：发送 Windows 系统通知。
 using System.Text.Json;
 using Luna.Services;
 using Microsoft.Extensions.Logging;

@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿// 通用自定义弹窗：圆角、可拖动、按钮动态生成、样式键切换
+
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;

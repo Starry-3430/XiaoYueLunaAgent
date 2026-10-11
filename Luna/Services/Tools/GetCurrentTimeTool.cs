@@ -1,3 +1,4 @@
+// 工具：获取当前本地时间与 UTC 时间。
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;

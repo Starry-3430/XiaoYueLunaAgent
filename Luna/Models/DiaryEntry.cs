@@ -1,5 +1,8 @@
 ﻿namespace Luna.Models;
 
+/// <summary>
+/// 日记正文实体（内容、模型、来源会话/轮次、Token 数）
+/// </summary>
 public class DiaryEntry
 {
     public string LogicalDate { get; set; } = string.Empty;

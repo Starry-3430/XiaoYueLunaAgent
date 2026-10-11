@@ -1,4 +1,6 @@
-﻿namespace Luna.Services;
+﻿// 逻辑日计算（本地时间减 4 小时取日期）
+
+namespace Luna.Services;
 
 public static class LogicalDate
 {

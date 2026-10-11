@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿// 工具：读取系统剪贴板文本。
+using System.Text.Json;
 using System.Windows;
 using Microsoft.Extensions.Logging;
 

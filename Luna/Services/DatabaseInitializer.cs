@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Luna.Services;
 
+/// <summary>
+/// SQLite 初始化：建表、索引、列迁移、逻辑日期迁移、WAL 设置
+/// </summary>
 public class DatabaseInitializer
 {
     /// <summary>当前架构版本，用于执行一次性数据迁移。</summary>

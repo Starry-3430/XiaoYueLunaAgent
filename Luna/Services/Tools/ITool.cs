@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿// 工具接口：名称、显示名、描述、参数 Schema、风险等级、执行入口
+
+using System.Text.Json;
 
 namespace Luna.Services.Tools;
 

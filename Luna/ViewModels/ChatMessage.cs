@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿// 聊天消息视图模型：内容、思考过程、工具调用条目、流式渲染状态
+
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Luna.Models;
@@ -67,6 +69,11 @@ public partial class ChatMessage : ObservableObject
 
     public string ToolCallId { get; set; } = string.Empty;
 
+    /// <summary>随本条用户消息一并发送的图片（data URL 形式）。仅运行期使用，供多模态识图。</summary>
+    public List<string> Images { get; } = new();
+
+    public bool HasImages => Images.Count > 0;
+
     /// <summary>
     /// 流式渲染进度，挂在消息上而不是视图上。视图（MarkdownDocumentView）只是它的投影：
     /// 切换会话导致视图销毁重建时进度不会随视图丢失。
@@ -106,6 +113,10 @@ public partial class ChatMessage : ObservableObject
     partial void OnIsStreamingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsThinking));
+
+        // 思考阶段结束（本轮流式输出完成）后自动收起，避免智能体任务结束后堆积大量展开的思考过程。
+        if (!value && IsReasoningExpanded)
+            IsReasoningExpanded = false;
     }
 
     partial void OnReasoningChanged(string value)

@@ -1,3 +1,5 @@
+// 平滑（惯性）滚动实现
+
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;

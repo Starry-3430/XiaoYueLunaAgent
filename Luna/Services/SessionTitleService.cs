@@ -54,19 +54,25 @@ public class SessionTitleService
             .Replace("{user}", Truncate(userText))
             .Replace("{assistant}", Truncate(assistantText));
 
-        var raw = await _aiService.ChatAsync(
-            new[] { new ChatMessage { Role = "user", Content = prompt } },
-            new AiRequestOptions
-            {
-                Temperature = 0,
-                MaxTokens = 64,
-                IncludeTools = false,
-                IncludeSystemPrompt = false,
-                IncludeUserEnvironment = false,
-                DeepThinking = false,
-            });
+        // 模型偶尔会返回空内容，重试一次以降低“首轮没有标题”的概率。
+        var title = string.Empty;
+        for (var attempt = 0; attempt < 2 && string.IsNullOrWhiteSpace(title); attempt++)
+        {
+            var raw = await _aiService.ChatAsync(
+                new[] { new ChatMessage { Role = "user", Content = prompt } },
+                new AiRequestOptions
+                {
+                    Temperature = 0,
+                    MaxTokens = 64,
+                    IncludeTools = false,
+                    IncludeSystemPrompt = false,
+                    IncludeUserEnvironment = false,
+                    DeepThinking = false,
+                });
 
-        var title = CleanTitle(raw);
+            title = CleanTitle(raw);
+        }
+
         if (string.IsNullOrWhiteSpace(title))
         {
             _logger.LogDebug("会话 {SessionId} 标题为空，跳过写入", sessionId);
@@ -76,8 +82,8 @@ public class SessionTitleService
         await _sessionRepo.UpdateTitleAsync(sessionId, title);
         _logger.LogInformation("会话标题已生成：Session={SessionId} Title={Title}", sessionId, title);
 
-        // 通知界面刷新：更新当前会话标题与左侧列表
-        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage());
+        // 通知界面刷新：就地更新该会话标题并置顶（不重建列表）
+        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId, title));
     }
 
     private static string Truncate(string? value)

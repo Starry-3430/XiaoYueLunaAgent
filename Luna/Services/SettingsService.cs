@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿// settings.json 读写：默认值生成、损坏重置、密钥加解密、旧配置迁移
+
+using System.IO;
 using System.Text.Json;
 using Luna.Models;
 using Microsoft.Extensions.Logging;

@@ -2,6 +2,9 @@ using System.Text.Json.Serialization;
 
 namespace Luna.Models;
 
+/// <summary>
+/// AI 与应用设置模型（提供商、密钥、采样参数、字体、快捷键、代理、工具开关、输出目录），并包含 OpenAI 兼容的请求/响应 DTO
+/// </summary>
 public class AiSettings
 {
     public const string DefaultProvider = "deepseek";
@@ -66,6 +69,12 @@ public class AiSettings
 
     /// <summary>各工具的启用状态（工具 Id → 是否启用）。未记录时默认启用。</summary>
     public Dictionary<string, bool> ToolStates { get; set; } = new();
+
+    /// <summary>默认输出目录：空，表示不授权任何写入。</summary>
+    public const string DefaultOutputDirectory = "";
+
+    /// <summary>允许写入文件工具（write_file）落盘的输出目录；为空表示不授权任何写入，工具将拒绝执行。</summary>
+    public string OutputDirectory { get; set; } = DefaultOutputDirectory;
 }
 
 public class ChatCompletionRequest

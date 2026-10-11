@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,6 +13,9 @@ using Luna.ViewModels;
 
 namespace Luna.Views;
 
+/// <summary>
+/// 通用设置页界面
+/// </summary>
 public partial class GeneralSettingsView : UserControl
 {
     public GeneralSettingsView()
@@ -40,6 +44,22 @@ public partial class GeneralSettingsView : UserControl
     {
         if (DataContext is GeneralSettingsViewModel vm && vm.ProxyPassword != ProxyPasswordBox.Password)
             vm.ProxyPassword = ProxyPasswordBox.Password;
+    }
+
+    /// <summary>选择“输出目录”。</summary>
+    private void BrowseOutputDirectory_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GeneralSettingsViewModel vm) return;
+
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择输出目录",
+            Multiselect = false,
+            InitialDirectory = Directory.Exists(vm.OutputDirectory) ? vm.OutputDirectory : string.Empty,
+        };
+
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true && !string.IsNullOrWhiteSpace(dialog.FolderName))
+            vm.OutputDirectory = dialog.FolderName;
     }
 
     /// <summary>点击下拉框以外区域时，关闭弹出层。</summary>

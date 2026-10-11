@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿// 会话表数据访问（列表、标题更新、置顶、级联删除）
+
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Luna.Models;
 
@@ -48,5 +50,21 @@ public class SessionRepository
         await conn.ExecuteAsync(
             "UPDATE Sessions SET UpdatedAtUtc = @Now WHERE Id = @Id",
             new { Id = id, Now = DateTime.UtcNow.ToString("O") });
+    }
+
+    /// <summary>
+    /// 删除会话及其全部关联数据：消息、附件引用、轮次摘要。
+    /// 已生成的日记（DiaryEntries/DiaryDays）不在此范围，保持不受影响。
+    /// </summary>
+    public async Task DeleteAsync(string id)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        await conn.ExecuteAsync("DELETE FROM Messages WHERE SessionId = @Id", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM Attachments WHERE SessionId = @Id", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM TurnSummaries WHERE SessionId = @Id", new { Id = id }, tx);
+        await conn.ExecuteAsync("DELETE FROM Sessions WHERE Id = @Id", new { Id = id }, tx);
+        tx.Commit();
     }
 }

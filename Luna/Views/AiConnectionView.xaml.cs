@@ -7,6 +7,9 @@ using Luna.ViewModels;
 
 namespace Luna.Views;
 
+/// <summary>
+/// AI 连接设置页界面
+/// </summary>
 public partial class AiConnectionView : UserControl
 {
     public AiConnectionView()

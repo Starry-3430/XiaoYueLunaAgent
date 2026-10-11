@@ -3,6 +3,9 @@ using System.Windows.Data;
 
 namespace Luna.Converters;
 
+/// <summary>
+/// 绑定值减去参数值（用于宽度/边距等布局计算）
+/// </summary>
 public class SubtractConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

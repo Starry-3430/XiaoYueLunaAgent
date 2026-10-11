@@ -19,6 +19,9 @@ using Luna.Services.Tools;
 
 namespace Luna.ViewModels;
 
+/// <summary>
+/// 主界面视图模型：会话列表、当前会话、输入与发送、附件、导航状态
+/// </summary>
 public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateMessage>
 {
     private readonly SessionRepository _sessionRepo;
@@ -287,24 +290,35 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         try
         {
             var sessions = await _sessionRepo.GetAllAsync();
-            var selectedId = SelectedSession?.Id;
-            ChatSessions.Clear();
-            foreach (var s in sessions)
-            {
-                var item = new ChatSessionItem
-                {
-                    Id = s.Id,
-                    Title = s.Title ?? "新对话",
-                    Preview = s.Preview ?? "",
-                };
-                ChatSessions.Add(item);
-                if (item.Id == selectedId)
-                    SelectedSession = item;
-            }
+
+            // 集合变更必须在 UI 线程执行（可能由后台线程的通知触发）。
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null || dispatcher.CheckAccess())
+                ApplySessions(sessions);
+            else
+                await dispatcher.InvokeAsync(() => ApplySessions(sessions));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载会话列表失败");
+        }
+    }
+
+    private void ApplySessions(List<Session> sessions)
+    {
+        var selectedId = SelectedSession?.Id;
+        ChatSessions.Clear();
+        foreach (var s in sessions)
+        {
+            var item = new ChatSessionItem
+            {
+                Id = s.Id,
+                Title = s.Title ?? "新对话",
+                Preview = s.Preview ?? "",
+            };
+            ChatSessions.Add(item);
+            if (item.Id == selectedId)
+                SelectedSession = item;
         }
     }
 
@@ -356,11 +370,71 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         {
             // 复用会话运行期对象：正在后台生成的内容会原样显示，不会因切换而丢失。
             Runtime = await _generation.GetOrLoadAsync(session.Id);
+
+            // 打开会话时收起所有历史思考过程（正在流式输出的那条除外，保持实时展开）。
+            foreach (var message in Runtime.Messages)
+            {
+                if (!message.IsStreaming)
+                    message.IsReasoningExpanded = false;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载会话消息失败");
             Status = "加载失败";
+        }
+    }
+
+    /// <summary>重命名会话：写入数据库并就地刷新界面标题。</summary>
+    public async Task RenameSessionAsync(ChatSessionItem session, string newTitle)
+    {
+        newTitle = newTitle.Trim();
+        if (string.IsNullOrEmpty(newTitle) || newTitle == session.Title) return;
+
+        try
+        {
+            await _sessionRepo.UpdateTitleAsync(session.Id, newTitle);
+            session.Title = newTitle; // 可观察属性：左侧列表与顶部标题会立即刷新
+            _logger.LogInformation("会话已重命名：{Id} -> {Title}", session.Id, newTitle);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重命名会话失败：{Id}", session.Id);
+            Status = "重命名失败：" + ex.Message;
+        }
+    }
+
+    /// <summary>删除会话及其全部关联数据（消息 / 附件引用 / 轮次摘要），日记不受影响。</summary>
+    public async Task DeleteSessionAsync(ChatSessionItem session)
+    {
+        try
+        {
+            _generation.Cancel(session.Id);
+            await _sessionRepo.DeleteAsync(session.Id);
+            _toolPermission.ClearConversation(session.Id);
+            _generation.RemoveRuntime(session.Id);
+
+            var wasSelected = ReferenceEquals(SelectedSession, session) || session.Id == _currentSessionId;
+            ChatSessions.Remove(session);
+            _sessionDrafts.Remove(session.Id);
+            _sessionAttachments.Remove(session.Id);
+
+            if (wasSelected)
+            {
+                Runtime = null;
+                _currentSessionId = null;
+                SelectedSession = null;
+                InputText = string.Empty;
+                PendingAttachments.Clear();
+                Status = "就绪";
+            }
+
+            _logger.LogInformation("会话已删除：{Id}", session.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "删除会话失败：{Id}", session.Id);
+            Status = "删除失败：" + ex.Message;
         }
     }
 
@@ -446,9 +520,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [RelayCommand]
     private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
 
-    /// <summary>转换附件内容并估算 Token。</summary>
+    /// <summary>转换附件内容并估算 Token。图片不做转换，交由 AI 的识图能力直接识别。</summary>
     private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
     {
+        if (AttachmentHelper.IsImage(attachment))
+        {
+            attachment.ConvertedMarkdown = null;
+            attachment.TokenEstimate = 0;
+            return;
+        }
+
         var sourcePath = attachment.StoredPath;
         if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
 
@@ -487,9 +568,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 attachment.StoredPath = stored.StoredPath;
                 attachment.FileSize = stored.FileSize;
 
-                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                // 图片不转换，交由 AI 识图；其余文档按需转换 Markdown
+                if (!AttachmentHelper.IsImage(attachment) && string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
                     attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
-                if (attachment.TokenEstimate == 0)
+                if (!AttachmentHelper.IsImage(attachment) && attachment.TokenEstimate == 0)
                     attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
 
                 prepared.Add(attachment);
@@ -587,13 +669,44 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public void Receive(SessionUpdateMessage message)
     {
+        // 通知可能来自后台线程（如标题生成），集合变更必须在 UI 线程执行，否则会破坏绑定。
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            ApplySessionUpdate(message);
+        else
+            dispatcher.BeginInvoke(() => ApplySessionUpdate(message));
+    }
+
+    /// <summary>就地更新会话列表（不重建），保持后台缓存不丢失。</summary>
+    private void ApplySessionUpdate(SessionUpdateMessage message)
+    {
+        if (!string.IsNullOrEmpty(message.SessionId))
+        {
+            var item = ChatSessions.FirstOrDefault(s => s.Id == message.SessionId);
+            if (item is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(message.Title))
+                    item.Title = message.Title!;
+
+                // 该会话刚刚有活动，置顶（与按 UpdatedAtUtc 倒序一致）
+                var index = ChatSessions.IndexOf(item);
+                if (index > 0) ChatSessions.Move(index, 0);
+                return;
+            }
+        }
+
+        // 找不到对应项（如新增会话）时才整体刷新
         _ = LoadSessionsAsync();
     }
 }
 
-public class ChatSessionItem
+public partial class ChatSessionItem : ObservableObject
 {
     public string Id { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Preview { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    private string _preview = string.Empty;
 }

@@ -43,6 +43,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private string _proxyPassword = string.Empty;
 
     [ObservableProperty]
+    private string _outputDirectory = string.Empty;
+
+    [ObservableProperty]
     private string _proxyTestStatus = string.Empty;
 
     [ObservableProperty]
@@ -98,6 +101,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
         try
         {
             HotkeyText = _settings.Hotkey;
+            OutputDirectory = _settings.OutputDirectory;
             ProxyServer = _settings.ProxyServer;
             ProxyPort = _settings.ProxyPort;
             ProxyUsername = _settings.ProxyUsername;
@@ -123,6 +127,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
         Persist();
     }
 
+    partial void OnOutputDirectoryChanged(string value) => Persist();
     partial void OnProxyServerChanged(string value) => Persist();
     partial void OnProxyPortChanged(int value) => Persist();
     partial void OnProxyUsernameChanged(string value) => Persist();
@@ -159,6 +164,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
         _settings.FontFamily = FontSetting.SelectedOption?.Value ?? string.Empty;
         _settings.Hotkey = HotkeyText;
+        _settings.OutputDirectory = OutputDirectory;
         _settings.ProxyType = ProxyTypeSetting.SelectedOption?.Value ?? AiSettings.DefaultProxyType;
         _settings.ProxyServer = ProxyServer;
         _settings.ProxyPort = ProxyPort;
@@ -181,6 +187,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
             ?? ProxyTypeSetting.Options.FirstOrDefault();
         ApplyProxyType();
     }
+
+    [RelayCommand]
+    private void ResetOutputDirectory() => OutputDirectory = AiSettings.DefaultOutputDirectory;
 
     [RelayCommand]
     private void ResetProxyServer() => ProxyServer = string.Empty;

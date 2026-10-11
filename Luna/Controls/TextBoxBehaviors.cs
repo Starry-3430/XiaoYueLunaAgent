@@ -1,3 +1,5 @@
+// 文本框附加行为：按回车后自动失焦
+
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;

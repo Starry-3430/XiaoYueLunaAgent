@@ -162,6 +162,11 @@ public partial class App : Application
                 services.AddSingleton<ITool, FetchUrlTool>();
                 services.AddSingleton<ITool, GetCurrentTimeTool>();
                 services.AddSingleton<ITool, ReadFileTool>();
+                services.AddSingleton<ITool, FileTreeTool>();
+                services.AddSingleton<ITool, WriteFileTool>();
+                services.AddSingleton<ITool, GitTool>();
+                services.AddSingleton<ITool, PowerShellTool>();
+                services.AddSingleton<ITool, CodeExecuteTool>();
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
@@ -358,6 +363,9 @@ public partial class App : Application
 
         // 7.1 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
         _host.Services.GetRequiredService<DiaryService>().Start();
+
+        // 7.2 预加载日记本内容，避免首次打开日记页时才加载导致的卡顿
+        _ = _host.Services.GetRequiredService<DiaryViewModel>().LoadAsync();
 
         // 8. 配置文件丢失或损坏时，已自动重置，提示用户
         if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)

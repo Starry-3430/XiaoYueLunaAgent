@@ -1,5 +1,8 @@
 ﻿namespace Luna.Models;
 
+/// <summary>
+/// 消息实体（角色、内容、思考内容、工具调用、逻辑日期等）
+/// </summary>
 public class Message
 {
     public long Id { get; set; }

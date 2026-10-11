@@ -1,9 +1,11 @@
-﻿using System.Windows;
+﻿// 消息气泡的右键菜单
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Luna.Models;
+using Luna.Services;
 
 namespace Luna.Controls;
 
@@ -167,14 +169,18 @@ public class BubbleContextMenu
             Content = text,
             Width = 80,
             Height = 28,
-            Margin = new Thickness(0),
+            Margin = new Thickness(0, 0, 0, 2),
             Cursor = Cursors.Hand,
             Foreground = new SolidColorBrush(Color.FromRgb(0xFE, 0xFA, 0xE1)),
-            FontSize = 13,
+            FontSize = 12,
             BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x43, 0x3D)),
             Template = CreateButtonTemplate(),
         };
+
+        // 跟随用户在设置中选择的全局字体
+        if (ThemeService.CurrentFont is { } font)
+            button.FontFamily = font;
 
         button.Click += handler;
         return button;

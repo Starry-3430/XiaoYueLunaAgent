@@ -1,5 +1,8 @@
 ﻿namespace Luna.Models;
 
+/// <summary>
+/// 会话实体（标题、时间戳、归档标记、预览）
+/// </summary>
 public class Session
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");

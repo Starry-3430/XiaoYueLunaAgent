@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿//消息表数据访问（插入、按会话/轮次查询、删除、轮次重归属）
+
+using Dapper;
 using Luna.Models;
 using Microsoft.Data.Sqlite;
 

@@ -12,6 +12,9 @@ using Luna.Services;
 
 namespace Luna.ViewModels;
 
+/// <summary>
+///  AI 连接设置页：提供商/模型/密钥/采样参数/代理/语言等读写与校验
+/// </summary>
 public partial class AiConnectionViewModel : ObservableObject
 {
     private const string CustomModelValue = "__custom__";

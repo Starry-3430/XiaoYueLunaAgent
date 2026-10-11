@@ -3,6 +3,9 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Luna.Models;
 
+/// <summary>
+///  设置项基类及具体类型：开关 / 数字（含步进、复位）/ 下拉 / 字符串
+/// </summary>
 public abstract partial class SettingsItem : ObservableObject
 {
     public string Key { get; set; } = string.Empty;

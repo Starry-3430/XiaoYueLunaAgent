@@ -1,3 +1,4 @@
+// 工具：抓取指定 URL 的网页正文。
 using System.Net;
 using System.Net.Http;
 using System.Text;
