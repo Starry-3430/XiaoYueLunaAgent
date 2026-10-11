@@ -162,6 +162,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, FetchUrlTool>();
                 services.AddSingleton<ITool, GetCurrentTimeTool>();
                 services.AddSingleton<ITool, ReadFileTool>();
+                services.AddSingleton<ITool, FileTreeTool>();
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, AddTaskTool>();

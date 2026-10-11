@@ -27,8 +27,8 @@ public static class FileSandbox
         ".sh", ".bat", ".cmd", ".ps1", ".psm1", ".gradle", ".dockerfile",
     };
 
-    /// <summary>单文件大小上限（256 KB）。</summary>
-    public const long MaxBytes = 256 * 1024;
+    /// <summary>单文件大小上限（1024 KB）。</summary>
+    public const long MaxBytes = 1024 * 1024;
 
     private static string[] BuildAllowedRoots()
     {
@@ -43,6 +43,9 @@ public static class FileSandbox
 
         Add(Environment.SpecialFolder.MyDocuments);
         Add(Environment.SpecialFolder.Desktop);
+        Add(Environment.SpecialFolder.MyPictures);
+        Add(Environment.SpecialFolder.MyMusic);
+        Add(Environment.SpecialFolder.MyVideos);
 
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (!string.IsNullOrEmpty(profile))
@@ -85,6 +88,59 @@ public static class FileSandbox
         if (length > MaxBytes)
         {
             error = $"文件过大（{length / 1024} KB），超过上限 {MaxBytes / 1024} KB。";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 解析并校验一个已存在的可读目录，且必须位于授权目录内。
+    /// 相对路径基于沙箱 <see cref="Root"/>，支持常用目录别名（desktop/documents/downloads/home 等）。
+    /// </summary>
+    public static bool TryResolveExistingDirectory(string? input, out string fullPath, out string error)
+    {
+        if (!TryResolveAnyExistingDirectory(input, out fullPath, out error))
+            return false;
+
+        if (!IsInsideAllowedRoots(fullPath))
+        {
+            fullPath = string.Empty;
+            error = "路径不在允许访问的目录内。";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 解析任意一个已存在的可读目录，<b>不做授权目录限制</b>（用于只读的目录树浏览）。
+    /// 相对路径基于沙箱 <see cref="Root"/>，支持常用目录别名；留空时使用沙箱工作目录。
+    /// </summary>
+    public static bool TryResolveAnyExistingDirectory(string? input, out string fullPath, out string error)
+    {
+        fullPath = string.Empty;
+        error = string.Empty;
+
+        string candidate;
+        if (string.IsNullOrWhiteSpace(input))
+            candidate = Root;
+        else if (!UserEnvironment.TryResolveFolder(input, out candidate))
+            candidate = Path.Combine(Root, input);
+
+        try
+        {
+            fullPath = Path.GetFullPath(candidate);
+        }
+        catch (Exception ex)
+        {
+            error = $"无效路径：{ex.Message}";
+            return false;
+        }
+
+        if (!Directory.Exists(fullPath))
+        {
+            error = $"目录不存在：{fullPath}";
             return false;
         }
 
