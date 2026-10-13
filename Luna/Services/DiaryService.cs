@@ -22,6 +22,12 @@ public class DiaryService
     private const string StatusFailed = "Failed";
     private const string StatusNoData = "NoData";
 
+    /// <summary>日记正文的字数上限，超过则触发一次精简重生成。</summary>
+    private const int MaximumDiaryLength = 300;
+
+    /// <summary>精简重生成的输出上限（目标 50-200 字，512 token 足够且不会硬截断）。</summary>
+    private const int ShortenMaxTokens = 512;
+
     private readonly IAiService _aiService;
     private readonly DatabaseInitializer _db;
     private readonly AiSettings _settings;
@@ -194,6 +200,10 @@ public class DiaryService
             return;
         }
 
+        // 超过字数上限时才触发一次精简重生成（避免每篇都多花一次 token）
+        if (content.Length > MaximumDiaryLength)
+            content = await ShortenDiaryAsync(date, content, nickname);
+
         var sessionIds = string.Join(",", summaries.Select(s => s.SessionId).Distinct());
         var turnIds = string.Join(",", summaries.Select(s => s.TurnId).Distinct());
         var now = DateTime.UtcNow;
@@ -238,6 +248,48 @@ public class DiaryService
         tx.Commit();
 
         _logger.LogInformation("逻辑日 {Date} 日记已生成，长度 {Length}", date, content.Length);
+    }
+
+    /// <summary>
+    /// 把过长的日记精简到 50-200 字。任何失败（异常 / 空结果 / 反而更长）都保留原文，
+    /// 保证不会丢内容，也不会出现半截日记。
+    /// </summary>
+    private async Task<string> ShortenDiaryAsync(string date, string content, string nickname)
+    {
+        try
+        {
+            var prompt = DefaultPrompts.DiaryShortenPrompt
+                .Replace("{nickname}", nickname)
+                .Replace("{content}", content);
+
+            var shortened = await _aiService.ChatAsync(
+                new[] { new ChatMessage { Role = "user", Content = prompt } },
+                new AiRequestOptions
+                {
+                    Temperature = 0.5,
+                    MaxTokens = ShortenMaxTokens,
+                    IncludeTools = false,
+                    IncludeSystemPrompt = false,
+                    IncludeUserEnvironment = false,
+                    DeepThinking = false,
+                });
+
+            shortened = shortened.Trim();
+
+            if (string.IsNullOrWhiteSpace(shortened) || shortened.Length >= content.Length)
+            {
+                _logger.LogWarning("逻辑日 {Date} 精简结果无效（长度 {Length}），保留原日记", date, shortened.Length);
+                return content;
+            }
+
+            _logger.LogInformation("逻辑日 {Date} 日记已精简：{Before} → {After} 字", date, content.Length, shortened.Length);
+            return shortened;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "逻辑日 {Date} 精简日记失败，保留原日记", date);
+            return content;
+        }
     }
 
     // ===== 本地聚合 =====
