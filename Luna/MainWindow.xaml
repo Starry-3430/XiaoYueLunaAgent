@@ -167,6 +167,46 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- 聊天操作图标（Assets/icons/ChatUI，24 坐标系描边路径） -->
+        <PathGeometry x:Key="IconCopy" Figures="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
+        <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
+        <PathGeometry x:Key="IconChevronDown" Figures="M6 9 L12 15 L18 9"/>
+
+        <Style x:Key="LineIconGlyph" TargetType="Path">
+            <Setter Property="Stroke" Value="#88FFFFFF"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeStartLineCap" Value="Round"/>
+            <Setter Property="StrokeEndLineCap" Value="Round"/>
+            <Setter Property="StrokeLineJoin" Value="Round"/>
+            <Setter Property="Fill" Value="Transparent"/>
+        </Style>
+
+        <!-- 聊天消息操作按钮：正方形圆角，默认无背景，悬停才出现浅色底 -->
+        <Style x:Key="ChatActionButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#26FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#3DFFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         
     </Window.Resources>
     <Border x:Name="IslandBorder"
@@ -632,16 +672,24 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </StackPanel.Style>
-                                                <Button Content="复制" FontSize="12" Height="26" Width="50"
-                                                        Style="{StaticResource PillButton}"
-                                                        Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
-                                                        Background="#333333" Margin="0,0,6,0"
-                                                        Click="CopyMessage_Click"/>
-                                                <Button Content="重写" FontSize="12" Height="26" Width="50"
-                                                        Style="{StaticResource PillButton}"
-                                                        Cursor="Hand" BorderThickness="0" Foreground="#88FFFFFF"
-                                                        Background="#333333"
-                                                        Click="RewriteMessage_Click"/>
+                                                <Button Style="{StaticResource ChatActionButton}"
+                                                        Margin="0,0,6,0" ToolTip="复制"
+                                                        Click="CopyMessage_Click">
+                                                    <Viewbox Width="15" Height="15">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconCopy}"/>
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </Button>
+                                                <Button Style="{StaticResource ChatActionButton}"
+                                                        ToolTip="重写"
+                                                        Click="RewriteMessage_Click">
+                                                    <Viewbox Width="15" Height="15">
+                                                        <Canvas Width="24" Height="24">
+                                                            <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconRegenerate}"/>
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </Button>
                                             </StackPanel>
                                         </StackPanel>
 
@@ -661,6 +709,45 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
+
+                <!-- 滚动到底部按钮：不在底部时显示，点击回到最新内容 -->
+                <Button x:Name="ScrollToBottomButton"
+                        Grid.Row="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,14"
+                        Width="34" Height="34"
+                        Visibility="Collapsed"
+                        Cursor="Hand"
+                        ToolTip="滚动到底部"
+                        Click="ScrollToBottom_Click"
+                        PreviewMouseWheel="ScrollToBottomButton_PreviewMouseWheel">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Ellipse x:Name="Bg" Fill="#4A4A4A">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="2"
+                                                          Direction="270" Opacity="0.5"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                                <Viewbox Width="17" Height="17">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconChevronDown}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Fill" Value="#5A5A5A"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bg" Property="Fill" Value="#6A6A6A"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
 
                 <!-- 待发送附件列表 -->
                 <ItemsControl Grid.Row="1" ItemsSource="{Binding PendingAttachments}" Margin="0,6,0,0">

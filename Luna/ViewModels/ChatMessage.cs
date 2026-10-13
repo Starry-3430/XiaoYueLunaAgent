@@ -59,6 +59,10 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isFinalReply;
 
+    /// <summary>正文（Markdown）是否已渲染完成。新 viewer 绑定时置 false，渲染出内容后置 true。</summary>
+    [ObservableProperty]
+    private bool _isBodyRendered = true;
+
     /// <summary>出错或被取消时展示在 AI 输出位置的提示。</summary>
     [ObservableProperty]
     private string _errorMessage = string.Empty;
@@ -91,6 +95,9 @@ public partial class ChatMessage : ObservableObject
 
     public bool HasContent => !string.IsNullOrWhiteSpace(Content);
 
+    /// <summary>正文已存在、非流式，但当前 viewer 尚未渲染出内容时，显示加载占位骨架。</summary>
+    public bool ShowBodyPlaceholder => HasContent && !IsStreaming && !IsBodyRendered;
+
     /// <summary>system 附件消息：用于界面显示的“文件名 · 大小”摘要（不包含完整 Markdown）。</summary>
     public string AttachmentSummary { get; set; } = string.Empty;
 
@@ -108,15 +115,22 @@ public partial class ChatMessage : ObservableObject
     {
         OnPropertyChanged(nameof(IsThinking));
         OnPropertyChanged(nameof(HasContent));
+        OnPropertyChanged(nameof(ShowBodyPlaceholder));
     }
 
     partial void OnIsStreamingChanged(bool value)
     {
         OnPropertyChanged(nameof(IsThinking));
+        OnPropertyChanged(nameof(ShowBodyPlaceholder));
 
         // 思考阶段结束（本轮流式输出完成）后自动收起，避免智能体任务结束后堆积大量展开的思考过程。
         if (!value && IsReasoningExpanded)
             IsReasoningExpanded = false;
+    }
+
+    partial void OnIsBodyRenderedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowBodyPlaceholder));
     }
 
     partial void OnReasoningChanged(string value)

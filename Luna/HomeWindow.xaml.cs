@@ -53,9 +53,10 @@ public partial class HomeWindow : Window
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
     private DispatcherTimer? _scrollThrottle;                  // 流式滚动节流计时器
+    private readonly MessageRenderScheduler _renderScheduler;  // 延迟按“最新→最旧”渲染 Markdown
 
-    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
-    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
+    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Colors.Transparent);
+    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x3D, 0x36, 0x2F));
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列
@@ -87,6 +88,15 @@ public partial class HomeWindow : Window
         _diaryViewModel = diaryViewModel;
         _attachmentManagerViewModel = attachmentManagerViewModel;
         _logger = logger;
+
+        _renderScheduler = new MessageRenderScheduler(
+            isActive: () => !_isSettingsMode && IsVisible,
+            indexOf: message => _boundMessages?.IndexOf(message) ?? -1,
+            afterEachRender: () =>
+            {
+                if (IsNearBottom()) ScrollMessagesToEnd();
+            });
+
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
         DiaryPanel.DataContext = diaryViewModel;
@@ -132,7 +142,7 @@ public partial class HomeWindow : Window
         ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新对话"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
 
         // 左侧历史记录右键菜单：重命名 / 删除
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
@@ -142,6 +152,9 @@ public partial class HomeWindow : Window
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+
+        // 滚动位置变化时更新“滚动到底部”按钮显隐
+        MessageScrollViewer.ScrollChanged += (_, _) => UpdateScrollToBottomButton();
 
         // 窗口是 transient（关闭后重建），关闭时把挂到单例 VM / 运行期集合上的监听解绑，避免泄漏与陈旧窗口干扰。
         Closed += (_, _) => DetachBindings();
@@ -190,6 +203,9 @@ public partial class HomeWindow : Window
     /// <summary>把自动滚动挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
     private void BindMessages()
     {
+        // 会话集合整体更换：使上一轮的渲染队列失效
+        _renderScheduler.Reset();
+
         if (_boundMessages is not null)
         {
             _boundMessages.CollectionChanged -= OnMessagesChanged;
@@ -262,6 +278,24 @@ public partial class HomeWindow : Window
             DispatcherPriority.Background);
     }
 
+    /// <summary>不在底部时显示“滚动到底部”按钮，否则隐藏。</summary>
+    private void UpdateScrollToBottomButton()
+    {
+        if (ScrollToBottomButton is null) return;
+        ScrollToBottomButton.Visibility = IsNearBottom() ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>点击“滚动到底部”：回到底部并恢复对后续（含流式）内容的自动跟随。</summary>
+    private void ScrollToBottom_Click(object sender, RoutedEventArgs e) => ScrollMessagesToEnd();
+
+    /// <summary>指针悬停在按钮上时，把滚轮交给消息区处理，避免挡住滚动。</summary>
+    private void ScrollToBottomButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+        if (MessageScrollViewer is not null)
+            SmoothScroll.Vertical(MessageScrollViewer, e.Delta);
+    }
+
     /// <summary>
     /// 显示设置/日记/工具内容区，隐藏聊天区与输入区。
     /// </summary>
@@ -303,6 +337,8 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
+        // 聊天区可见：唤醒延迟渲染泵（按最新→最旧补齐）
+        _renderScheduler.Wake();
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -336,6 +372,9 @@ public partial class HomeWindow : Window
 {
     if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
     if (viewer.DataContext is not ChatMessage msg) return;
+
+    // 调试日志（保留备用）：
+    // _logger.LogWarning("Viewer Loaded dbId={DbId}", msg.DbId);
 
     // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
     if (ViewerBindings.TryGetValue(viewer, out var previous))
@@ -378,21 +417,39 @@ public partial class HomeWindow : Window
 
     void RenderFromScratch()
     {
-        msg.StreamingState.RenderedLength = msg.Content.Length;
-        msg.StreamingState.Pending = false;
-        if (msg.IsStreaming)
+        // 延迟测试（保留备用）：
+        // var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            viewer.Reset();
-            ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
-            if (!string.IsNullOrEmpty(msg.Content))
-                viewer.AppendDelta(msg.Content);
+            msg.StreamingState.RenderedLength = msg.Content.Length;
+            msg.StreamingState.Pending = false;
+            if (msg.IsStreaming)
+            {
+                viewer.Reset();
+                ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
+                if (!string.IsNullOrEmpty(msg.Content))
+                    viewer.AppendDelta(msg.Content);
+            }
+            else
+            {
+                viewer.SetMarkdown(msg.Content);
+                ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
+            }
         }
-        else
+        finally
         {
-            viewer.SetMarkdown(msg.Content);
-            ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
+            // 无论成功失败都结束占位，避免渲染异常时骨架永久停留
+            msg.IsBodyRendered = true;
+
+            // 延迟测试（保留备用）：
+            // sw.Stop();
+            // _logger.LogWarning("RenderMarkdown dbId={DbId} len={Len} elapsed={Ms}ms",
+            //     msg.DbId, msg.Content.Length, sw.ElapsedMilliseconds);
         }
     }
+
+    // 注册到延迟渲染调度器：实际渲染由调度泵按“最新→最旧”推进，避免在 Loaded 同步解析全部消息
+    _renderScheduler.Register(msg, viewer, RenderFromScratch);
 
     void FlushPending()
     {
@@ -414,6 +471,8 @@ public partial class HomeWindow : Window
             viewer.AppendDelta(delta);
             msg.StreamingState.RenderedLength = content.Length;
         }
+
+        msg.IsBodyRendered = true;
     }
 
     // delta 到来只标脏，由 flushTimer 统一节流渲染，避免每个 token 都触发重排
@@ -449,17 +508,21 @@ public partial class HomeWindow : Window
     {
         if (!viewer.IsVisible) return;
         // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
-        if (msg.StreamingState.RenderedLength == msg.Content.Length) return;
-        RenderFromScratch();
+        if (!msg.StreamingState.Pending && msg.StreamingState.RenderedLength == msg.Content.Length) return;
+        // 交给延迟调度器：避免一次可见性切换对所有消息同步重绘造成卡顿
+        _renderScheduler.Request(msg);
     };
 
     void Unbind()
     {
+        // 调试日志（保留备用）：
+        // _logger.LogWarning("Viewer Unloaded dbId={DbId}", msg.DbId);
         flushTimer.Stop();
         msg.PropertyChanged -= handler;
         viewer.IsVisibleChanged -= visibility;
         viewer.LinkClicked -= linkHandler;
         viewer.Unloaded -= OnUnloaded;
+        _renderScheduler.Unregister(msg, viewer);
     }
     void OnUnloaded(object? _, RoutedEventArgs __) => Unbind();
 
@@ -468,7 +531,8 @@ public partial class HomeWindow : Window
     viewer.Unloaded += OnUnloaded;
     ViewerBindings.AddOrUpdate(viewer, Unbind);
 
-    RenderFromScratch();
+    // 不在 Loaded 里同步渲染，交给调度器按“最新→最旧”延迟推进
+    _renderScheduler.Request(msg);
 }
     private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
     {
@@ -823,12 +887,12 @@ public partial class HomeWindow : Window
     {
         if (WindowState == WindowState.Maximized)
         {
-            MaxButton.Content = "❐";
+            MaxGlyph.Data = (Geometry)FindResource("IconRestore");
             RootGrid.Margin = new Thickness(ResizeBorder);
         }
         else
         {
-            MaxButton.Content = "□";
+            MaxGlyph.Data = (Geometry)FindResource("IconMaximize");
             RootGrid.Margin = new Thickness(0);
         }
     }
@@ -1056,7 +1120,7 @@ public partial class HomeWindow : Window
         if (HistoryList.SelectedItem is null)
         {
             BindSelectedSession(null);
-            ChatTitle.Text = "新聊天";
+            ChatTitle.Text = "新对话";
             SwitchToChat();
         }
     }
