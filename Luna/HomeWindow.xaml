@@ -156,6 +156,74 @@ Background="#E4E0CA"
             </Setter>
         </Style>
 
+        <!-- 窗口控制图标（来自 Assets/icons/WindowUI，24 坐标系的描边路径） -->
+        <PathGeometry x:Key="IconMinimize" Figures="M5 12 H19"/>
+        <PathGeometry x:Key="IconMaximize" Figures="M5 3 H19 A2 2 0 0 1 21 5 V19 A2 2 0 0 1 19 21 H5 A2 2 0 0 1 3 19 V5 A2 2 0 0 1 5 3 Z"/>
+        <PathGeometry x:Key="IconRestore" Figures="M8 8 V5 A2 2 0 0 1 10 3 H19 A2 2 0 0 1 21 5 V14 A2 2 0 0 1 19 16 H16 M5 8 H14 A2 2 0 0 1 16 10 V19 A2 2 0 0 1 14 21 H5 A2 2 0 0 1 3 19 V10 A2 2 0 0 1 5 8 Z"/>
+        <PathGeometry x:Key="IconClose" Figures="M18 6 L6 18 M6 6 L18 18"/>
+        <PathGeometry x:Key="IconCopy" Figures="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
+        <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
+
+        <Style x:Key="LineIconGlyph" TargetType="Path">
+            <Setter Property="Stroke" Value="#5B4833"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="StrokeStartLineCap" Value="Round"/>
+            <Setter Property="StrokeEndLineCap" Value="Round"/>
+            <Setter Property="StrokeLineJoin" Value="Round"/>
+            <Setter Property="Fill" Value="Transparent"/>
+        </Style>
+
+        <!-- 聊天消息操作按钮：正方形圆角，默认无背景，悬停时才出现浅米色底 -->
+        <Style x:Key="ChatActionButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#D4D0BA"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WindowControlButton" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6" Margin="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#D4D0BA"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         </ResourceDictionary>
     </Window.Resources>
 
@@ -274,15 +342,31 @@ Background="#E4E0CA"
                            Margin="20,0,0,0"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                    <Button x:Name="MinButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#5B4833" FontSize="12"
-                            Content="─" Click="MinButton_Click" Cursor="Hand"/>
-                    <Button x:Name="MaxButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#5B4833" FontSize="11"
-                            Content="□" Click="MaxButton_Click" Cursor="Hand"/>
-                    <Button x:Name="CloseButton" Width="36" Height="30" Background="Transparent"
-                            BorderThickness="0" Foreground="#5B4833" FontSize="12"
-                            Content="✕" Click="CloseButton_Click" Cursor="Hand"/>
+                    <Button x:Name="MinButton" Style="{StaticResource WindowControlButton}"
+                            Click="MinButton_Click">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconMinimize}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="MaxButton" Style="{StaticResource WindowControlButton}"
+                            Click="MaxButton_Click">
+                        <Viewbox Width="12" Height="12">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="MaxGlyph" Style="{StaticResource LineIconGlyph}"
+                                      Data="{StaticResource IconMaximize}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="CloseButton" Style="{StaticResource WindowControlButton}"
+                            Click="CloseButton_Click">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconClose}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                 </StackPanel>
             </Grid>
 
@@ -661,16 +745,24 @@ Background="#E4E0CA"
                                                     </Style.Triggers>
                                                 </Style>
                                             </StackPanel.Style>
-                                            <Button Content="复制" FontSize="12" Height="26" Width="50"
-                                                    Style="{StaticResource PillButton}"
-                                                    Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
-                                                    Background="#D4D0BA" Margin="0,0,6,0"
-                                                    Click="CopyMessage_Click"/>
-                                            <Button Content="重写" FontSize="12" Height="26" Width="50"
-                                                    Style="{StaticResource PillButton}"
-                                                    Cursor="Hand" BorderThickness="0" Foreground="#5B4833"
-                                                    Background="#D4D0BA"
-                                                    Click="RewriteMessage_Click"/>
+                                            <Button Style="{StaticResource ChatActionButton}"
+                                                    Margin="0,0,6,0" ToolTip="复制"
+                                                    Click="CopyMessage_Click">
+                                                <Viewbox Width="15" Height="15">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconCopy}"/>
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </Button>
+                                            <Button Style="{StaticResource ChatActionButton}"
+                                                    ToolTip="重写"
+                                                    Click="RewriteMessage_Click">
+                                                <Viewbox Width="15" Height="15">
+                                                    <Canvas Width="24" Height="24">
+                                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconRegenerate}"/>
+                                                    </Canvas>
+                                                </Viewbox>
+                                            </Button>
                                         </StackPanel>
                                     </StackPanel>
 

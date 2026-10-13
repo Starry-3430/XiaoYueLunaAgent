@@ -823,12 +823,12 @@ public partial class HomeWindow : Window
     {
         if (WindowState == WindowState.Maximized)
         {
-            MaxButton.Content = "❐";
+            MaxGlyph.Data = (Geometry)FindResource("IconRestore");
             RootGrid.Margin = new Thickness(ResizeBorder);
         }
         else
         {
-            MaxButton.Content = "□";
+            MaxGlyph.Data = (Geometry)FindResource("IconMaximize");
             RootGrid.Margin = new Thickness(0);
         }
     }
