@@ -54,8 +54,8 @@ public partial class HomeWindow : Window
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
     private DispatcherTimer? _scrollThrottle;                  // 流式滚动节流计时器
 
-    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xE4, 0xE0, 0xCA));
-    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0xF2, 0xE0));
+    private static readonly Brush DefaultSideBrush = new SolidColorBrush(Colors.Transparent);
+    private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x3D, 0x36, 0x2F));
 
     private readonly List<ToastEntry> _toastStack = []; // 当前显示的通知列表（从旧到新）
     private int _toastIdSeq; // 通知 ID 自增序列

@@ -34,11 +34,11 @@ Background="#E4E0CA"
         
 
         <Style x:Key="SideButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#5B4833"/>
-            <Setter Property="Background" Value="#E4E0CA"/>
+            <Setter Property="Foreground" Value="#FEFAE1"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Height" Value="55"/>
@@ -48,14 +48,21 @@ Background="#E4E0CA"
                         <Border x:Name="Bg"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#F5F2E0"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#3D362F"/>
+                                <Setter TargetName="Bg" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#000000" BlurRadius="14" ShadowDepth="3"
+                                                          Direction="270" Opacity="0.45"/>
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#EDE9D5"/>
+                                <Setter TargetName="Bg" Property="Background" Value="#332D27"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
@@ -174,8 +181,14 @@ Background="#E4E0CA"
                         Height="56"
                         FontSize="16"
                         FontWeight="Bold"
-                        Content="新对话"
-                        Command="{Binding NewChatCommand}"/>
+                        Command="{Binding NewChatCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Assets/icons/HomeUI/newsession.PNG"
+                               Width="50" Height="50" VerticalAlignment="Center"
+                               Margin="16,0,10,0"/>
+                        <TextBlock Text="新对话" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
                 <Grid Grid.Row="1">
                     <ListBox x:Name="HistoryList"
@@ -196,9 +209,30 @@ Background="#E4E0CA"
 
                 <StackPanel Grid.Row="2" Margin="10,0,10,10">
                     <!-- <Rectangle Height="1" Fill="#E4E0CA" Margin="0,0,0,8"/> -->
-                    <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Content="日记本" Margin="0,0,0,5"/>
-                    <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Content="工具" Margin="0,0,0,5"/>
-                    <Button x:Name="SettingsButton" Style="{StaticResource SideButton}" Content="设置"/>
+                    <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Margin="0,0,0,5">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="/Assets/icons/HomeUI/diary.PNG"
+                                   Width="50" Height="50" VerticalAlignment="Center"
+                                   Margin="16,0,10,0"/>
+                            <TextBlock Text="日记本" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ToolsButton" Style="{StaticResource SideButton}" Margin="0,0,0,5">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="/Assets/icons/HomeUI/tools.PNG"
+                                   Width="50" Height="50" VerticalAlignment="Center"
+                                   Margin="16,0,10,0"/>
+                            <TextBlock Text="工具" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SettingsButton" Style="{StaticResource SideButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="/Assets/icons/HomeUI/settings.PNG"
+                                   Width="50" Height="50" VerticalAlignment="Center"
+                                   Margin="16,0,10,0"/>
+                            <TextBlock Text="设置" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
