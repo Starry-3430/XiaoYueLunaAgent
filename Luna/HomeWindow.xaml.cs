@@ -53,6 +53,7 @@ public partial class HomeWindow : Window
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
     private DispatcherTimer? _scrollThrottle;                  // 流式滚动节流计时器
+    private readonly MessageRenderScheduler _renderScheduler;  // 延迟按“最新→最旧”渲染 Markdown
 
     private static readonly Brush DefaultSideBrush = new SolidColorBrush(Colors.Transparent);
     private static readonly Brush ActiveSideBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0x3D, 0x36, 0x2F));
@@ -87,6 +88,15 @@ public partial class HomeWindow : Window
         _diaryViewModel = diaryViewModel;
         _attachmentManagerViewModel = attachmentManagerViewModel;
         _logger = logger;
+
+        _renderScheduler = new MessageRenderScheduler(
+            isActive: () => !_isSettingsMode && IsVisible,
+            indexOf: message => _boundMessages?.IndexOf(message) ?? -1,
+            afterEachRender: () =>
+            {
+                if (IsNearBottom()) ScrollMessagesToEnd();
+            });
+
         AiConnectionPanel.DataContext = aiConnectionViewModel;
         GeneralSettingsPanel.DataContext = generalSettingsViewModel;
         DiaryPanel.DataContext = diaryViewModel;
@@ -190,6 +200,9 @@ public partial class HomeWindow : Window
     /// <summary>把自动滚动挂到当前会话的消息集合上（切换会话时会更换集合）。</summary>
     private void BindMessages()
     {
+        // 会话集合整体更换：使上一轮的渲染队列失效
+        _renderScheduler.Reset();
+
         if (_boundMessages is not null)
         {
             _boundMessages.CollectionChanged -= OnMessagesChanged;
@@ -303,6 +316,8 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
+        // 聊天区可见：唤醒延迟渲染泵（按最新→最旧补齐）
+        _renderScheduler.Wake();
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -336,6 +351,8 @@ public partial class HomeWindow : Window
 {
     if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
     if (viewer.DataContext is not ChatMessage msg) return;
+
+    _logger.LogWarning("Viewer Loaded dbId={DbId}", msg.DbId);
 
     // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
     if (ViewerBindings.TryGetValue(viewer, out var previous))
@@ -378,6 +395,9 @@ public partial class HomeWindow : Window
 
     void RenderFromScratch()
     {
+        // 延迟测试
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        
         msg.StreamingState.RenderedLength = msg.Content.Length;
         msg.StreamingState.Pending = false;
         if (msg.IsStreaming)
@@ -392,7 +412,16 @@ public partial class HomeWindow : Window
             viewer.SetMarkdown(msg.Content);
             ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
         }
+        
+        // 延迟测试
+        sw.Stop();
+        _logger.LogWarning("RenderMarkdown dbId={DbId} len={Len} elapsed={Ms}ms",
+            msg.DbId, msg.Content.Length, sw.ElapsedMilliseconds);
+        
     }
+
+    // 注册到延迟渲染调度器：实际渲染由调度泵按“最新→最旧”推进，避免在 Loaded 同步解析全部消息
+    _renderScheduler.Register(msg, viewer, RenderFromScratch);
 
     void FlushPending()
     {
@@ -449,17 +478,20 @@ public partial class HomeWindow : Window
     {
         if (!viewer.IsVisible) return;
         // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
-        if (msg.StreamingState.RenderedLength == msg.Content.Length) return;
-        RenderFromScratch();
+        if (!msg.StreamingState.Pending && msg.StreamingState.RenderedLength == msg.Content.Length) return;
+        // 交给延迟调度器：避免一次可见性切换对所有消息同步重绘造成卡顿
+        _renderScheduler.Request(msg);
     };
 
     void Unbind()
     {
+        _logger.LogWarning("Viewer Unloaded dbId={DbId}", msg.DbId);
         flushTimer.Stop();
         msg.PropertyChanged -= handler;
         viewer.IsVisibleChanged -= visibility;
         viewer.LinkClicked -= linkHandler;
         viewer.Unloaded -= OnUnloaded;
+        _renderScheduler.Unregister(msg, viewer);
     }
     void OnUnloaded(object? _, RoutedEventArgs __) => Unbind();
 
@@ -468,7 +500,8 @@ public partial class HomeWindow : Window
     viewer.Unloaded += OnUnloaded;
     ViewerBindings.AddOrUpdate(viewer, Unbind);
 
-    RenderFromScratch();
+    // 不在 Loaded 里同步渲染，交给调度器按“最新→最旧”延迟推进
+    _renderScheduler.Request(msg);
 }
     private void ReasoningScrollViewer_Loaded(object sender, RoutedEventArgs e)
     {

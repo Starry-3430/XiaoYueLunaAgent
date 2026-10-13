@@ -5,6 +5,7 @@
         xmlns:viewmodels="clr-namespace:Luna.ViewModels"
         xmlns:views="clr-namespace:Luna.Views"
         xmlns:converters="clr-namespace:Luna.Converters"
+        xmlns:controls="clr-namespace:Luna.Controls"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         
         Title="Luna"
@@ -224,6 +225,383 @@ Background="#E4E0CA"
             </Setter>
         </Style>
 
+        <!-- ===== 消息模板：按角色/内容选择，避免为空消息创建 MarkdownDocumentView ===== -->
+
+        <!-- 思考过程 / 正在思考（仅 assistant 使用） -->
+        <DataTemplate x:Key="MessageReasoningBlock" DataType="{x:Type models:ChatMessage}">
+            <StackPanel Margin="10,6,10,0">
+                <!-- 无推理内容时：动画 "正在思考..." -->
+                <StackPanel Orientation="Horizontal" IsHitTestVisible="False">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasReasoning}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsThinking}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="正在思考" Foreground="#8B7B6B" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
+                    <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.0"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
+                    <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.2"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
+                    <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.4"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 有推理内容时：可折叠思考过程 -->
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasReasoning}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <ToggleButton IsChecked="{Binding IsReasoningExpanded, Mode=TwoWay}"
+                                  HorizontalAlignment="Left" Cursor="Hand"
+                                  Background="Transparent" BorderThickness="0"
+                                  Padding="0" Margin="0,0,0,4">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border Background="Transparent" Padding="8,4">
+                                    <ContentPresenter/>
+                                </Border>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="思考过程" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
+                            <TextBlock Text="▸" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsReasoningExpanded}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="▾" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsReasoningExpanded}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </ToggleButton>
+                    <!-- 用户收起但仍在思考中 -->
+                    <StackPanel Orientation="Horizontal"
+                                IsHitTestVisible="False" Margin="0,0,0,4">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding HasReasoning}" Value="True"/>
+                                            <Condition Binding="{Binding IsReasoningExpanded}" Value="False"/>
+                                            <Condition Binding="{Binding IsThinking}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="正在思考" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
+                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="1,0,0,0">
+                            <TextBlock.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.0"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </TextBlock.Triggers>
+                        </TextBlock>
+                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="0">
+                            <TextBlock.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </TextBlock.Triggers>
+                        </TextBlock>
+                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="0">
+                            <TextBlock.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.4"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </TextBlock.Triggers>
+                        </TextBlock>
+                    </StackPanel>
+                    <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto"
+                                  Loaded="ReasoningScrollViewer_Loaded"
+                                  Visibility="{Binding IsReasoningExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
+                                   Foreground="#8B7B6B" FontSize="13"
+                                   IsHitTestVisible="False" Focusable="False"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- 工具调用卡片（仅 assistant 使用） -->
+        <DataTemplate x:Key="MessageToolCallsBlock" DataType="{x:Type models:ChatMessage}">
+            <ItemsControl ItemsSource="{Binding ToolCalls}" Margin="10,4,10,0"
+                          Visibility="{Binding HasToolCalls, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:ToolCallEntry}">
+                        <StackPanel Margin="0,0,0,0">
+                            <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                          HorizontalAlignment="Left" Cursor="Hand"
+                                          Background="Transparent" BorderThickness="0"
+                                          Padding="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" Padding="8,4">
+                                            <ContentPresenter/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Pending">  <Setter Property="Text" Value="⏳"/></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Running"> <Setter Property="Text" Value="⏳"/></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Success"> <Setter Property="Text" Value="✓"/></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Failed">  <Setter Property="Text" Value="✗"/></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding DisplayName}" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                    <TextBlock Text="▸" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="▾" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </ToggleButton>
+                            <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        Margin="0,4,0,0">
+                                <TextBlock Text="参数" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding ArgumentsJson}" Foreground="#8B7B6B" FontSize="11"
+                                               FontFamily="Consolas" TextWrapping="Wrap" Margin="8,0,0,0"/>
+                                </ScrollViewer>
+                                <TextBlock Text="结果" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
+                                    <TextBlock Text="{Binding ResultJson}" Foreground="#5B4833" FontSize="13"
+                                               TextWrapping="Wrap" Margin="8,0,0,0"/>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DataTemplate>
+
+        <!-- 用户消息：纯文本 -->
+        <DataTemplate x:Key="UserMessageTemplate" DataType="{x:Type models:ChatMessage}">
+            <Border MaxWidth="600" CornerRadius="8"
+                    HorizontalAlignment="Right" Background="#78ACAD" Padding="0" Margin="0,0,10,16">
+                <TextBox Text="{Binding Content}"
+                         TextWrapping="Wrap"
+                         Foreground="#FEFAE1"
+                         FontSize="15"
+                         HorizontalAlignment="Left"
+                         Margin="10,6"
+                         IsReadOnly="True"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         IsInactiveSelectionHighlightEnabled="True"
+                         Loaded="MessageText_Loaded"/>
+            </Border>
+        </DataTemplate>
+
+        <!-- system 消息：仅显示附件摘要 -->
+        <DataTemplate x:Key="SystemMessageTemplate" DataType="{x:Type models:ChatMessage}">
+            <Border MaxWidth="600" Margin="0,0,0,4" HorizontalAlignment="Right">
+                <TextBlock Margin="10,0,10,8"
+                           HorizontalAlignment="Right"
+                           TextAlignment="Right"
+                           TextWrapping="Wrap"
+                           MaxWidth="560"
+                           Foreground="#8B7B6B"
+                           FontSize="11"
+                           Text="{Binding AttachmentSummary}"
+                           Visibility="{Binding HasAttachmentSummary, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+            </Border>
+        </DataTemplate>
+
+        <!-- assistant（有正文 / 流式中）：Markdown + 思考 + 工具卡片 -->
+        <DataTemplate x:Key="AssistantMessageTemplate" DataType="{x:Type models:ChatMessage}">
+            <Border MaxWidth="600" CornerRadius="8"
+                    HorizontalAlignment="Left" Background="Transparent" Padding="0" Margin="0,0,0,4">
+                <StackPanel>
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageReasoningBlock}"/>
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageToolCallsBlock}"/>
+
+                    <md:MarkdownDocumentView SelectionEnabled="True"
+                                             Background="Transparent"
+                                             HorizontalAlignment="Left"
+                                             VirtualizationEnabled="False"
+                                             MaxWidth="600"
+                                             Margin="0,0"
+                                             Loaded="MessageViewer_Loaded"
+                                             PreviewMouseWheel="MarkdownViewer_PreviewMouseWheel"/>
+
+                    <!-- 出错 / 取消提示 -->
+                    <Border Margin="10,4,10,10" Padding="10,7" CornerRadius="6"
+                            Background="#22FD7956"
+                            HorizontalAlignment="Left"
+                            Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="#A93226"
+                                   FontSize="13" TextWrapping="Wrap" MaxWidth="560"/>
+                    </Border>
+
+                    <!-- AI 操作按钮 -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Left"
+                                Margin="10,0,0,4">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding Role}" Value="assistant"/>
+                                            <Condition Binding="{Binding IsFinalReply}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Style="{StaticResource ChatActionButton}"
+                                Margin="0,0,6,0" ToolTip="复制"
+                                Click="CopyMessage_Click">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconCopy}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                        <Button Style="{StaticResource ChatActionButton}"
+                                ToolTip="重写"
+                                Click="RewriteMessage_Click">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconRegenerate}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- assistant（无正文，仅工具调用）：只有思考 + 工具卡片，不创建 MarkdownDocumentView -->
+        <DataTemplate x:Key="AssistantToolOnlyTemplate" DataType="{x:Type models:ChatMessage}">
+            <Border MaxWidth="600" CornerRadius="8"
+                    HorizontalAlignment="Left" Background="Transparent" Padding="0" Margin="0,0,0,4">
+                <StackPanel>
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageReasoningBlock}"/>
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageToolCallsBlock}"/>
+
+                    <!-- 出错 / 取消提示 -->
+                    <Border Margin="10,4,10,10" Padding="10,7" CornerRadius="6"
+                            Background="#22FD7956"
+                            HorizontalAlignment="Left"
+                            Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="#A93226"
+                                   FontSize="13" TextWrapping="Wrap" MaxWidth="560"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- tool / 其它角色：不渲染 -->
+        <DataTemplate x:Key="EmptyMessageTemplate" DataType="{x:Type models:ChatMessage}"/>
+
+        <controls:ChatMessageTemplateSelector x:Key="MessageTemplateSelector"
+                                              UserTemplate="{StaticResource UserMessageTemplate}"
+                                              AssistantTemplate="{StaticResource AssistantMessageTemplate}"
+                                              AssistantToolOnlyTemplate="{StaticResource AssistantToolOnlyTemplate}"
+                                              SystemTemplate="{StaticResource SystemMessageTemplate}"
+                                              EmptyTemplate="{StaticResource EmptyMessageTemplate}"/>
+
         </ResourceDictionary>
     </Window.Resources>
 
@@ -381,406 +759,8 @@ Background="#E4E0CA"
                               ScrollViewer.CanContentScroll="False"
                               PreviewMouseWheel="SmoothScroll_PreviewMouseWheel"
                               Padding="20,16">
-                <ItemsControl ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="models:ChatMessage">
-                            <Border MaxWidth="600"
-                                    CornerRadius="8">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="HorizontalAlignment" Value="Left"/>
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,0,0,4"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Role}" Value="user">
-                                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                <Setter Property="Background" Value="#78ACAD"/>
-                                                <Setter Property="Padding" Value="0"/>
-                                                <Setter Property="Margin" Value="0,0,10,16"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding Role}" Value="system">
-                                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-<Grid>
-                                <!-- 用户消息：纯文本 -->
-                                <TextBox Text="{Binding Content}"
-                                            TextWrapping="Wrap"
-                                            Foreground="#FEFAE1"
-                                            FontSize="15"
-                                            HorizontalAlignment="Left"
-                                            Margin="10,6"
-                                            IsReadOnly="True"
-                                            BorderThickness="0"
-                                            Background="Transparent"
-                                            IsInactiveSelectionHighlightEnabled="True"
-                                            Loaded="MessageText_Loaded">
-                                <TextBox.Style>
-                                    <Style TargetType="TextBox">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Role}" Value="user">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBox.Style>
-                            </TextBox>
-<!-- AI 消息：Markdown 阅读器 + 思考指示 -->
-<StackPanel>
-                                        <StackPanel Margin="10,6,10,0">
-                                                    <StackPanel.Style>
-                                                        <Style TargetType="StackPanel">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Role}" Value="assistant">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </StackPanel.Style>
-
-                                                    <!-- 无推理内容时：动画 "正在思考..." -->
-                                                    <StackPanel Orientation="Horizontal"
-                                                                IsHitTestVisible="False">
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding HasReasoning}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding IsThinking}" Value="False">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-                                                        <TextBlock Text="正在思考" Foreground="#8B7B6B" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
-                                                            <TextBlock.Triggers>
-                                                                <EventTrigger RoutedEvent="Loaded">
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard RepeatBehavior="Forever">
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.0"/>
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </EventTrigger>
-                                                            </TextBlock.Triggers>
-                                                        </TextBlock>
-                                                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
-                                                            <TextBlock.Triggers>
-                                                                <EventTrigger RoutedEvent="Loaded">
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard RepeatBehavior="Forever">
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.2"/>
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </EventTrigger>
-                                                            </TextBlock.Triggers>
-                                                        </TextBlock>
-                                                        <TextBlock Text="." Foreground="#8B7B6B" FontSize="15" VerticalAlignment="Center" Margin="0">
-                                                            <TextBlock.Triggers>
-                                                                <EventTrigger RoutedEvent="Loaded">
-                                                                    <BeginStoryboard>
-                                                                        <Storyboard RepeatBehavior="Forever">
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.4"/>
-                                                                        </Storyboard>
-                                                                    </BeginStoryboard>
-                                                                </EventTrigger>
-                                                            </TextBlock.Triggers>
-                                                        </TextBlock>
-                                                    </StackPanel>
-
-                                                    <!-- 有推理内容时：可折叠思考过程 -->
-                                                    <StackPanel>
-                                                        <StackPanel.Style>
-                                                            <Style TargetType="StackPanel">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding HasReasoning}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </StackPanel.Style>
-                                                        <ToggleButton IsChecked="{Binding IsReasoningExpanded, Mode=TwoWay}"
-                                                                      HorizontalAlignment="Left" Cursor="Hand"
-                                                                      Background="Transparent" BorderThickness="0"
-                                                                      Padding="0" Margin="0,0,0,4">
-                                                            <ToggleButton.Template>
-                                                                <ControlTemplate TargetType="ToggleButton">
-                                                                    <Border Background="Transparent" Padding="8,4">
-                                                                        <ContentPresenter/>
-                                                                    </Border>
-                                                                </ControlTemplate>
-                                                            </ToggleButton.Template>
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <TextBlock Text="思考过程" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
-                                                                <TextBlock Text="▸" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsReasoningExpanded}" Value="True">
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
-                                                                <TextBlock Text="▾" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
-                                                                    <TextBlock.Style>
-                                                                        <Style TargetType="TextBlock">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsReasoningExpanded}" Value="True">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </TextBlock.Style>
-                                                                </TextBlock>
-                                                            </StackPanel>
-                                                        </ToggleButton>
-                                                        <!-- 用户收起但仍在思考中 -->
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    IsHitTestVisible="False" Margin="0,0,0,4">
-                                                            <StackPanel.Style>
-                                                                <Style TargetType="StackPanel">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <MultiDataTrigger>
-                                                                            <MultiDataTrigger.Conditions>
-                                                                                <Condition Binding="{Binding HasReasoning}" Value="True"/>
-                                                                                <Condition Binding="{Binding IsReasoningExpanded}" Value="False"/>
-                                                                                <Condition Binding="{Binding IsThinking}" Value="True"/>
-                                                                            </MultiDataTrigger.Conditions>
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                        </MultiDataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </StackPanel.Style>
-                                                            <TextBlock Text="正在思考" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="1,0,0,0">
-                                                                <TextBlock.Triggers>
-                                                                    <EventTrigger RoutedEvent="Loaded">
-                                                                        <BeginStoryboard>
-                                                                            <Storyboard RepeatBehavior="Forever">
-                                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.0"/>
-                                                                            </Storyboard>
-                                                                        </BeginStoryboard>
-                                                                    </EventTrigger>
-                                                                </TextBlock.Triggers>
-                                                            </TextBlock>
-                                                            <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="0">
-                                                                <TextBlock.Triggers>
-                                                                    <EventTrigger RoutedEvent="Loaded">
-                                                                        <BeginStoryboard>
-                                                                            <Storyboard RepeatBehavior="Forever">
-                                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.2"/>
-                                                                            </Storyboard>
-                                                                        </BeginStoryboard>
-                                                                    </EventTrigger>
-                                                                </TextBlock.Triggers>
-                                                            </TextBlock>
-                                                            <TextBlock Text="." Foreground="#8B7B6B" FontSize="13" VerticalAlignment="Center" Margin="0">
-                                                                <TextBlock.Triggers>
-                                                                    <EventTrigger RoutedEvent="Loaded">
-                                                                        <BeginStoryboard>
-                                                                            <Storyboard RepeatBehavior="Forever">
-                                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.2" To="1" Duration="0:0:0.6" AutoReverse="True" BeginTime="0:0:0.4"/>
-                                                                            </Storyboard>
-                                                                        </BeginStoryboard>
-                                                                    </EventTrigger>
-                                                                </TextBlock.Triggers>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                        <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto"
-                                                                      Loaded="ReasoningScrollViewer_Loaded"
-                                                                      Visibility="{Binding IsReasoningExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
-                                                                       Foreground="#8B7B6B" FontSize="13"
-                                                                       IsHitTestVisible="False" Focusable="False"/>
-                                                        </ScrollViewer>
-                                                    </StackPanel>
-                                                </StackPanel>
-
-                                                <!-- 工具调用卡片 -->
-                                                <ItemsControl ItemsSource="{Binding ToolCalls}" Margin="10,4,10,0">
-                                                    <ItemsControl.Style>
-                                                        <Style TargetType="ItemsControl">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <MultiDataTrigger>
-                                                                    <MultiDataTrigger.Conditions>
-                                                                        <Condition Binding="{Binding HasToolCalls}" Value="True"/>
-                                                                        <Condition Binding="{Binding Role}" Value="assistant"/>
-                                                                    </MultiDataTrigger.Conditions>
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </MultiDataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ItemsControl.Style>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="{x:Type models:ToolCallEntry}">
-                                                            <StackPanel Margin="0,0,0,0">
-                                                                <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
-                                                                              HorizontalAlignment="Left" Cursor="Hand"
-                                                                              Background="Transparent" BorderThickness="0"
-                                                                              Padding="0">
-                                                                    <ToggleButton.Template>
-                                                                        <ControlTemplate TargetType="ToggleButton">
-                                                                            <Border Background="Transparent" Padding="8,4">
-                                                                                <ContentPresenter/>
-                                                                            </Border>
-                                                                        </ControlTemplate>
-                                                                    </ToggleButton.Template>
-                                                                    <StackPanel Orientation="Horizontal">
-                                                                        <TextBlock Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center">
-                                                                            <TextBlock.Style>
-                                                                                <Style TargetType="TextBlock">
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding Status}" Value="Pending">  <Setter Property="Text" Value="⏳"/></DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding Status}" Value="Running"> <Setter Property="Text" Value="⏳"/></DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding Status}" Value="Success"> <Setter Property="Text" Value="✓"/></DataTrigger>
-                                                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">  <Setter Property="Text" Value="✗"/></DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </TextBlock.Style>
-                                                                        </TextBlock>
-                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="#8B7B6B" FontSize="13" FontStyle="Italic" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                                                                        <TextBlock Text="▸" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
-                                                                            <TextBlock.Style>
-                                                                                <Style TargetType="TextBlock">
-                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </TextBlock.Style>
-                                                                        </TextBlock>
-                                                                        <TextBlock Text="▾" Foreground="#8B7B6B" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
-                                                                            <TextBlock.Style>
-                                                                                <Style TargetType="TextBlock">
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                    <Style.Triggers>
-                                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                                        </DataTrigger>
-                                                                                    </Style.Triggers>
-                                                                                </Style>
-                                                                            </TextBlock.Style>
-                                                                        </TextBlock>
-                                                                    </StackPanel>
-                                                                </ToggleButton>
-                                                                <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                        Margin="0,4,0,0">
-                                                                            <TextBlock Text="参数" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
-                                                                            <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,6">
-                                                                                <TextBlock Text="{Binding ArgumentsJson}" Foreground="#8B7B6B" FontSize="11"
-                                                                                           FontFamily="Consolas" TextWrapping="Wrap" Margin="8,0,0,0"/>
-                                                                            </ScrollViewer>
-                                                                            <TextBlock Text="结果" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
-                                                                            <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
-                                                                                <TextBlock Text="{Binding ResultJson}" Foreground="#5B4833" FontSize="13"
-                                                                                           TextWrapping="Wrap" Margin="8,0,0,0"/>
-                                                                            </ScrollViewer>
-                                                                        </StackPanel>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-
-                                            <md:MarkdownDocumentView SelectionEnabled="True"
-                                                                              Background="Transparent"
-                                                                              HorizontalAlignment="Left"
-                                                                              VirtualizationEnabled="False"
-                                                                              MaxWidth="600"
-                                                                              Margin="0,0"
-                                                                              Loaded="MessageViewer_Loaded"
-                                                                              PreviewMouseWheel="MarkdownViewer_PreviewMouseWheel">
-                                                    <md:MarkdownDocumentView.Style>
-                                                        <Style TargetType="md:MarkdownDocumentView">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <MultiDataTrigger>
-                                                                    <MultiDataTrigger.Conditions>
-                                                                        <Condition Binding="{Binding Role}" Value="assistant"/>
-                                                                        <Condition Binding="{Binding HasContent}" Value="True"/>
-                                                                    </MultiDataTrigger.Conditions>
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </MultiDataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </md:MarkdownDocumentView.Style>
-                                                </md:MarkdownDocumentView>
-                                        <!-- 出错 / 取消提示 -->
-                                        <Border Margin="10,4,10,10" Padding="10,7" CornerRadius="6"
-                                                Background="#22FD7956"
-                                                HorizontalAlignment="Left"
-                                                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Text="{Binding ErrorMessage}" Foreground="#A93226"
-                                                       FontSize="13" TextWrapping="Wrap" MaxWidth="560"/>
-                                        </Border>
-                                        <!-- AI 操作按钮 -->
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Left"
-                                                    Margin="10,0,0,4">
-                                            <StackPanel.Style>
-                                                <Style TargetType="StackPanel">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <MultiDataTrigger>
-                                                            <MultiDataTrigger.Conditions>
-                                                                <Condition Binding="{Binding Role}" Value="assistant"/>
-                                                                <Condition Binding="{Binding IsFinalReply}" Value="True"/>
-                                                            </MultiDataTrigger.Conditions>
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </MultiDataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <Button Style="{StaticResource ChatActionButton}"
-                                                    Margin="0,0,6,0" ToolTip="复制"
-                                                    Click="CopyMessage_Click">
-                                                <Viewbox Width="15" Height="15">
-                                                    <Canvas Width="24" Height="24">
-                                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconCopy}"/>
-                                                    </Canvas>
-                                                </Viewbox>
-                                            </Button>
-                                            <Button Style="{StaticResource ChatActionButton}"
-                                                    ToolTip="重写"
-                                                    Click="RewriteMessage_Click">
-                                                <Viewbox Width="15" Height="15">
-                                                    <Canvas Width="24" Height="24">
-                                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconRegenerate}"/>
-                                                    </Canvas>
-                                                </Viewbox>
-                                            </Button>
-                                        </StackPanel>
-                                    </StackPanel>
-
-                                    <!-- 附件详情（system 消息）：仅显示“文件名 · 大小”，紧跟用户气泡下方 -->
-                                    <TextBlock Margin="10,0,10,8"
-                                               HorizontalAlignment="Right"
-                                               TextAlignment="Right"
-                                               TextWrapping="Wrap"
-                                               MaxWidth="560"
-                                               Foreground="#8B7B6B"
-                                               FontSize="11"
-                                               Text="{Binding AttachmentSummary}"
-                                               Visibility="{Binding HasAttachmentSummary, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Messages}"
+                              ItemTemplateSelector="{StaticResource MessageTemplateSelector}"/>
             </ScrollViewer>
             </Grid>
 
