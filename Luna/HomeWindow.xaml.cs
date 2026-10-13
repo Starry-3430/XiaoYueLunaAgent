@@ -153,6 +153,9 @@ public partial class HomeWindow : Window
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
 
+        // 滚动位置变化时更新“滚动到底部”按钮显隐
+        MessageScrollViewer.ScrollChanged += (_, _) => UpdateScrollToBottomButton();
+
         // 窗口是 transient（关闭后重建），关闭时把挂到单例 VM / 运行期集合上的监听解绑，避免泄漏与陈旧窗口干扰。
         Closed += (_, _) => DetachBindings();
     }
@@ -273,6 +276,24 @@ public partial class HomeWindow : Window
         MessageScrollViewer.Dispatcher.BeginInvoke(
             () => MessageScrollViewer.ScrollToEnd(),
             DispatcherPriority.Background);
+    }
+
+    /// <summary>不在底部时显示“滚动到底部”按钮，否则隐藏。</summary>
+    private void UpdateScrollToBottomButton()
+    {
+        if (ScrollToBottomButton is null) return;
+        ScrollToBottomButton.Visibility = IsNearBottom() ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>点击“滚动到底部”：回到底部并恢复对后续（含流式）内容的自动跟随。</summary>
+    private void ScrollToBottom_Click(object sender, RoutedEventArgs e) => ScrollMessagesToEnd();
+
+    /// <summary>指针悬停在按钮上时，把滚轮交给消息区处理，避免挡住滚动。</summary>
+    private void ScrollToBottomButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+        if (MessageScrollViewer is not null)
+            SmoothScroll.Vertical(MessageScrollViewer, e.Delta);
     }
 
     /// <summary>

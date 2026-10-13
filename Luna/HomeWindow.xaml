@@ -164,6 +164,7 @@ Background="#E4E0CA"
         <PathGeometry x:Key="IconClose" Figures="M18 6 L6 18 M6 6 L18 18"/>
         <PathGeometry x:Key="IconCopy" Figures="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
         <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
+        <PathGeometry x:Key="IconChevronDown" Figures="M6 9 L12 15 L18 9"/>
 
         <Style x:Key="LineIconGlyph" TargetType="Path">
             <Setter Property="Stroke" Value="#5B4833"/>
@@ -789,6 +790,44 @@ Background="#E4E0CA"
                 <ItemsControl ItemsSource="{Binding Messages}"
                               ItemTemplateSelector="{StaticResource MessageTemplateSelector}"/>
             </ScrollViewer>
+
+                <!-- 滚动到底部按钮：不在底部时显示，点击回到最新内容 -->
+                <Button x:Name="ScrollToBottomButton"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,16"
+                        Width="36" Height="36"
+                        Visibility="Collapsed"
+                        Cursor="Hand"
+                        ToolTip="滚动到底部"
+                        Click="ScrollToBottom_Click"
+                        PreviewMouseWheel="ScrollToBottomButton_PreviewMouseWheel">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Ellipse x:Name="Bg" Fill="#FBF8EC">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="2"
+                                                          Direction="270" Opacity="0.28"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                                <Viewbox Width="18" Height="18">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconChevronDown}"/>
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Fill" Value="#F1EBD6"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bg" Property="Fill" Value="#E5DDC2"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
             </Grid>
 
             <!-- 设置 内容区 -->

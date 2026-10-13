@@ -142,6 +142,9 @@ public partial class MainWindow : Window
         };
 
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
+
+        // 滚动位置变化时更新“滚动到底部”按钮显隐
+        MessageScrollViewer.ScrollChanged += (_, _) => UpdateScrollToBottomButton();
     }
 
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
@@ -658,6 +661,24 @@ public partial class MainWindow : Window
         MessageScrollViewer.Dispatcher.BeginInvoke(
             () => MessageScrollViewer.ScrollToEnd(),
             DispatcherPriority.Background);
+    }
+
+    /// <summary>不在底部时显示“滚动到底部”按钮，否则隐藏。</summary>
+    private void UpdateScrollToBottomButton()
+    {
+        if (ScrollToBottomButton is null) return;
+        ScrollToBottomButton.Visibility = IsNearBottom() ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>点击“滚动到底部”：回到底部并恢复对后续（含流式）内容的自动跟随。</summary>
+    private void ScrollToBottom_Click(object sender, RoutedEventArgs e) => ScrollMessagesToEnd();
+
+    /// <summary>指针悬停在按钮上时，把滚轮交给消息区处理，避免挡住滚动。</summary>
+    private void ScrollToBottomButton_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        e.Handled = true;
+        if (MessageScrollViewer is not null)
+            SmoothScroll.Vertical(MessageScrollViewer, e.Delta);
     }
 
     private void EnsureCaretVisible()
