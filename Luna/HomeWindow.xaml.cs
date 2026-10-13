@@ -132,7 +132,7 @@ public partial class HomeWindow : Window
         ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新聊天"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新对话"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
 
         // 左侧历史记录右键菜单：重命名 / 删除
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
@@ -1056,7 +1056,7 @@ public partial class HomeWindow : Window
         if (HistoryList.SelectedItem is null)
         {
             BindSelectedSession(null);
-            ChatTitle.Text = "新聊天";
+            ChatTitle.Text = "新对话";
             SwitchToChat();
         }
     }

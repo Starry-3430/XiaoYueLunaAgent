@@ -266,7 +266,7 @@ Background="#E4E0CA"
 
                 <TextBlock x:Name="ChatTitle"
                            Grid.Column="0"
-                           Text="新聊天"
+                           Text="新对话"
                            Foreground="#5B4833"
                            FontSize="16"
                            FontWeight="SemiBold"

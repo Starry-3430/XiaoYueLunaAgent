@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -23,12 +24,26 @@ public partial class DiaryView : UserControl
     private const double Spacing = 310;      // 相邻卡片中心间距（拉开一点）
     private const double MaskInner = 600;    // 遮罩内边界距中心的像素（保持原值不变）
     private const double NeighborScale = 0.82;
+    private const double IllustrationSize = 120;    // 无正文状态插图的边长
+    private const double IllustrationRowHeight = 230; // 插图所在行高（固定，保证插图 y 轴固定且居中偏上）
+    private const double PlaceholderTextTop = 28;   // 文本相对下半区的固定上边距（y 轴固定）
 
     private static readonly Brush CardBrush = new SolidColorBrush(Color.FromRgb(0xFA, 0xFA, 0xF0));
     private static readonly Brush TitleBrush = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33));
     private static readonly Brush SubtleBrush = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B));
     private static readonly Brush ErrorBrush = new SolidColorBrush(Color.FromRgb(0xA9, 0x32, 0x26));
     private static readonly Brush BeigeBrush = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA));
+
+    private static readonly ImageSource PendingIllustration = LoadIllustration("pending");
+    private static readonly ImageSource NoDataIllustration = LoadIllustration("nodata");
+    private static readonly ImageSource FailedIllustration = LoadIllustration("failed");
+
+    private static ImageSource LoadIllustration(string name)
+    {
+        var image = new BitmapImage(new Uri($"pack://application:,,,/Assets/icons/DiaryUI/{name}.png"));
+        image.Freeze();
+        return image;
+    }
 
     private static readonly ObservableCollection<DiaryDayView> EmptyDays = new();
 
@@ -280,12 +295,49 @@ public partial class DiaryView : UserControl
             };
         }
 
+        // Pending / NoData / Failed 三种状态：插图居中偏上、文本居中偏下，二者 y 轴各自固定、x 轴居中。
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(IllustrationRowHeight) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var illustration = BuildIllustration(day);
+        Grid.SetRow(illustration, 0);
+        root.Children.Add(illustration);
+
+        var placeholderText = BuildPlaceholderText(day);
+        Grid.SetRow(placeholderText, 1);
+        root.Children.Add(placeholderText);
+
+        return root;
+    }
+
+    /// <summary>状态插图：固定大小，横向居中，贴在下半区的顶部之上（即卡片中间偏上位置）。</summary>
+    private static FrameworkElement BuildIllustration(DiaryDayView day)
+    {
+        var source = day.IsFailed ? FailedIllustration : day.IsPending ? PendingIllustration : NoDataIllustration;
+
+        return new Image
+        {
+            Source = source,
+            Width = IllustrationSize,
+            Height = IllustrationSize,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            IsHitTestVisible = false,
+        };
+    }
+
+    /// <summary>状态文本：从下半区顶部起按固定上边距向下排布，横向居中。</summary>
+    private FrameworkElement BuildPlaceholderText(DiaryDayView day)
+    {
         if (day.IsFailed)
         {
             var panel = new StackPanel
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, PlaceholderTextTop, 0, 0),
             };
             panel.Children.Add(new TextBlock
             {
@@ -318,6 +370,7 @@ public partial class DiaryView : UserControl
                 FontSize = 13,
                 Cursor = Cursors.Hand,
                 HorizontalAlignment = HorizontalAlignment.Center,
+                Template = BuildRoundedButtonTemplate(),
             };
             retry.Click += Retry_Click;
             panel.Children.Add(retry);
@@ -338,8 +391,34 @@ public partial class DiaryView : UserControl
             TextWrapping = TextWrapping.Wrap,
             TextAlignment = TextAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, PlaceholderTextTop, 0, 0),
         };
+    }
+
+    /// <summary>圆角按钮模板（默认模板为直角）。</summary>
+    private static ControlTemplate BuildRoundedButtonTemplate()
+    {
+        var border = new FrameworkElementFactory(typeof(Border), "Bg");
+        border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+        border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+        border.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
+
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        border.AppendChild(presenter);
+
+        var template = new ControlTemplate(typeof(Button)) { VisualTree = border };
+
+        var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(UIElement.OpacityProperty, 0.85, "Bg"));
+        var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
+        pressed.Setters.Add(new Setter(UIElement.OpacityProperty, 0.7, "Bg"));
+        template.Triggers.Add(hover);
+        template.Triggers.Add(pressed);
+
+        return template;
     }
 
     private async void Retry_Click(object sender, RoutedEventArgs e)

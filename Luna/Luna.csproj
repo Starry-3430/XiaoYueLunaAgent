@@ -30,6 +30,9 @@
 
     <ItemGroup>
         <Resource Include="Assets\CascadiaMono.ttf" />
+        <Resource Include="Assets\icons\DiaryUI\failed.png" />
+        <Resource Include="Assets\icons\DiaryUI\nodata.png" />
+        <Resource Include="Assets\icons\DiaryUI\pending.png" />
         <Resource Include="Assets\icons\HomeUI\diary.PNG" />
         <Resource Include="Assets\icons\HomeUI\newsession.PNG" />
         <Resource Include="Assets\icons\HomeUI\settings.PNG" />
