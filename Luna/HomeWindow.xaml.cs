@@ -352,7 +352,8 @@ public partial class HomeWindow : Window
     if (sender is not WpfMarkdownViewer.Controls.MarkdownDocumentView viewer) return;
     if (viewer.DataContext is not ChatMessage msg) return;
 
-    _logger.LogWarning("Viewer Loaded dbId={DbId}", msg.DbId);
+    // 调试日志（保留备用）：
+    // _logger.LogWarning("Viewer Loaded dbId={DbId}", msg.DbId);
 
     // 同一视图重复 Loaded 或容器复用时，先解绑上一次的订阅，防止重复渲染造成卡顿
     if (ViewerBindings.TryGetValue(viewer, out var previous))
@@ -395,29 +396,35 @@ public partial class HomeWindow : Window
 
     void RenderFromScratch()
     {
-        // 延迟测试
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        
-        msg.StreamingState.RenderedLength = msg.Content.Length;
-        msg.StreamingState.Pending = false;
-        if (msg.IsStreaming)
+        // 延迟测试（保留备用）：
+        // var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            viewer.Reset();
-            ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
-            if (!string.IsNullOrEmpty(msg.Content))
-                viewer.AppendDelta(msg.Content);
+            msg.StreamingState.RenderedLength = msg.Content.Length;
+            msg.StreamingState.Pending = false;
+            if (msg.IsStreaming)
+            {
+                viewer.Reset();
+                ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
+                if (!string.IsNullOrEmpty(msg.Content))
+                    viewer.AppendDelta(msg.Content);
+            }
+            else
+            {
+                viewer.SetMarkdown(msg.Content);
+                ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
+            }
         }
-        else
+        finally
         {
-            viewer.SetMarkdown(msg.Content);
-            ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
+            // 无论成功失败都结束占位，避免渲染异常时骨架永久停留
+            msg.IsBodyRendered = true;
+
+            // 延迟测试（保留备用）：
+            // sw.Stop();
+            // _logger.LogWarning("RenderMarkdown dbId={DbId} len={Len} elapsed={Ms}ms",
+            //     msg.DbId, msg.Content.Length, sw.ElapsedMilliseconds);
         }
-        
-        // 延迟测试
-        sw.Stop();
-        _logger.LogWarning("RenderMarkdown dbId={DbId} len={Len} elapsed={Ms}ms",
-            msg.DbId, msg.Content.Length, sw.ElapsedMilliseconds);
-        
     }
 
     // 注册到延迟渲染调度器：实际渲染由调度泵按“最新→最旧”推进，避免在 Loaded 同步解析全部消息
@@ -443,6 +450,8 @@ public partial class HomeWindow : Window
             viewer.AppendDelta(delta);
             msg.StreamingState.RenderedLength = content.Length;
         }
+
+        msg.IsBodyRendered = true;
     }
 
     // delta 到来只标脏，由 flushTimer 统一节流渲染，避免每个 token 都触发重排
@@ -485,7 +494,8 @@ public partial class HomeWindow : Window
 
     void Unbind()
     {
-        _logger.LogWarning("Viewer Unloaded dbId={DbId}", msg.DbId);
+        // 调试日志（保留备用）：
+        // _logger.LogWarning("Viewer Unloaded dbId={DbId}", msg.DbId);
         flushTimer.Stop();
         msg.PropertyChanged -= handler;
         viewer.IsVisibleChanged -= visibility;

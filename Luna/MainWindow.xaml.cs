@@ -208,6 +208,7 @@ public partial class MainWindow : Window
                 viewer.SetMarkdown(msg.Content);
             }
             ApplyLightScrollBarStyle(viewer);
+            msg.IsBodyRendered = true;
         }
 
         // 注册到延迟渲染调度器：实际渲染由调度泵按“最新→最旧”推进，避免在 Loaded 同步解析全部消息
@@ -233,6 +234,7 @@ public partial class MainWindow : Window
                 viewer.AppendDelta(delta);
                 msg.StreamingState.RenderedLength = content.Length;
             }
+            msg.IsBodyRendered = true;
         }
 
         // delta 到来只标脏，由 flushTimer 统一节流渲染，避免每个 token 都触发重排

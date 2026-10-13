@@ -227,6 +227,15 @@ Background="#E4E0CA"
 
         <!-- ===== 消息模板：按角色/内容选择，避免为空消息创建 MarkdownDocumentView ===== -->
 
+        <!-- 正文加载占位灰条 -->
+        <Style x:Key="MessageSkeletonBar" TargetType="Border">
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="#CFC7A8"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
         <!-- 思考过程 / 正在思考（仅 assistant 使用） -->
         <DataTemplate x:Key="MessageReasoningBlock" DataType="{x:Type models:ChatMessage}">
             <StackPanel Margin="10,6,10,0">
@@ -512,6 +521,24 @@ Background="#E4E0CA"
                 <StackPanel>
                     <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageReasoningBlock}"/>
                     <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MessageToolCallsBlock}"/>
+
+                    <!-- 正文加载占位：内容尚未渲染时显示呼吸灰条 -->
+                    <StackPanel Margin="10,6,10,6"
+                                Visibility="{Binding ShowBodyPlaceholder, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0.35" To="0.85" Duration="0:0:0.9"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+                        <Border Style="{StaticResource MessageSkeletonBar}" Width="380"/>
+                        <Border Style="{StaticResource MessageSkeletonBar}" Width="320"/>
+                        <Border Style="{StaticResource MessageSkeletonBar}" Width="240"/>
+                    </StackPanel>
 
                     <md:MarkdownDocumentView SelectionEnabled="True"
                                              Background="Transparent"

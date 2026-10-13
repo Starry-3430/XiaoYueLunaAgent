@@ -46,6 +46,9 @@ internal sealed class MessageRenderScheduler
         message.StreamingState.RenderedLength = 0;
         message.StreamingState.Pending = false;
 
+        // 新 viewer 里还没有任何内容：标记为未渲染，模板据此显示加载占位骨架。
+        message.IsBodyRendered = false;
+
         _entries[message] = new Entry(viewer, render);
     }
 
