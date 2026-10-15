@@ -1,5 +1,6 @@
 // 工具：使用 Windows 文件关联打开文件、目录或启动应用程序。
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using Luna.Services;
 using Microsoft.Extensions.Logging;
