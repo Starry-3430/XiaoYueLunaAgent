@@ -150,9 +150,9 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             Tools =
             {
                 new ToolDefinition { Id = "powershell", Category = "系统", Name = "PowerShell", Description = "执行 PowerShell 命令", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.High },
-                new ToolDefinition { Id = "search_files", Category = "系统", Name = "文件搜索", Description = "按文件名搜索文件，优先查 Windows 搜索索引，未命中时回退全盘扫描", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "read_file", Category = "系统", Name = "读取文件", Description = "读取指定文件内容（限定目录、扩展名与大小）", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "write_file", Category = "系统", Name = "写入文件", Description = "写入文件内容（需沙箱目录与二次确认）", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "search_files", Category = "系统", Name = "文件搜索", Description = "按文件名搜索文件，优先查 Windows 搜索索引", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "read_file", Category = "系统", Name = "读取文件", Description = "读取指定文件内容", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "write_file", Category = "系统", Name = "写入文件", Description = "写入文件内容、创建新文件", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
                 new ToolDefinition { Id = "file_open", Category = "系统", Name = "打开文件/应用", Description = "打开指定文件或启动应用程序", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "screenshot", Category = "系统", Name = "截图", Description = "截取屏幕截图", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "window_manager", Category = "系统", Name = "窗口管理", Description = "管理窗口位置、大小和状态", IsEnabled = true, IsAvailable = false },
@@ -707,6 +707,21 @@ public partial class ChatSessionItem : ObservableObject
     [ObservableProperty]
     private string _title = string.Empty;
 
-    [ObservableProperty]
     private string _preview = string.Empty;
+
+    /// <summary>侧栏预览：只取用户第一句话的首行（遇到换行即截断），避免换行把预览撑成两行。</summary>
+    public string Preview
+    {
+        get => _preview;
+        set => SetProperty(ref _preview, FirstLine(value));
+    }
+
+    /// <summary>取文本首行并去除首尾空白；无换行时返回整段。</summary>
+    public static string FirstLine(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        var index = text.IndexOfAny(new[] { '\r', '\n' });
+        var line = index >= 0 ? text[..index] : text;
+        return line.Trim();
+    }
 }

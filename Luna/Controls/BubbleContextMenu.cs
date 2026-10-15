@@ -112,6 +112,14 @@ public class BubbleContextMenu
     {
         e.Handled = true;
 
+        // 右键已框选的正文：保留框选，稍后“复制”只复制框选内容；
+        // 右键框选之外的正文：取消框选，稍后“复制”复制整条正文。
+        if (_target is WpfMarkdownViewer.Controls.MarkdownDocumentView markdown
+            && !markdown.IsPointInSelection(e.GetPosition(markdown)))
+        {
+            markdown.ClearSelection();
+        }
+
         if (_popup.IsOpen)
         {
             CloseMenu();
@@ -139,6 +147,13 @@ public class BubbleContextMenu
                 Clipboard.SetText(tb.SelectedText);
             else
                 Clipboard.SetText(tb.Text);
+            return;
+        }
+
+        // 正文有框选时只复制框选内容（与 Ctrl+C 一致）；无框选时复制整条正文。
+        if (_target is WpfMarkdownViewer.Controls.MarkdownDocumentView markdown && markdown.HasSelection)
+        {
+            markdown.CopySelection();
             return;
         }
 

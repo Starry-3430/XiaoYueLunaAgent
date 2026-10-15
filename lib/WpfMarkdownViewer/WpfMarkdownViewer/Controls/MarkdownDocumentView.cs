@@ -595,6 +595,15 @@ public class MarkdownDocumentView : Panel, IVirtualizingContent, IScrollHostAwar
     /// <summary>Copy the current selection as plain-text Markdown only (the text IS the Markdown source, so it round-trips into any editor).</summary>
     public void CopySelection() => _selection.Copy();
 
+    /// <summary>Whether there is an active text selection.</summary>
+    public bool HasSelection => _selection.HasSelection;
+
+    /// <summary>Clear the current selection (removes the highlight).</summary>
+    public void ClearSelection() => _selection.Clear();
+
+    /// <summary>Whether the point (in this control's coordinates) is inside the current selection highlight.</summary>
+    public bool IsPointInSelection(Point point) => _selection.IsPointInSelection(point);
+
     private MenuItem? _copyMenuItem;
 
     private void BuildContextMenu()
