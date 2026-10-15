@@ -707,6 +707,21 @@ public partial class ChatSessionItem : ObservableObject
     [ObservableProperty]
     private string _title = string.Empty;
 
-    [ObservableProperty]
     private string _preview = string.Empty;
+
+    /// <summary>侧栏预览：只取用户第一句话的首行（遇到换行即截断），避免换行把预览撑成两行。</summary>
+    public string Preview
+    {
+        get => _preview;
+        set => SetProperty(ref _preview, FirstLine(value));
+    }
+
+    /// <summary>取文本首行并去除首尾空白；无换行时返回整段。</summary>
+    public static string FirstLine(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        var index = text.IndexOfAny(new[] { '\r', '\n' });
+        var line = index >= 0 ? text[..index] : text;
+        return line.Trim();
+    }
 }

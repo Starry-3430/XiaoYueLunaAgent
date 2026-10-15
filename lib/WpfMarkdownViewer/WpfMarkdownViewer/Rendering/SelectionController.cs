@@ -122,6 +122,31 @@ internal sealed class SelectionController
             s.SetSelectedRange(0, 0);
     }
 
+    /// <summary>Whether <paramref name="point"/> (root coordinates) falls within the current selection highlight.</summary>
+    public bool IsPointInSelection(Point point)
+    {
+        if (!HasSelection || _selectables.Count == 0)
+            return false;
+
+        var (lo, loOff, hi, hiOff) = Ordered();
+        for (int i = lo; i <= hi; i++)
+        {
+            var fe = (FrameworkElement)_selectables[i];
+            Point topLeft = fe.TransformToAncestor(_root).Transform(new Point(0, 0));
+            double height = fe.RenderSize.Height;
+            if (point.Y < topLeft.Y || point.Y > topLeft.Y + height)
+                continue;
+
+            int start = i == lo ? loOff : 0;
+            int end = i == hi ? hiOff : _selectables[i].SelectableText.Length;
+            double localY = Math.Clamp(point.Y - topLeft.Y, 0, Math.Max(0, height - 1));
+            int offset = _selectables[i].OffsetAtPoint(new Point(point.X - topLeft.X, localY));
+            if (offset >= start && offset <= end)
+                return true;
+        }
+        return false;
+    }
+
     /// <summary>Copy the selection as plain-text Markdown only (the text IS the Markdown source, so it round-trips).</summary>
     public void Copy()
     {
