@@ -278,11 +278,12 @@ public partial class HomeWindow : Window
             DispatcherPriority.Background);
     }
 
-    /// <summary>不在底部时显示“滚动到底部”按钮，否则隐藏。</summary>
+    /// <summary>不在底部时显示“滚动到底部”按钮，否则隐藏；非聊天界面始终隐藏。</summary>
     private void UpdateScrollToBottomButton()
     {
         if (ScrollToBottomButton is null) return;
-        ScrollToBottomButton.Visibility = IsNearBottom() ? Visibility.Collapsed : Visibility.Visible;
+        var show = !_isSettingsMode && !IsNearBottom();
+        ScrollToBottomButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>点击“滚动到底部”：回到底部并恢复对后续（含流式）内容的自动跟随。</summary>
@@ -310,6 +311,7 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
         HistoryList.SelectedIndex = -1;
+        UpdateScrollToBottomButton();
     }
 
     private void SetActiveSideButton(Button? active)
@@ -337,8 +339,9 @@ public partial class HomeWindow : Window
         InputArea.Visibility = Visibility.Visible;
         StatusText.Visibility = Visibility.Visible;
         SetActiveSideButton(null);
-        // 聊天区可见：唤醒延迟渲染泵（按最新→最旧补齐）
+        // 聊天区可见：唤醒延迟渲染泵（按最新→最旧补齐），并重新评估滚动按钮
         _renderScheduler.Wake();
+        UpdateScrollToBottomButton();
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -454,8 +457,12 @@ public partial class HomeWindow : Window
     void FlushPending()
     {
         if (!msg.StreamingState.Pending) return;
-        // 不可见时保留 Pending，等视图可见时由 visibility 处理器一次性补齐
-        if (!viewer.IsVisible) return;
+        // 不可见时交给调度器，等视图可用时整体补齐，避免流式正文丢失
+        if (!viewer.IsVisible)
+        {
+            _renderScheduler.Request(msg);
+            return;
+        }
         msg.StreamingState.Pending = false;
 
         var content = msg.Content;
@@ -482,17 +489,31 @@ public partial class HomeWindow : Window
         {
             if (args.PropertyName == nameof(ChatMessage.Content))
             {
-                // 不可见时不驱动渲染，切回可见时由 visibility 处理器一次性补齐
-                if (!viewer.IsVisible) return;
-                msg.StreamingState.Pending = true;
-                if (!flushTimer.IsEnabled) flushTimer.Start();
+                if (viewer.IsVisible)
+                {
+                    // 可见：走增量刷新（16ms 节流）
+                    msg.StreamingState.Pending = true;
+                    if (!flushTimer.IsEnabled) flushTimer.Start();
+                }
+                else
+                {
+                    // 不可见：交给调度器，等窗口/视图可用时整体补齐，避免流式正文丢失
+                    _renderScheduler.Request(msg);
+                }
             }
             else if (args.PropertyName == nameof(ChatMessage.IsStreaming) && !msg.IsStreaming)
             {
-                // 流式结束时立即 flush 剩余内容
+                // 流式结束：可见则立即 flush 并收尾
                 flushTimer.Stop();
-                FlushPending();
-                if (viewer.IsVisible) viewer.Complete();
+                if (viewer.IsVisible)
+                {
+                    FlushPending();
+                    viewer.Complete();
+                }
+                // 兜底：若仍未渲染出内容（视图曾不可见/未触发），交给调度器整体渲染，
+                // 等价于“切换会话再回来”的恢复路径，避免正文一直缺失。
+                if (!msg.IsBodyRendered || msg.StreamingState.RenderedLength != msg.Content.Length)
+                    _renderScheduler.Request(msg);
             }
         }
         catch { }

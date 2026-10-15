@@ -220,8 +220,12 @@ public partial class MainWindow : Window
         void FlushPending()
         {
             if (!msg.StreamingState.Pending) return;
-            // 不可见时保留 Pending，等视图可见时由 visibility 处理器一次性补齐
-            if (!viewer.IsVisible) return;
+            // 不可见时交给调度器，等视图可用时整体补齐，避免流式正文丢失
+            if (!viewer.IsVisible)
+            {
+                _renderScheduler.Request(msg);
+                return;
+            }
             msg.StreamingState.Pending = false;
 
             var content = msg.Content;
@@ -247,17 +251,30 @@ public partial class MainWindow : Window
             {
                 if (args.PropertyName == nameof(ChatMessage.Content))
                 {
-                    // 不可见时不驱动渲染，切回可见时由 visibility 处理器一次性补齐
-                    if (!viewer.IsVisible) return;
-                    msg.StreamingState.Pending = true;
-                    if (!flushTimer.IsEnabled) flushTimer.Start();
+                    if (viewer.IsVisible)
+                    {
+                        // 可见：走增量刷新（16ms 节流）
+                        msg.StreamingState.Pending = true;
+                        if (!flushTimer.IsEnabled) flushTimer.Start();
+                    }
+                    else
+                    {
+                        // 不可见：交给调度器，等窗口/视图可用时整体补齐，避免流式正文丢失
+                        _renderScheduler.Request(msg);
+                    }
                 }
                 else if (args.PropertyName == nameof(ChatMessage.IsStreaming) && !msg.IsStreaming)
                 {
-                    // 流式结束时立即 flush 剩余内容
+                    // 流式结束：可见则立即 flush 并收尾
                     flushTimer.Stop();
-                    FlushPending();
-                    if (viewer.IsVisible) viewer.Complete();
+                    if (viewer.IsVisible)
+                    {
+                        FlushPending();
+                        viewer.Complete();
+                    }
+                    // 兜底：若仍未渲染出内容，交给调度器整体渲染，避免正文一直缺失
+                    if (!msg.IsBodyRendered || msg.StreamingState.RenderedLength != msg.Content.Length)
+                        _renderScheduler.Request(msg);
                 }
             }
             catch
