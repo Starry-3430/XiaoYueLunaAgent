@@ -172,6 +172,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, FileOpenTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
+                services.AddSingleton<ITool, DiarySearchTool>();
                 services.AddSingleton<ITool, CompleteTaskTool>();
                 services.AddSingleton<ITool, DeleteTaskTool>();
                 services.AddSingleton<ToolRegistry>();
