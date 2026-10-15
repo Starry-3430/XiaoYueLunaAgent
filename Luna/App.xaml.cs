@@ -169,6 +169,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, CodeExecuteTool>();
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
+                services.AddSingleton<ITool, FileOpenTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
                 services.AddSingleton<ITool, CompleteTaskTool>();
