@@ -32,6 +32,12 @@ Background="#E4E0CA"
             <converters:FileSizeConverter x:Key="FileSizeConverter"/>
             <converters:AttachmentMetaConverter x:Key="AttachmentMetaConverter"/>
 
+            <!-- 位图图标大幅缩小（2048→50）时用高质量重采样，避免默认线性采样产生的锯齿 -->
+            <Style TargetType="Image">
+                <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+                <Setter Property="RenderOptions.EdgeMode" Value="Unspecified"/>
+            </Style>
+
         
 
         <Style x:Key="SideButton" TargetType="Button">
