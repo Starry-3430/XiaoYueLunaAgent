@@ -144,6 +144,7 @@ public partial class App : Application
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
                 }));
                 services.AddSingleton<HotkeyService>();
+                services.AddSingleton<SystemPromptBuilder>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
                 // 文档转换（MarkItDown）：注册 IMarkItDownClient，并把转换工作区定向到 Luna 缓存目录，
