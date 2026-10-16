@@ -7,6 +7,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using CommunityToolkit.Mvvm.Input;
+using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -62,11 +65,20 @@ public partial class DiaryView : UserControl
     public DiaryView()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => Hook();
-        Loaded += (_, _) => { Hook(); Layout(); };
+        DataContextChanged += (_, _) => { Hook(); SyncDiaryToggle(); };
+        Loaded += (_, _) => { Hook(); SyncDiaryToggle(); Layout(); };
 
         // 页面被切到可见时才播放入场动画（预加载时内容在后台已就绪，隐藏期间尺寸为 0 不会构建卡片）。
         IsVisibleChanged += (_, _) => { if (IsVisible) Layout(); };
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+            {
+                ClearVisuals();
+                Layout();
+            }
+        };
     }
 
     private DiaryViewModel? Vm => DataContext as DiaryViewModel;
@@ -314,7 +326,9 @@ public partial class DiaryView : UserControl
     /// <summary>状态插图：固定大小，横向居中，贴在下半区的顶部之上（即卡片中间偏上位置）。</summary>
     private static FrameworkElement BuildIllustration(DiaryDayView day)
     {
-        var source = day.IsFailed ? FailedIllustration : day.IsPending ? PendingIllustration : NoDataIllustration;
+        var source = day.IsFailed ? FailedIllustration
+            : day.IsPending || day.IsNotGenerated ? PendingIllustration
+            : NoDataIllustration;
 
         return new Image
         {
@@ -331,6 +345,8 @@ public partial class DiaryView : UserControl
     /// <summary>状态文本：从下半区顶部起按固定上边距向下排布，横向居中。</summary>
     private FrameworkElement BuildPlaceholderText(DiaryDayView day)
     {
+        var loc = LocalizationService.Instance;
+
         if (day.IsFailed)
         {
             var panel = new StackPanel
@@ -341,7 +357,7 @@ public partial class DiaryView : UserControl
             };
             panel.Children.Add(new TextBlock
             {
-                Text = "生成失败！",
+                Text = loc["Diary_Status_Failed_Title"],
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = ErrorBrush,
@@ -350,7 +366,7 @@ public partial class DiaryView : UserControl
             });
             panel.Children.Add(new TextBlock
             {
-                Text = string.IsNullOrWhiteSpace(day.LastError) ? "未知错误" : day.LastError,
+                Text = string.IsNullOrWhiteSpace(day.LastError) ? loc["Diary_Status_UnknownError"] : day.LastError,
                 FontSize = 12,
                 Foreground = SubtleBrush,
                 TextWrapping = TextWrapping.Wrap,
@@ -361,7 +377,7 @@ public partial class DiaryView : UserControl
 
             var retry = new Button
             {
-                Content = "重试",
+                Content = loc["Diary_Status_Retry"],
                 Tag = day,
                 Background = BeigeBrush,
                 Foreground = TitleBrush,
@@ -377,10 +393,50 @@ public partial class DiaryView : UserControl
             return panel;
         }
 
+        // 长时间未整理：显示“还没写”的提示与“补写”按钮
+        if (day.IsNotGenerated)
+        {
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, PlaceholderTextTop, 0, 0),
+            };
+            panel.Children.Add(new TextBlock
+            {
+                Text = loc["Diary_Status_NotGenerated"],
+                FontSize = 13,
+                LineHeight = 22,
+                Foreground = SubtleBrush,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                MaxWidth = ContentWidth,
+                Margin = new Thickness(0, 0, 0, 12),
+            });
+
+            var fill = new Button
+            {
+                Content = loc["Diary_Status_Fill"],
+                Tag = day,
+                Background = BeigeBrush,
+                Foreground = TitleBrush,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(18, 6, 18, 6),
+                FontSize = 13,
+                Cursor = Cursors.Hand,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Template = BuildRoundedButtonTemplate(),
+            };
+            fill.Click += Retry_Click;
+            panel.Children.Add(fill);
+            return panel;
+        }
+
         var nickname = Vm?.Nickname ?? "Luna";
         var message = day.IsPending
-            ? $"{nickname}还在记录\n稍后再来看看吧！"
-            : $"这一天没有和\n{nickname}互动过哦！";
+            ? loc.Format("Diary_Status_Pending", nickname)
+            : loc.Format("Diary_Status_NoData", nickname);
 
         return new TextBlock
         {
@@ -425,6 +481,73 @@ public partial class DiaryView : UserControl
     {
         if (sender is FrameworkElement { Tag: DiaryDayView day } && Vm is not null)
             await Vm.RetryAsync(day);
+    }
+
+    // ===== 日记本开关 =====
+
+    private void SyncDiaryToggle()
+    {
+        if (Vm is not null)
+            DiaryToggle.IsChecked = Vm.DiaryEnabled;
+    }
+
+    private void DiaryToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox cb || Vm is null) return;
+
+        var wantEnabled = cb.IsChecked == true;
+
+        // 关闭前二次确认；取消则恢复为开启
+        if (!wantEnabled && !ConfirmDisableDiary())
+        {
+            cb.IsChecked = true;
+            return;
+        }
+
+        Vm.SetDiaryEnabled(wantEnabled);
+    }
+
+    private bool ConfirmDisableDiary()
+    {
+        var confirmed = false;
+        var nickname = Vm?.Nickname ?? "Luna";
+        var loc = LocalizationService.Instance;
+
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = loc["Diary_Disable_Title"],
+            DialogContent = new TextBlock
+            {
+                Text = loc.Format("Diary_Disable_Body", nickname),
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Diary_Disable_Confirm"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_Cancel"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
+        return confirmed;
     }
 
     // ===== 翻页按钮 =====

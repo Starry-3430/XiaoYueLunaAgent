@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using Luna.Services;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -13,15 +14,15 @@ namespace Luna.Services.Tools;
 /// </summary>
 public sealed class FileOpenTool : ITool
 {
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"path":{"type":"string","description":"要打开的文件、目录或应用程序路径。支持 desktop/documents/downloads/pictures/music/videos/home 等目录别名"}},"required":["path"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"}},"required":["path"]}""";
 
     private readonly ILogger<FileOpenTool> _logger;
 
     public string Name => "file_open";
-    public string DisplayName => "打开文件/应用";
-    public string Description => "使用 Windows 默认程序打开文件、目录或启动应用程序";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$path$", Param("Tool_FileOpen_Param_Path")));
     public ToolRiskLevel Risk => ToolRiskLevel.Medium;
 
     public FileOpenTool(ILogger<FileOpenTool> logger)
@@ -33,10 +34,10 @@ public sealed class FileOpenTool : ITool
     {
         var input = GetString(args, "path");
         if (string.IsNullOrWhiteSpace(input))
-            return Task.FromResult(ToolResult.Error("缺少参数 path。"));
+            return Task.FromResult(ToolResult.Error(Text("Tool_Msg_MissingParam", "path")));
 
         if (ct.IsCancellationRequested)
-            return Task.FromResult(ToolResult.Error("打开操作被取消。"));
+            return Task.FromResult(ToolResult.Error(Text("Tool_FileOpen_Msg_Cancelled")));
 
         if (!TryResolvePath(input, out var fullPath, out var error))
             return Task.FromResult(ToolResult.Error(error));
@@ -50,12 +51,12 @@ public sealed class FileOpenTool : ITool
             });
 
             _logger.LogInformation("已打开路径：{Path}", fullPath);
-            return Task.FromResult(ToolResult.Ok($"已打开：{fullPath}"));
+            return Task.FromResult(ToolResult.Ok(Text("Tool_FileOpen_Msg_Opened", fullPath)));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "打开路径失败：{Path}", fullPath);
-            return Task.FromResult(ToolResult.Error($"打开失败：{ex.Message}"));
+            return Task.FromResult(ToolResult.Error(Text("Tool_FileOpen_Msg_Failed", ex.Message)));
         }
     }
 
@@ -79,13 +80,13 @@ public sealed class FileOpenTool : ITool
         }
         catch (Exception ex)
         {
-            error = $"无效路径：{ex.Message}";
+            error = Text("Tool_FileOpen_Msg_BadPath", ex.Message);
             return false;
         }
 
         if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
         {
-            error = $"文件、目录或应用不存在：{fullPath}";
+            error = Text("Tool_FileOpen_Msg_NotFound", fullPath);
             return false;
         }
 

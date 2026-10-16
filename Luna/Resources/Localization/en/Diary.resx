@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 搜索 -->
+  <data name="Diary_Search_Placeholder" xml:space="preserve">
+    <value>Search diary… (Enter)</value>
+  </data>
+
+  <!-- 翻页 -->
+  <data name="Diary_Nav_Prev" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="Diary_Nav_Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Diary_Nav_Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+
+  <!-- 日记本开关 -->
+  <data name="Diary_Enable_Title" xml:space="preserve">
+    <value>Diary</value>
+  </data>
+  <data name="Diary_Enable_Desc" xml:space="preserve">
+    <value>Your chat history will be sent to the AI for summarization.</value>
+  </data>
+  <data name="Diary_Enable_Warning" xml:space="preserve">
+    <value>⚠ May consume more tokens</value>
+  </data>
+
+  <!-- 卡片状态 -->
+  <data name="Diary_Status_Failed_Title" xml:space="preserve">
+    <value>Generation failed!</value>
+  </data>
+  <data name="Diary_Status_UnknownError" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="Diary_Status_Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Diary_Status_NotGenerated" xml:space="preserve">
+    <value>This day's diary hasn't been written yet!</value>
+  </data>
+  <data name="Diary_Status_Fill" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Diary_Status_Pending" xml:space="preserve">
+    <value>{0} is still writing.
+Check back later!</value>
+  </data>
+  <data name="Diary_Status_NoData" xml:space="preserve">
+    <value>No interaction with
+{0} on this day!</value>
+  </data>
+
+  <!-- 关闭确认 -->
+  <data name="Diary_Disable_Title" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Diary_Disable_Body" xml:space="preserve">
+    <value>Turning off the diary: {0} will no longer organize diaries. After you re-enable it, the last 7 days will be written.</value>
+  </data>
+  <data name="Diary_Disable_Confirm" xml:space="preserve">
+    <value>Turn off</value>
+  </data>
+
+  <!-- 服务状态 -->
+  <data name="Diary_Service_EmptyResponse" xml:space="preserve">
+    <value>The model returned empty content</value>
+  </data>
+</root>

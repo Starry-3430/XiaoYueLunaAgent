@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -40,16 +41,20 @@ public class GitTool : ITool
         "-d", "-D", "--delete", "-m", "-M", "--move", "-c", "-C", "--copy",
     };
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"action":{"type":"string","description":"git 子命令","enum":["status","diff","log","show","branch","rev-parse","add","commit"]},"args":{"type":"array","items":{"type":"string"},"description":"传给子命令的额外参数，例如 [\"--stat\"]、[\"HEAD~3\"]、[\"newfile.txt\"]"},"message":{"type":"string","description":"提交信息，action=commit 时必填"},"path":{"type":"string","description":"仓库路径，必须在授权目录内；留空则使用工作目录"}},"required":["action"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"action":{"type":"string","description":"$action$","enum":["status","diff","log","show","branch","rev-parse","add","commit"]},"args":{"type":"array","items":{"type":"string"},"description":"$args$"},"message":{"type":"string","description":"$message$"},"path":{"type":"string","description":"$path$"}},"required":["action"]}""";
 
     private readonly ToolPermissionService _permission;
     private readonly ILogger<GitTool> _logger;
 
     public string Name => "git";
-    public string DisplayName => "Git";
-    public string Description => "在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$action$", Param("Tool_Git_Param_Action"))
+        .Replace("$args$", Param("Tool_Git_Param_Args"))
+        .Replace("$message$", Param("Tool_Git_Param_Message"))
+        .Replace("$path$", Param("Tool_Git_Param_Path")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
 
     public GitTool(ToolPermissionService permission, ILogger<GitTool> logger)
@@ -62,11 +67,11 @@ public class GitTool : ITool
     {
         var action = GetString(args, "action").ToLowerInvariant();
         if (string.IsNullOrEmpty(action))
-            return ToolResult.Error("缺少参数 action。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "action"));
 
         var isWrite = AllowedWriteActions.Contains(action);
         if (!AllowedActions.Contains(action) && !isWrite)
-            return ToolResult.Error($"不允许的 git 子命令：{action}。仅支持：status/diff/log/show/branch/rev-parse，以及需确认的 add/commit。");
+            return ToolResult.Error(Text("Tool_Git_Msg_BadAction", action));
 
         if (!TryGetArgs(args, out var extraArgs, out var argsError))
             return ToolResult.Error(argsError);
@@ -77,7 +82,7 @@ public class GitTool : ITool
 
         var message = GetString(args, "message");
         if (action == "commit" && string.IsNullOrWhiteSpace(message))
-            return ToolResult.Error("commit 需要提供参数 message。");
+            return ToolResult.Error(Text("Tool_Git_Msg_NeedMessage"));
 
         var path = GetString(args, "path");
         if (!FileSandbox.TryResolveAnyExistingDirectory(path, out var repo, out var pathError))
@@ -96,11 +101,11 @@ public class GitTool : ITool
         if (isWrite)
         {
             var decision = _permission.RequestConfirmation(
-                this, $"$ git {commandText}\n该操作会修改仓库内容，确定执行？");
+                this, Text("Tool_Git_Msg_ConfirmWrite", commandText));
             if (decision == ToolPermissionDecision.Deny)
             {
                 _logger.LogInformation("用户拒绝执行 git {Action}", action);
-                return ToolResult.Error("用户拒绝执行。");
+                return ToolResult.Error(Text("Tool_Msg_UserDenied"));
             }
         }
 
@@ -133,7 +138,7 @@ public class GitTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "启动 git 失败");
-            return ToolResult.Error($"无法启动 git，请确认已安装并加入 PATH：{ex.Message}");
+            return ToolResult.Error(Text("Tool_Git_Msg_StartFailed", ex.Message));
         }
 
         using (process)
@@ -157,7 +162,7 @@ public class GitTool : ITool
                 if (ct.IsCancellationRequested)
                     throw;
                 exitCode = -1;
-                timedOutMessage = $"git 执行超时（{TimeoutSeconds} 秒），已终止。";
+                timedOutMessage = Text("Tool_Git_Msg_Timeout", TimeoutSeconds);
             }
 
             var stdOut = await SafeReadAsync(stdOutTask);
@@ -173,7 +178,7 @@ public class GitTool : ITool
     private static string Format(string commandText, string stdOut, string stdErr, string timedOutMessage, int exitCode)
     {
         var sb = new StringBuilder();
-        sb.Append("执行结果：").AppendLine();
+        sb.Append(Text("Tool_Git_Msg_ResultHeader")).AppendLine();
         sb.Append("$ git ").AppendLine(commandText);
 
         if (!string.IsNullOrWhiteSpace(stdOut))
@@ -196,12 +201,12 @@ public class GitTool : ITool
         else if (exitCode != 0)
         {
             sb.AppendLine();
-            sb.Append($"(git 退出码 {exitCode})");
+            sb.Append(Text("Tool_Git_Msg_ExitCode", exitCode));
         }
 
         var text = sb.ToString().TrimEnd();
         if (text.Length > MaxOutputChars)
-            text = text[..MaxOutputChars] + "\n…（输出已截断）";
+            text = text[..MaxOutputChars] + "\n" + Text("Tool_Git_Msg_Truncated");
         return text;
     }
 
@@ -241,7 +246,7 @@ public class GitTool : ITool
             if (lower.Contains("force") ||
                 ForbiddenArgs.Contains(lower) ||
                 (action == "branch" && ForbiddenBranchArgs.Contains(lower)))
-                return $"参数被安全策略禁止：{arg}";
+                return Text("Tool_Git_Msg_ArgForbidden", arg);
         }
         return null;
     }
@@ -261,7 +266,7 @@ public class GitTool : ITool
 
         if (el.ValueKind != JsonValueKind.Array)
         {
-            error = "参数 args 必须是字符串数组。";
+            error = Text("Tool_Git_Msg_ArgsNotArray");
             return false;
         }
 
@@ -269,7 +274,7 @@ public class GitTool : ITool
         {
             if (item.ValueKind != JsonValueKind.String)
             {
-                error = "参数 args 必须是字符串数组。";
+                error = Text("Tool_Git_Msg_ArgsNotArray");
                 return false;
             }
             result.Add(item.GetString() ?? string.Empty);

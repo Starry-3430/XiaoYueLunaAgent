@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -13,8 +14,8 @@ public class GetCurrentTimeTool : ITool
     private readonly ILogger<GetCurrentTimeTool> _logger;
 
     public string Name => "get_current_time";
-    public string DisplayName => "当前时间";
-    public string Description => "获取当前日期和时间，返回本地时间与 UTC 时间";
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
     public JsonElement ParametersSchema => Schema;
 
     public GetCurrentTimeTool(ILogger<GetCurrentTimeTool> logger)
@@ -27,13 +28,11 @@ public class GetCurrentTimeTool : ITool
         var now = DateTimeOffset.Now;
         var local = now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture);
         var utc = now.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        var week = CultureInfo.GetCultureInfo("zh-CN").DateTimeFormat.GetDayName(now.DayOfWeek);
+        var week = CultureInfo.CurrentUICulture.DateTimeFormat.GetDayName(now.DayOfWeek);
 
         _logger.LogInformation("获取当前时间: {Local}", local);
 
         return Task.FromResult(ToolResult.Ok(
-            $"当前时间：{local}（{week}）\n" +
-            $"UTC 时间：{utc}\n" +
-            $"Unix 时间戳：{now.ToUnixTimeSeconds()}"));
+            Text("Tool_GetCurrentTime_Msg_Result", local, week, utc, now.ToUnixTimeSeconds())));
     }
 }

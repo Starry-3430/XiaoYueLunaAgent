@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -26,15 +27,15 @@ public class PowerShellTool : ITool
         @"\b(Remove|Set|New|Invoke|Start|Stop|Restart|Install|Uninstall|Enable|Disable|Set|Clear|Add|Out-File|Set-Content|Remove-Item)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"command":{"type":"string","description":"要执行的只读 PowerShell 命令。可用管道，但每个管道段都必须以 Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out- 开头，且不得包含 Remove/Set/New/Invoke/Start/Stop/Restart/Install/Uninstall/Enable/Disable/Clear/Add/Out-File/Set-Content/Remove-Item 等写操作"}},"required":["command"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"command":{"type":"string","description":"$command$"}},"required":["command"]}""";
 
     private readonly ILogger<PowerShellTool> _logger;
 
     public string Name => "powershell";
-    public string DisplayName => "PowerShell";
-    public string Description => "执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$command$", Param("Tool_Powershell_Param_Command")));
     public ToolRiskLevel Risk => ToolRiskLevel.High;
 
     public PowerShellTool(ILogger<PowerShellTool> logger)
@@ -56,21 +57,19 @@ public class PowerShellTool : ITool
     private static string? Validate(string command)
     {
         if (string.IsNullOrWhiteSpace(command))
-            return "缺少参数 command。";
+            return Text("Tool_Powershell_Msg_MissingCommand");
 
         foreach (var raw in command.Split('|'))
         {
             var segment = raw.Trim();
             if (segment.Length == 0)
-                return "命令包含空的管道段。";
+                return Text("Tool_Powershell_Msg_EmptyPipe");
 
             if (!AllowedVerb.IsMatch(segment))
-                return "不允许的命令：每个管道段都必须以只读动词开头（Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out-）。\n" +
-                       $"问题段：{segment}";
+                return Text("Tool_Powershell_Msg_BadVerb", segment);
 
             if (ForbiddenVerb.IsMatch(segment))
-                return "不允许的命令：包含被禁止的写操作动词。\n" +
-                       $"问题段：{segment}";
+                return Text("Tool_Powershell_Msg_ForbiddenVerb", segment);
         }
 
         return null;
@@ -79,7 +78,7 @@ public class PowerShellTool : ITool
     private ToolResult Run(string command, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
-            return ToolResult.Error("执行被取消。");
+            return ToolResult.Error(Text("Tool_Msg_Cancelled"));
 
         var psi = new ProcessStartInfo
         {
@@ -106,7 +105,7 @@ public class PowerShellTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "启动 powershell.exe 失败");
-            return ToolResult.Error($"无法启动 powershell.exe：{ex.Message}");
+            return ToolResult.Error(Text("Tool_Powershell_Msg_StartFailed", ex.Message));
         }
 
         using (process)
@@ -119,7 +118,7 @@ public class PowerShellTool : ITool
                 TryKill(process);
                 _logger.LogWarning("PowerShell 命令超时，已终止：{Command}", command);
                 return ToolResult.Error(Format(command, SafeGet(stdOutTask), SafeGet(stdErrTask),
-                    $"PowerShell 执行超时（{TimeoutMs / 1000} 秒），已终止进程树。", -1));
+                    Text("Tool_Powershell_Msg_Timeout", TimeoutMs / 1000), -1));
             }
 
             var exitCode = process.ExitCode;
@@ -131,7 +130,7 @@ public class PowerShellTool : ITool
     private static string Format(string command, string stdOut, string stdErr, string? note, int exitCode)
     {
         var sb = new StringBuilder();
-        sb.Append("执行结果：").AppendLine();
+        sb.Append(Text("Tool_Powershell_Msg_ResultHeader")).AppendLine();
         sb.Append("PS> ").AppendLine(command);
 
         if (!string.IsNullOrWhiteSpace(stdOut))
@@ -154,12 +153,12 @@ public class PowerShellTool : ITool
         else if (exitCode != 0)
         {
             sb.AppendLine();
-            sb.Append($"(退出码 {exitCode})");
+            sb.Append(Text("Tool_Powershell_Msg_ExitCode", exitCode));
         }
 
         var text = sb.ToString().TrimEnd();
         if (text.Length > MaxOutputChars)
-            text = text[..MaxOutputChars] + "\n…（输出已截断）";
+            text = text[..MaxOutputChars] + "\n" + Text("Tool_Powershell_Msg_Truncated");
         return text;
     }
 

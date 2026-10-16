@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
@@ -53,7 +54,7 @@ public partial class GeneralSettingsView : UserControl
 
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "选择输出目录",
+            Title = LocalizationService.Instance["Dialog_ChooseFolder_Title"],
             Multiselect = false,
             InitialDirectory = Directory.Exists(vm.OutputDirectory) ? vm.OutputDirectory : string.Empty,
         };
@@ -72,6 +73,8 @@ public partial class GeneralSettingsView : UserControl
 
         vm.ProxyTypeSetting.IsOpen = false;
         vm.FontSetting.IsOpen = false;
+        vm.LanguageSetting.IsOpen = false;
+        vm.StartupSetting.IsOpen = false;
     }
 
     private static bool IsInsidePopup(DependencyObject? source)
@@ -110,18 +113,60 @@ public partial class GeneralSettingsView : UserControl
         {
             vm.ApplyProxyType();
         }
+        else if (setting == vm.LanguageSetting)
+        {
+            vm.ApplyLanguage();
+        }
+        else if (setting == vm.StartupSetting)
+        {
+            HandleStartupSelected(vm);
+        }
     }
 
-    /// <summary>字体修改后提示用户保存并重启。</summary>
-    private void ShowFontReminder()
+    /// <summary>处理开机自启动的选择：管理员模式需要先确认并弹出 UAC 提权。</summary>
+    private void HandleStartupSelected(GeneralSettingsViewModel vm)
     {
+        var mode = vm.StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
+
+        // 普通用户选择“是 + 管理员”：先确认，再尝试提权
+        if (mode == "admin" && !StartupService.IsRunningAsAdministrator())
+        {
+            if (!ConfirmElevation())
+            {
+                vm.RevertStartupSelection();
+                return;
+            }
+
+            var elevated = vm.ApplyStartupElevated();
+            if (!elevated.Success)
+            {
+                vm.RevertStartupSelection();
+                if (!elevated.Canceled) ShowStartupFailure(elevated.Message);
+            }
+            return;
+        }
+
+        var result = vm.ApplyStartup();
+        if (!result.Success)
+        {
+            vm.RevertStartupSelection();
+            ShowStartupFailure(result.Message);
+        }
+    }
+
+    /// <summary>询问用户是否继续以管理员权限设置自启动。</summary>
+    private bool ConfirmElevation()
+    {
+        var confirmed = false;
+        var loc = LocalizationService.Instance;
+
         var dialog = new LunaDialog
         {
             Owner = Window.GetWindow(this),
-            DialogTitle = "提示",
+            DialogTitle = loc["Dialog_Elevation_Title"],
             DialogContent = new TextBlock
             {
-                Text = "修改字体后，部分界面需要保存设置配置并重启后才能生效",
+                Text = loc["Dialog_Elevation_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -132,7 +177,78 @@ public partial class GeneralSettingsView : UserControl
         {
             new()
             {
-                Text = "确定",
+                Text = loc["Dialog_Button_No"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_Yes"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+        return confirmed;
+    }
+
+    /// <summary>开机自启动设置失败时的提示。</summary>
+    private void ShowStartupFailure(string message)
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = loc["Dialog_StartupFailed_Title"],
+            DialogContent = new TextBlock
+            {
+                Text = loc.Format("Dialog_StartupFailed_Body", message),
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
+    }
+
+    /// <summary>字体修改后提示用户保存并重启。</summary>
+    private void ShowFontReminder()
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = loc["Dialog_FontReminder_Title"],
+            DialogContent = new TextBlock
+            {
+                Text = loc["Dialog_FontReminder_Body"],
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
@@ -146,15 +262,14 @@ public partial class GeneralSettingsView : UserControl
     {
         if (DataContext is not GeneralSettingsViewModel vm) return;
 
+        var loc = LocalizationService.Instance;
         var dialog = new LunaDialog
         {
             Owner = Window.GetWindow(this),
-            DialogTitle = "注意",
+            DialogTitle = loc["Dialog_CopilotWarning_Title"],
             DialogContent = new TextBlock
             {
-                Text = "如果你是中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开搜索框。\n" +
-                       "如果你是非中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开Windows Copilot功能\n" +
-                       "是否继续？",
+                Text = loc["Dialog_CopilotWarning_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -165,13 +280,13 @@ public partial class GeneralSettingsView : UserControl
         {
             new()
             {
-                Text = "取消",
+                Text = loc["Dialog_Button_Cancel"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
             new()
             {
-                Text = "继续",
+                Text = loc["Dialog_Button_Continue"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
@@ -231,13 +346,14 @@ public partial class GeneralSettingsView : UserControl
     {
         if (DataContext is not GeneralSettingsViewModel vm) return;
 
+        var loc = LocalizationService.Instance;
         var dialog = new LunaDialog
         {
             Owner = Window.GetWindow(this),
-            DialogTitle = "警告",
+            DialogTitle = loc["Dialog_EditConfig_Title"],
             DialogContent = new TextBlock
             {
-                Text = "错误地修改配置文件可能导致配置加载出错，确定要打开配置文件吗？",
+                Text = loc["Dialog_EditConfig_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -248,13 +364,13 @@ public partial class GeneralSettingsView : UserControl
         {
             new()
             {
-                Text = "取消",
+                Text = loc["Dialog_Button_Cancel"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
             new()
             {
-                Text = "继续",
+                Text = loc["Dialog_Button_Continue"],
                 StyleKey = "StyleDangerSoft",
                 Command = new RelayCommand(() =>
                 {
@@ -275,7 +391,7 @@ public partial class GeneralSettingsView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show("无法打开配置文件：" + ex.Message, "Luna",
+            MessageBox.Show(LocalizationService.Instance.Format("Settings_EditConfig_OpenFailed", ex.Message), "Luna",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

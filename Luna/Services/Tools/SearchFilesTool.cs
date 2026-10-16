@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -23,16 +24,19 @@ public class SearchFilesTool : ITool
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(8);
     private static readonly char[] WildcardChars = ['*', '?'];
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"query":{"type":"string","description":"文件名关键字，支持 * 和 ? 通配符"},"path":{"type":"string","description":"可选，限定搜索目录。支持别名 desktop/documents/downloads/pictures/music/videos/home（含中文），或绝对路径；留空则先搜常用目录再搜全部本地磁盘"},"max_results":{"type":"integer","description":"返回条数上限，默认 30，最大 100"}},"required":["query"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"query":{"type":"string","description":"$query$"},"path":{"type":"string","description":"$path$"},"max_results":{"type":"integer","description":"$maxResults$"}},"required":["query"]}""";
 
     private readonly WindowsSearchService _windowsSearch;
     private readonly ILogger<SearchFilesTool> _logger;
 
     public string Name => "search_files";
-    public string DisplayName => "文件搜索";
-    public string Description => "按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$query$", Param("Tool_SearchFiles_Param_Query"))
+        .Replace("$path$", Param("Tool_SearchFiles_Param_Path"))
+        .Replace("$maxResults$", Param("Tool_SearchFiles_Param_MaxResults")));
     public ToolRiskLevel Risk => ToolRiskLevel.Medium;
 
     public SearchFilesTool(WindowsSearchService windowsSearch, ILogger<SearchFilesTool> logger)
@@ -45,7 +49,7 @@ public class SearchFilesTool : ITool
     {
         var query = GetString(args, "query");
         if (string.IsNullOrWhiteSpace(query))
-            return ToolResult.Error("缺少参数 query。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "query"));
 
         var path = GetString(args, "path");
 
@@ -63,7 +67,7 @@ public class SearchFilesTool : ITool
         if (!string.IsNullOrWhiteSpace(path))
         {
             if (!UserEnvironment.TryResolveFolder(path, out var dir) || !Directory.Exists(dir))
-                return ToolResult.Error($"搜索目录不存在：{path}");
+                return ToolResult.Error(Text("Tool_SearchFiles_Msg_NoDir", path));
 
             _logger.LogInformation("文件搜索（指定目录 {Dir}）：{Query}", dir, query);
             return SearchByEnumeration(query, [dir], maxResults, ct);
@@ -81,7 +85,7 @@ public class SearchFilesTool : ITool
             if (hits.Count > 0)
             {
                 _logger.LogInformation("文件搜索（索引）命中 {Count} 条：{Query}", hits.Count, query);
-                return FormatResult(hits, "Windows 搜索索引");
+                return FormatResult(hits, Text("Tool_SearchFiles_Msg_SourceIndex"));
             }
 
             _logger.LogInformation("Windows 搜索索引无命中，回退到目录扫描：{Query}", query);
@@ -105,7 +109,7 @@ public class SearchFilesTool : ITool
         }
         catch (Exception ex)
         {
-            return ToolResult.Error($"无效的搜索表达式：{ex.Message}");
+            return ToolResult.Error(Text("Tool_SearchFiles_Msg_BadPattern", ex.Message));
         }
 
         var options = new EnumerationOptions
@@ -159,7 +163,7 @@ public class SearchFilesTool : ITool
         _logger.LogInformation("文件搜索（目录扫描）命中 {Count} 条：{Query}", results.Count, query);
 
         if (results.Count == 0)
-            return ToolResult.Ok(timedOut ? "未找到匹配的文件（搜索超时，结果可能不完整）。" : "未找到匹配的文件。");
+            return ToolResult.Ok(timedOut ? Text("Tool_SearchFiles_Msg_NoneTimeout") : Text("Tool_SearchFiles_Msg_None"));
 
         return FormatResult(results, null, timedOut || results.Count >= maxResults);
     }
@@ -168,13 +172,13 @@ public class SearchFilesTool : ITool
     {
         var sb = new StringBuilder();
         if (source is not null)
-            sb.Append("来源：").Append(source).AppendLine();
+            sb.Append(Text("Tool_SearchFiles_Msg_Source")).Append(source).AppendLine();
 
         foreach (var file in results)
             sb.AppendLine(file);
 
         if (truncated)
-            sb.AppendLine("…（结果已截断，请缩小搜索范围）");
+            sb.AppendLine(Text("Tool_SearchFiles_Msg_Truncated"));
 
         return ToolResult.Ok(sb.ToString().TrimEnd());
     }

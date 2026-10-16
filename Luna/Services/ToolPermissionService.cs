@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services.Tools;
 
@@ -67,7 +68,7 @@ public class ToolPermissionService
             var dialog = new LunaDialog
             {
                 Owner = GetOwner(),
-                DialogTitle = "需要授权",
+                DialogTitle = LocalizationService.Instance["Dialog_ToolPermission_Title"],
                 DialogContent = BuildContent(tool, argumentsJson),
             };
 
@@ -75,7 +76,7 @@ public class ToolPermissionService
             {
                 new()
                 {
-                    Text = "允许本次",
+                    Text = LocalizationService.Instance["Dialog_ToolPermission_AllowOnce"],
                     StyleKey = "StyleBeige",
                     Command = new RelayCommand(() =>
                     {
@@ -90,7 +91,7 @@ public class ToolPermissionService
             {
                 buttons.Add(new()
                 {
-                    Text = "本轮对话始终允许",
+                    Text = LocalizationService.Instance["Dialog_ToolPermission_AllowAlways"],
                     StyleKey = "StyleDanger",
                     Command = new RelayCommand(() =>
                     {
@@ -102,7 +103,7 @@ public class ToolPermissionService
 
             buttons.Add(new()
             {
-                Text = "拒绝",
+                Text = LocalizationService.Instance["Dialog_ToolPermission_Deny"],
                 StyleKey = "StyleCancel",
                 Command = new RelayCommand(() =>
                 {
@@ -131,7 +132,7 @@ public class ToolPermissionService
 
         panel.Children.Add(new TextBlock
         {
-            Text = "即将进行敏感操作，需要用户确认：",
+            Text = LocalizationService.Instance["Dialog_ToolPermission_Body"],
             Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
@@ -148,7 +149,7 @@ public class ToolPermissionService
         });
         details.Children.Add(new TextBlock
         {
-            Text = string.IsNullOrWhiteSpace(argumentsJson) ? "（无参数）" : argumentsJson,
+            Text = string.IsNullOrWhiteSpace(argumentsJson) ? LocalizationService.Instance["Dialog_ToolPermission_NoArgs"] : argumentsJson,
             Foreground = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B)),
             FontSize = 12,
             FontFamily = new FontFamily("Consolas"),

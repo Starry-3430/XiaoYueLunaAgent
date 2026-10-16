@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Luna.Localization;
 using Luna.Services;
 using Luna.ViewModels;
 
@@ -32,13 +33,13 @@ public class HistoryContextMenu
         _delete = delete;
 
         var panel = new StackPanel();
-        panel.Children.Add(CreateMenuItem("重命名", (_, _) =>
+        panel.Children.Add(CreateMenuItem(LocalizationService.Instance["Common_Rename"], (_, _) =>
         {
             var s = _session;
             CloseMenu();
             if (s is not null) _rename(s);
         }));
-        panel.Children.Add(CreateMenuItem("删除", (_, _) =>
+        panel.Children.Add(CreateMenuItem(LocalizationService.Instance["Common_Delete"], (_, _) =>
         {
             var s = _session;
             CloseMenu();

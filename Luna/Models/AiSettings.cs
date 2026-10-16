@@ -7,9 +7,9 @@ namespace Luna.Models;
 /// </summary>
 public class AiSettings
 {
-    public const string DefaultProvider = "deepseek";
-    public const string DefaultBaseUrl = "https://api.deepseek.com/v1";
-    public const string DefaultModel = "deepseek-chat";
+    public const string DefaultProvider = "";
+    public const string DefaultBaseUrl = "";
+    public const string DefaultModel = "";
     public const int DefaultMaxTokens = 8192;
 
     /// <summary>旧版本的默认输出上限；加载配置时若仍为该值，自动迁移到新的默认值。</summary>
@@ -24,6 +24,9 @@ public class AiSettings
     public const string DefaultFontFamily = "";
     public const string DefaultHotkey = "Ctrl + Alt + Y";
     public const string DefaultProxyType = "none"; // none / http / socks4 / socks5
+    public const string DefaultUiLanguage = "zh"; // zh / en
+    public const string DefaultStartupMode = "none"; // none / user / admin
+    public const bool DefaultDiaryEnabled = true;
 
     /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>
     public string Provider { get; set; } = DefaultProvider;
@@ -43,13 +46,20 @@ public class AiSettings
     public double PresencePenalty { get; set; } = DefaultPresencePenalty;
     public bool DeepThinking { get; set; } = false;
     public string ResponseLanguage { get; set; } = DefaultResponseLanguage;
-    public string SystemPrompt { get; set; } = DefaultPrompts.SystemPrompt;
+    public string SystemPrompt { get; set; } = DefaultPrompts.PersonalityPrompt;
     public string Nickname { get; set; } = DefaultNickname;
     public string UserName { get; set; } = DefaultUserName;
 
     // ===== 通用 =====
     public string FontFamily { get; set; } = DefaultFontFamily;
     public string Hotkey { get; set; } = DefaultHotkey;
+
+    /// <summary>界面语言（zh / en）。当前仅保存选择，本地化资源尚未提供。</summary>
+    public string UiLanguage { get; set; } = DefaultUiLanguage;
+
+    /// <summary>开机自启动模式（none / user / admin）。</summary>
+    public string StartupMode { get; set; } = DefaultStartupMode;
+
     public string ProxyType { get; set; } = DefaultProxyType;
     public string ProxyServer { get; set; } = string.Empty;
     public int ProxyPort { get; set; }
@@ -75,6 +85,9 @@ public class AiSettings
 
     /// <summary>允许写入文件工具（write_file）落盘的输出目录；为空表示不授权任何写入，工具将拒绝执行。</summary>
     public string OutputDirectory { get; set; } = DefaultOutputDirectory;
+
+    /// <summary>是否启用日记本：关闭后不再自动整理日记，但轮次关键词与摘要照常生成。</summary>
+    public bool DiaryEnabled { get; set; } = DefaultDiaryEnabled;
 }
 
 public class ChatCompletionRequest

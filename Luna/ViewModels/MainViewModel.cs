@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 using Luna.Services.Data;
@@ -32,7 +33,7 @@ public partial class MainViewModel : ObservableObject
     private string _inputText = string.Empty;
 
     [ObservableProperty]
-    private string _status = "就绪";
+    private string _status = LocalizationService.Instance["Common_Status_Ready"];
 
     [ObservableProperty]
     private bool _isBusy;
@@ -62,6 +63,21 @@ public partial class MainViewModel : ObservableObject
         _documentConverter = documentConverter;
         _logger = logger;
         _logger.LogInformation("MainViewModel 已创建");
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+                RefreshStatusText();
+        };
+    }
+
+    /// <summary>语言切换后刷新状态栏（仅在空闲时重置为“就绪”）。</summary>
+    private void RefreshStatusText()
+    {
+        if (_runtime is { IsBusy: true }) return;
+        var ready = LocalizationService.Instance["Common_Status_Ready"];
+        if (_runtime is not null) _runtime.Status = ready;
+        Status = ready;
     }
 
     /// <summary>当前会话运行期对象；界面状态全部来自它，生成在后台由服务推进。</summary>
@@ -77,7 +93,7 @@ public partial class MainViewModel : ObservableObject
 
             Messages = _runtime?.Messages ?? _emptyMessages;
             IsBusy = _runtime?.IsBusy ?? false;
-            Status = _runtime?.Status ?? "就绪";
+            Status = _runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
         }
     }
 
@@ -89,7 +105,7 @@ public partial class MainViewModel : ObservableObject
                 IsBusy = _runtime?.IsBusy ?? false;
                 break;
             case nameof(SessionRuntime.Status):
-                Status = _runtime?.Status ?? "就绪";
+                Status = _runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
                 break;
         }
     }
@@ -123,7 +139,7 @@ public partial class MainViewModel : ObservableObject
 
         if (accepted.Count == 0)
         {
-            Status = $"没有可添加的附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）";
+            Status = LocalizationService.Instance.Format("Common_NoAttachments", AttachmentHelper.MaxCount, AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes));
             return;
         }
 
@@ -133,7 +149,7 @@ public partial class MainViewModel : ObservableObject
         _attachmentCts = cts;
 
         IsLoadingAttachments = true;
-        Status = "正在读取附件…";
+        Status = LocalizationService.Instance["Common_ReadingAttachments"];
         try
         {
             foreach (var attachment in accepted)
@@ -158,8 +174,8 @@ public partial class MainViewModel : ObservableObject
             {
                 IsLoadingAttachments = false;
                 Status = skipped > 0
-                    ? $"已忽略 {skipped} 个附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）"
-                    : "就绪";
+                    ? LocalizationService.Instance.Format("Common_SkippedAttachments", skipped, AttachmentHelper.MaxCount, AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes))
+                    : LocalizationService.Instance["Common_Status_Ready"];
             }
         }
     }
@@ -253,7 +269,7 @@ public partial class MainViewModel : ObservableObject
         {
             var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
             if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
-                userText = "请阅读我发送的附件内容。";
+                userText = LocalizationService.Instance["Common_ReadAttachmentsPrompt"];
             ApplyTokenBudget(prepared);
 
             if (_currentSessionId is null)
@@ -274,7 +290,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送失败");
-            Status = "发送失败：" + ex.Message;
+            Status = LocalizationService.Instance.Format("Common_SendFailed", ex.Message);
         }
     }
 
@@ -292,7 +308,7 @@ public partial class MainViewModel : ObservableObject
         Runtime = null;
         InputText = string.Empty;
         PendingAttachments.Clear();
-        Status = "就绪";
+        Status = LocalizationService.Instance["Common_Status_Ready"];
     }
 
     [RelayCommand]

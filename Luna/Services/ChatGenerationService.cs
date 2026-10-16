@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services.Data;
 using Luna.Services.Tools;
@@ -26,7 +27,7 @@ public sealed partial class SessionRuntime : ObservableObject
     private bool _isBusy;
 
     [ObservableProperty]
-    private string _status = "就绪";
+    private string _status = LocalizationService.Instance["Common_Status_Ready"];
 
     internal CancellationTokenSource? Cts;
     internal bool Loaded;
@@ -331,7 +332,7 @@ public sealed class ChatGenerationService
     private async Task RunAiLoopAsync(SessionRuntime runtime, string sessionId, string turnId, string logicalDate)
     {
         runtime.IsBusy = true;
-        runtime.Status = "思考中…";
+        runtime.Status = LocalizationService.Instance["Common_Status_Thinking"];
         runtime.Cts = new CancellationTokenSource();
         var ct = runtime.Cts.Token;
         var messages = runtime.Messages;
@@ -386,7 +387,7 @@ public sealed class ChatGenerationService
 
                 if (ct.IsCancellationRequested) break;
 
-                runtime.Status = $"执行工具 ({pendingToolCalls.Count})…";
+                runtime.Status = LocalizationService.Instance.Format("Common_Status_RunningTools", pendingToolCalls.Count);
 
                 foreach (var kvp in pendingToolCalls)
                     kvp.Value.Status = ToolCallStatus.Running;
@@ -400,7 +401,7 @@ public sealed class ChatGenerationService
                     if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
                     {
                         entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = "工具未启用";
+                        entry.ResultJson = LocalizationService.Instance["Common_Tool_NotEnabled"];
                         _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
                         continue;
                     }
@@ -436,7 +437,7 @@ public sealed class ChatGenerationService
                     catch (Exception ex)
                     {
                         entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = $"执行失败: {ex.Message}";
+                        entry.ResultJson = LocalizationService.Instance.Format("Common_Tool_ExecFailed", ex.Message);
                         _logger.LogError(ex, "工具 {Name} 执行失败", entry.ToolName);
                     }
                 }
@@ -487,21 +488,21 @@ public sealed class ChatGenerationService
         }
         catch (OperationCanceledException)
         {
-            runtime.Status = "就绪（已取消）";
+            runtime.Status = LocalizationService.Instance["Common_Status_ReadyCanceled"];
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "已取消");
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, LocalizationService.Instance["Common_Canceled"]);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI 回复失败");
-            runtime.Status = "出错：" + ex.Message;
+            runtime.Status = LocalizationService.Instance.Format("Common_Status_Error", ex.Message);
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, "发送失败：" + ex.Message);
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, LocalizationService.Instance.Format("Common_SendFailed", ex.Message));
             }
         }
         finally
@@ -556,13 +557,13 @@ public sealed class ChatGenerationService
         }
 
         await _sessionRepo.TouchAsync(sessionId);
-        runtime.Status = "就绪";
+        runtime.Status = LocalizationService.Instance["Common_Status_Ready"];
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
     }
 
     /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>
-    private const string OutputTruncatedNotice =
-        "本次回复已达到输出长度上限，内容可能不完整。可以回复“继续”让 Luna 接着往下说。";
+    private static string OutputTruncatedNotice =>
+        LocalizationService.Instance["Common_OutputTruncated"];
 
     /// <summary>判断流式结束原因是否表示被输出上限截断（不同提供商用词不一）。</summary>
     private static bool IsOutputTruncated(string? finishReason)
@@ -770,7 +771,7 @@ public sealed class ChatGenerationService
     private static string TruncateResult(string result, int maxLen = 5000)
     {
         if (result.Length <= maxLen) return result;
-        return result[..maxLen] + "\n\n… (结果已截断)";
+        return result[..maxLen] + "\n\n" + LocalizationService.Instance["Common_Tool_ResultTruncated"];
     }
 
     private sealed record ToolCallEntryDb(

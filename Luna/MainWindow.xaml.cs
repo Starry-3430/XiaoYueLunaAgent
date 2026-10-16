@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.ViewModels;
 using Luna.Services;
@@ -438,8 +439,10 @@ public partial class MainWindow : Window
 
     private void CopyMessage_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
-            Clipboard.SetText(msg.Content);
+        if (sender is not FrameworkElement fe || fe.DataContext is not ChatMessage msg) return;
+        var text = string.IsNullOrWhiteSpace(msg.Content) ? msg.ErrorMessage : msg.Content;
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
     }
 
     private async void RewriteMessage_Click(object sender, RoutedEventArgs e)
@@ -1073,7 +1076,7 @@ private void HideInternal()
         var count = _viewModel.PendingAttachments.Count;
         var has = count > 0;
 
-        CapsuleAttachmentCount.Text = has ? $"{count} 个附件" : string.Empty;
+        CapsuleAttachmentCount.Text = has ? LocalizationService.Instance.Format("Main_AttachmentCount", count) : string.Empty;
         CapsuleClearButton.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
 
         if (CurrentMode() != CapsuleMode.Compact) return;

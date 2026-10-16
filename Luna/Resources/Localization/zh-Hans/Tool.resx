@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 分组 -->
+  <data name="Tool_Category_Info" xml:space="preserve"><value>信息</value></data>
+  <data name="Tool_Category_System" xml:space="preserve"><value>系统</value></data>
+  <data name="Tool_Category_Memory" xml:space="preserve"><value>记忆</value></data>
+  <data name="Tool_Category_Organize" xml:space="preserve"><value>组织</value></data>
+  <data name="Tool_Category_Input" xml:space="preserve"><value>输入</value></data>
+  <data name="Tool_Category_Dev" xml:space="preserve"><value>开发</value></data>
+  <data name="Tool_Category_Communication" xml:space="preserve"><value>通信</value></data>
+
+  <!-- 状态 -->
+  <data name="Tool_Status_NotImplemented" xml:space="preserve"><value>未实现</value></data>
+  <data name="Tool_Status_NoApiKey" xml:space="preserve"><value>未配置 API Key</value></data>
+
+  <!-- 风险等级 -->
+  <data name="Tool_Risk_Medium" xml:space="preserve"><value>危险</value></data>
+  <data name="Tool_Risk_High" xml:space="preserve"><value>高危</value></data>
+
+  <!-- 信息 -->
+  <data name="Tool_WebSearch_DisplayName" xml:space="preserve"><value>网页搜索</value></data>
+  <data name="Tool_WebSearch_Description" xml:space="preserve"><value>通过 Tavily 在互联网上搜索信息，返回标题、URL 与摘要</value></data>
+  <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>网页阅读</value></data>
+  <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>抓取指定 URL 的网页正文，配合搜索使用</value></data>
+  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>当前时间</value></data>
+  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>获取当前日期与时间</value></data>
+  <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>剪贴板读取</value></data>
+  <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
+  <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>新闻/日历</value></data>
+  <data name="Tool_NewsCalendar_Description" xml:space="preserve"><value>获取新闻摘要或日历信息</value></data>
+
+  <!-- 系统 -->
+  <data name="Tool_Powershell_DisplayName" xml:space="preserve"><value>PowerShell</value></data>
+  <data name="Tool_Powershell_Description" xml:space="preserve"><value>执行 PowerShell 命令</value></data>
+  <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>文件搜索</value></data>
+  <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>按文件名搜索文件，优先查 Windows 搜索索引</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>读取文件</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>读取指定文件内容</value></data>
+  <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>写入文件</value></data>
+  <data name="Tool_WriteFile_Description" xml:space="preserve"><value>写入文件内容、创建新文件</value></data>
+  <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>打开文件/应用</value></data>
+  <data name="Tool_FileOpen_Description" xml:space="preserve"><value>打开指定文件或启动应用程序</value></data>
+  <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>截图</value></data>
+  <data name="Tool_Screenshot_Description" xml:space="preserve"><value>截取屏幕截图</value></data>
+  <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>窗口管理</value></data>
+  <data name="Tool_WindowManager_Description" xml:space="preserve"><value>管理窗口位置、大小和状态</value></data>
+  <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>音量/亮度</value></data>
+  <data name="Tool_VolumeBrightness_Description" xml:space="preserve"><value>调节系统音量和屏幕亮度</value></data>
+
+  <!-- 记忆 -->
+  <data name="Tool_DiarySearch_DisplayName" xml:space="preserve"><value>检索日记</value></data>
+  <data name="Tool_DiarySearch_Description" xml:space="preserve"><value>在日记中搜索相关内容</value></data>
+  <data name="Tool_TurnSearch_DisplayName" xml:space="preserve"><value>轮次检索</value></data>
+  <data name="Tool_TurnSearch_Description" xml:space="preserve"><value>搜索历史对话轮次</value></data>
+  <data name="Tool_LongTermFacts_DisplayName" xml:space="preserve"><value>长期事实</value></data>
+  <data name="Tool_LongTermFacts_Description" xml:space="preserve"><value>检索和存储长期事实记忆</value></data>
+
+  <!-- 组织 -->
+  <data name="Tool_Todo_DisplayName" xml:space="preserve"><value>待办事项</value></data>
+  <data name="Tool_Todo_Description" xml:space="preserve"><value>创建/管理待办事项，可为待办设置截止时间与提醒时间</value></data>
+  <data name="Tool_ClipboardHistory_DisplayName" xml:space="preserve"><value>剪贴板历史</value></data>
+  <data name="Tool_ClipboardHistory_Description" xml:space="preserve"><value>查看和管理剪贴板历史记录</value></data>
+
+  <!-- 输入 -->
+  <data name="Tool_Vision_DisplayName" xml:space="preserve"><value>视觉</value></data>
+  <data name="Tool_Vision_Description" xml:space="preserve"><value>分析图片内容</value></data>
+  <data name="Tool_Ocr_DisplayName" xml:space="preserve"><value>OCR</value></data>
+  <data name="Tool_Ocr_Description" xml:space="preserve"><value>识别图片中的文字</value></data>
+  <data name="Tool_Speech_DisplayName" xml:space="preserve"><value>语音</value></data>
+  <data name="Tool_Speech_Description" xml:space="preserve"><value>语音识别与合成</value></data>
+
+  <!-- 开发 -->
+  <data name="Tool_CodeExecute_DisplayName" xml:space="preserve"><value>代码执行（沙箱）</value></data>
+  <data name="Tool_CodeExecute_Description" xml:space="preserve"><value>在沙箱环境中执行代码</value></data>
+  <data name="Tool_Git_DisplayName" xml:space="preserve"><value>Git</value></data>
+  <data name="Tool_Git_Description" xml:space="preserve"><value>执行 Git 操作</value></data>
+  <data name="Tool_FileTree_DisplayName" xml:space="preserve"><value>文件树结构</value></data>
+  <data name="Tool_FileTree_Description" xml:space="preserve"><value>获取目录的文件树结构</value></data>
+
+  <!-- 通信 -->
+  <data name="Tool_SendNotification_DisplayName" xml:space="preserve"><value>系统通知</value></data>
+  <data name="Tool_SendNotification_Description" xml:space="preserve"><value>发送系统通知，为“定时提醒”铺路</value></data>
+  <data name="Tool_Email_DisplayName" xml:space="preserve"><value>邮件</value></data>
+  <data name="Tool_Email_Description" xml:space="preserve"><value>发送邮件</value></data>
+
+  <!-- 单个工具的显示名（工具卡 / 权限确认框） -->
+  <data name="Tool_AddTask_DisplayName" xml:space="preserve"><value>添加待办</value></data>
+  <data name="Tool_ListTasks_DisplayName" xml:space="preserve"><value>列出待办</value></data>
+  <data name="Tool_CompleteTask_DisplayName" xml:space="preserve"><value>完成待办</value></data>
+  <data name="Tool_DeleteTask_DisplayName" xml:space="preserve"><value>删除待办</value></data>
+  <data name="Tool_RememberFact_DisplayName" xml:space="preserve"><value>记住事实</value></data>
+  <data name="Tool_ForgetFact_DisplayName" xml:space="preserve"><value>忘记事实</value></data>
+  <data name="Tool_ListFacts_DisplayName" xml:space="preserve"><value>列出事实</value></data>
+
+  <!-- 发送给 AI 的工具说明 -->
+  <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要</value></data>
+  <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
+  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>获取当前日期和时间，返回本地时间与 UTC 时间</value></data>
+  <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
+  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
+  <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取指定文本文件的内容（仅限允许的目录、扩展名与大小）</value></data>
+  <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
+  <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
+  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
+  <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
+  <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>获取指定目录的文件树结构（支持深度与条目数限制）</value></data>
+  <data name="Tool_DiarySearch_AiDescription" xml:space="preserve"><value>在历史日记中按关键词搜索。当用户问“我之前做过什么”、“上周聊过什么”、“那天的事”时调用。返回匹配的日期和内容片段，用于回忆过去的对话。</value></data>
+  <data name="Tool_TurnSearch_AiDescription" xml:space="preserve"><value>在历史对话轮次摘要中按关键词搜索。当用户提及具体事件、文件、决定，但不确定是哪天时调用。返回匹配的轮次摘要和所属日期，比日记粒度更细。</value></data>
+  <data name="Tool_SendNotification_AiDescription" xml:space="preserve"><value>发送一条 Windows 系统通知</value></data>
+  <data name="Tool_AddTask_AiDescription" xml:space="preserve"><value>创建一个待办事项，可选截止时间与提醒时间（时间用本地时间）</value></data>
+  <data name="Tool_ListTasks_AiDescription" xml:space="preserve"><value>列出待办事项，可按状态筛选（pending/done/cancelled/all）</value></data>
+  <data name="Tool_CompleteTask_AiDescription" xml:space="preserve"><value>把指定待办标记为已完成</value></data>
+  <data name="Tool_DeleteTask_AiDescription" xml:space="preserve"><value>删除指定待办事项</value></data>
+  <data name="Tool_RememberFact_AiDescription" xml:space="preserve"><value>长期记住一条关于用户的事实，供以后回忆。key 必须用英文短语加下划线（如 preferred_language、editor_theme），value 用自然语言描述。不要记录密码、API Key 等敏感信息。</value></data>
+  <data name="Tool_ForgetFact_AiDescription" xml:space="preserve"><value>忘记（删除）一条已记录的长期事实，需要提供该事实的 key。</value></data>
+  <data name="Tool_ListFacts_AiDescription" xml:space="preserve"><value>列出已记录的长期事实，可按关键词过滤。用于查看当前记住了关于用户的哪些信息。</value></data>
+
+  <!-- 工具通用消息 -->
+  <data name="Tool_Msg_MissingParam" xml:space="preserve"><value>缺少参数 {0}。</value></data>
+  <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>执行被取消。</value></data>
+  <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>用户拒绝执行。</value></data>
+  <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>、</value></data>
+
+  <!-- 文件沙箱 -->
+  <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>路径为空。</value></data>
+  <data name="Tool_Fs_InvalidPath" xml:space="preserve"><value>无效路径：{0}</value></data>
+  <data name="Tool_Fs_NoExtension" xml:space="preserve"><value>文件没有扩展名，已被安全策略拒绝。</value></data>
+  <data name="Tool_Fs_BlockedType" xml:space="preserve"><value>不允许的文件类型：{0}</value></data>
+  <data name="Tool_Fs_NotFound" xml:space="preserve"><value>文件不存在：{0}</value></data>
+  <data name="Tool_Fs_AccessDenied" xml:space="preserve"><value>无法访问文件：{0}</value></data>
+  <data name="Tool_Fs_TooLarge" xml:space="preserve"><value>文件过大（{0} KB），超过上限 {1} KB。</value></data>
+  <data name="Tool_Fs_DirNotFound" xml:space="preserve"><value>目录不存在：{0}</value></data>
+
+  <!-- 待办状态 -->
+  <data name="Tool_TaskStatus_Done" xml:space="preserve"><value>已完成</value></data>
+  <data name="Tool_TaskStatus_Cancelled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Tool_TaskStatus_All" xml:space="preserve"><value>全部</value></data>
+  <data name="Tool_TaskStatus_Pending" xml:space="preserve"><value>未完成</value></data>
+
+  <!-- add_task -->
+  <data name="Tool_AddTask_Param_Title" xml:space="preserve"><value>待办标题</value></data>
+  <data name="Tool_AddTask_Param_DueAt" xml:space="preserve"><value>截止时间，ISO 8601 或 yyyy-MM-dd HH:mm（本地时间），可空</value></data>
+  <data name="Tool_AddTask_Param_RemindAt" xml:space="preserve"><value>提醒时间，同上，可空</value></data>
+  <data name="Tool_AddTask_Param_Notes" xml:space="preserve"><value>备注，可空</value></data>
+  <data name="Tool_AddTask_Msg_BadDue" xml:space="preserve"><value>无法解析截止时间：{0}</value></data>
+  <data name="Tool_AddTask_Msg_BadRemind" xml:space="preserve"><value>无法解析提醒时间：{0}</value></data>
+  <data name="Tool_AddTask_Msg_CreateFailed" xml:space="preserve"><value>创建待办失败：{0}</value></data>
+  <data name="Tool_AddTask_Msg_Created" xml:space="preserve"><value>已创建待办：「{0}」</value></data>
+  <data name="Tool_AddTask_Msg_Id" xml:space="preserve"><value>ID：{0}</value></data>
+  <data name="Tool_AddTask_Msg_Due" xml:space="preserve"><value>截止：{0}</value></data>
+  <data name="Tool_AddTask_Msg_Remind" xml:space="preserve"><value>提醒：{0}</value></data>
+  <data name="Tool_AddTask_Msg_LocalNote" xml:space="preserve"><value>（时间均为本地时间）</value></data>
+
+  <!-- read_clipboard -->
+  <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>读取剪贴板失败：{0}</value></data>
+
+  <!-- code_execute -->
+  <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>要执行的 Python 代码（仅支持 Python）。沙箱为尽力而为：禁止联网与文件系统访问（正则黑名单拦截 import socket/urllib/requests、open()、os./shutil/pathlib/subprocess 等）</value></data>
+  <data name="Tool_CodeExecute_Msg_Forbidden" xml:space="preserve"><value>代码包含被禁止的用法（{0}）。沙箱禁止联网与文件系统访问。
+注意：该沙箱为“尽力而为”，并非绝对安全。</value></data>
+  <data name="Tool_CodeExecute_Msg_StartFailed" xml:space="preserve"><value>无法启动 python.exe，请确认已安装 Python 并加入 PATH：{0}</value></data>
+  <data name="Tool_CodeExecute_Msg_Failed" xml:space="preserve"><value>执行失败：{0}</value></data>
+  <data name="Tool_CodeExecute_Msg_ExitCode" xml:space="preserve"><value>退出码：</value></data>
+  <data name="Tool_CodeExecute_Msg_TimedOut" xml:space="preserve"><value>（超时终止）</value></data>
+  <data name="Tool_CodeExecute_Msg_Elapsed" xml:space="preserve"><value>耗时：</value></data>
+  <data name="Tool_CodeExecute_Msg_Empty" xml:space="preserve"><value>（空）</value></data>
+  <data name="Tool_CodeExecute_Msg_Truncated" xml:space="preserve"><value>…（输出已超过 100 KB，已截断）</value></data>
+
+  <!-- complete_task -->
+  <data name="Tool_CompleteTask_Param_TaskId" xml:space="preserve"><value>待办的 ID</value></data>
+  <data name="Tool_CompleteTask_Msg_NotFound" xml:space="preserve"><value>未找到待办：{0}</value></data>
+  <data name="Tool_CompleteTask_Msg_Done" xml:space="preserve"><value>已将待办 {0} 标记为完成。</value></data>
+  <data name="Tool_CompleteTask_Msg_Failed" xml:space="preserve"><value>完成待办失败：{0}</value></data>
+
+  <!-- delete_task -->
+  <data name="Tool_DeleteTask_Param_TaskId" xml:space="preserve"><value>待办的 ID</value></data>
+  <data name="Tool_DeleteTask_Msg_NotFound" xml:space="preserve"><value>未找到待办：{0}</value></data>
+  <data name="Tool_DeleteTask_Msg_Deleted" xml:space="preserve"><value>已删除待办 {0}。</value></data>
+  <data name="Tool_DeleteTask_Msg_Failed" xml:space="preserve"><value>删除待办失败：{0}</value></data>
+
+  <!-- diary_search -->
+  <data name="Tool_DiarySearch_Param_Keyword" xml:space="preserve"><value>检索关键词</value></data>
+  <data name="Tool_DiarySearch_Param_Limit" xml:space="preserve"><value>返回条数上限，默认 5，最大 20</value></data>
+  <data name="Tool_DiarySearch_Msg_None" xml:space="preserve"><value>没有找到与「{0}」相关的日记。</value></data>
+  <data name="Tool_DiarySearch_Msg_Failed" xml:space="preserve"><value>检索日记失败：{0}</value></data>
+
+  <!-- fetch_url -->
+  <data name="Tool_FetchUrl_Param_Url" xml:space="preserve"><value>要读取的网页完整 URL（需以 http:// 或 https:// 开头）</value></data>
+  <data name="Tool_FetchUrl_Msg_BadUrl" xml:space="preserve"><value>无效的 URL：{0}</value></data>
+  <data name="Tool_FetchUrl_Msg_Http" xml:space="preserve"><value>抓取失败：HTTP {0}</value></data>
+  <data name="Tool_FetchUrl_Msg_NoContent" xml:space="preserve"><value>网页 {0} 未提取到正文内容。</value></data>
+  <data name="Tool_FetchUrl_Msg_Timeout" xml:space="preserve"><value>抓取超时或被取消。</value></data>
+  <data name="Tool_FetchUrl_Msg_Failed" xml:space="preserve"><value>抓取失败：{0}</value></data>
+  <data name="Tool_FetchUrl_Msg_Title" xml:space="preserve"><value>标题：</value></data>
+  <data name="Tool_FetchUrl_Msg_Truncated" xml:space="preserve"><value>…（内容过长已截断）</value></data>
+
+  <!-- file_open -->
+  <data name="Tool_FileOpen_Param_Path" xml:space="preserve"><value>要打开的文件、目录或应用程序路径。支持 desktop/documents/downloads/pictures/music/videos/home 等目录别名</value></data>
+  <data name="Tool_FileOpen_Msg_Cancelled" xml:space="preserve"><value>打开操作被取消。</value></data>
+  <data name="Tool_FileOpen_Msg_Opened" xml:space="preserve"><value>已打开：{0}</value></data>
+  <data name="Tool_FileOpen_Msg_Failed" xml:space="preserve"><value>打开失败：{0}</value></data>
+  <data name="Tool_FileOpen_Msg_BadPath" xml:space="preserve"><value>无效路径：{0}</value></data>
+  <data name="Tool_FileOpen_Msg_NotFound" xml:space="preserve"><value>文件、目录或应用不存在：{0}</value></data>
+
+  <!-- file_tree -->
+  <data name="Tool_FileTree_Param_Path" xml:space="preserve"><value>要列出目录树的目录。支持 desktop/documents/downloads/pictures/home 等别名（含中文）或绝对路径；相对路径基于工作目录；留空则使用工作目录</value></data>
+  <data name="Tool_FileTree_Param_Depth" xml:space="preserve"><value>递归深度，默认 2，最大 6</value></data>
+  <data name="Tool_FileTree_Param_MaxEntries" xml:space="preserve"><value>返回条目上限，默认 500，最大 2000</value></data>
+  <data name="Tool_FileTree_Msg_Dir" xml:space="preserve"><value>目录：</value></data>
+  <data name="Tool_FileTree_Msg_Truncated" xml:space="preserve"><value>…（已达到条目上限 {0}，结果被截断）</value></data>
+
+  <!-- forget_fact -->
+  <data name="Tool_ForgetFact_Param_Key" xml:space="preserve"><value>要忘记的事实标识（key）</value></data>
+  <data name="Tool_ForgetFact_Msg_Done" xml:space="preserve"><value>已忘记：{0}</value></data>
+  <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>没有找到 key 为「{0}」的事实。</value></data>
+  <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>忘记事实失败：{0}</value></data>
+
+  <!-- get_current_time -->
+  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>当前时间：{0}（{1}）
+UTC 时间：{2}
+Unix 时间戳：{3}</value></data>
+
+  <!-- git -->
+  <data name="Tool_Git_Param_Action" xml:space="preserve"><value>git 子命令</value></data>
+  <data name="Tool_Git_Param_Args" xml:space="preserve"><value>传给子命令的额外参数，例如 ["--stat"]、["HEAD~3"]、["newfile.txt"]</value></data>
+  <data name="Tool_Git_Param_Message" xml:space="preserve"><value>提交信息，action=commit 时必填</value></data>
+  <data name="Tool_Git_Param_Path" xml:space="preserve"><value>仓库路径，必须在授权目录内；留空则使用工作目录</value></data>
+  <data name="Tool_Git_Msg_BadAction" xml:space="preserve"><value>不允许的 git 子命令：{0}。仅支持：status/diff/log/show/branch/rev-parse，以及需确认的 add/commit。</value></data>
+  <data name="Tool_Git_Msg_NeedMessage" xml:space="preserve"><value>commit 需要提供参数 message。</value></data>
+  <data name="Tool_Git_Msg_ConfirmWrite" xml:space="preserve"><value>$ git {0}
+该操作会修改仓库内容，确定执行？</value></data>
+  <data name="Tool_Git_Msg_StartFailed" xml:space="preserve"><value>无法启动 git，请确认已安装并加入 PATH：{0}</value></data>
+  <data name="Tool_Git_Msg_Timeout" xml:space="preserve"><value>git 执行超时（{0} 秒），已终止。</value></data>
+  <data name="Tool_Git_Msg_ResultHeader" xml:space="preserve"><value>执行结果：</value></data>
+  <data name="Tool_Git_Msg_ExitCode" xml:space="preserve"><value>(git 退出码 {0})</value></data>
+  <data name="Tool_Git_Msg_Truncated" xml:space="preserve"><value>…（输出已截断）</value></data>
+  <data name="Tool_Git_Msg_ArgForbidden" xml:space="preserve"><value>参数被安全策略禁止：{0}</value></data>
+  <data name="Tool_Git_Msg_ArgsNotArray" xml:space="preserve"><value>参数 args 必须是字符串数组。</value></data>
+
+  <!-- list_facts -->
+  <data name="Tool_ListFacts_Param_Keyword" xml:space="preserve"><value>可选，按关键词过滤 key 或 value</value></data>
+  <data name="Tool_ListFacts_Msg_Empty" xml:space="preserve"><value>还没有记住任何事实。</value></data>
+  <data name="Tool_ListFacts_Msg_None" xml:space="preserve"><value>没有找到与「{0}」相关的事实。</value></data>
+  <data name="Tool_ListFacts_Msg_Failed" xml:space="preserve"><value>列出事实失败：{0}</value></data>
+
+  <!-- list_tasks -->
+  <data name="Tool_ListTasks_Param_Status" xml:space="preserve"><value>筛选状态：pending / done / cancelled / all，默认 pending</value></data>
+  <data name="Tool_ListTasks_Msg_None" xml:space="preserve"><value>没有 {0} 的待办。</value></data>
+  <data name="Tool_ListTasks_Msg_Header" xml:space="preserve"><value>{0}的待办（{1}）：</value></data>
+  <data name="Tool_ListTasks_Msg_Line" xml:space="preserve"><value>   ID: {0}  状态: {1}</value></data>
+  <data name="Tool_ListTasks_Msg_Due" xml:space="preserve"><value>   截止: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Remind" xml:space="preserve"><value>   提醒: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Notes" xml:space="preserve"><value>   备注: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Failed" xml:space="preserve"><value>列出待办失败：{0}</value></data>
+
+  <!-- powershell -->
+  <data name="Tool_Powershell_Param_Command" xml:space="preserve"><value>要执行的只读 PowerShell 命令。可用管道，但每个管道段都必须以 Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out- 开头，且不得包含 Remove/Set/New/Invoke/Start/Stop/Restart/Install/Uninstall/Enable/Disable/Clear/Add/Out-File/Set-Content/Remove-Item 等写操作</value></data>
+  <data name="Tool_Powershell_Msg_MissingCommand" xml:space="preserve"><value>缺少参数 command。</value></data>
+  <data name="Tool_Powershell_Msg_EmptyPipe" xml:space="preserve"><value>命令包含空的管道段。</value></data>
+  <data name="Tool_Powershell_Msg_BadVerb" xml:space="preserve"><value>不允许的命令：每个管道段都必须以只读动词开头（Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out-）。
+问题段：{0}</value></data>
+  <data name="Tool_Powershell_Msg_ForbiddenVerb" xml:space="preserve"><value>不允许的命令：包含被禁止的写操作动词。
+问题段：{0}</value></data>
+  <data name="Tool_Powershell_Msg_StartFailed" xml:space="preserve"><value>无法启动 powershell.exe：{0}</value></data>
+  <data name="Tool_Powershell_Msg_Timeout" xml:space="preserve"><value>PowerShell 执行超时（{0} 秒），已终止进程树。</value></data>
+  <data name="Tool_Powershell_Msg_ResultHeader" xml:space="preserve"><value>执行结果：</value></data>
+  <data name="Tool_Powershell_Msg_ExitCode" xml:space="preserve"><value>(退出码 {0})</value></data>
+  <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>…（输出已截断）</value></data>
+
+  <!-- read_file -->
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名</value></data>
+  <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>读取文件被取消。</value></data>
+  <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>读取文件失败：{0}</value></data>
+
+  <!-- remember_fact -->
+  <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>英文短语 + 下划线的事实标识，如 preferred_language、editor_theme</value></data>
+  <data name="Tool_RememberFact_Param_Value" xml:space="preserve"><value>用自然语言描述的事实内容</value></data>
+  <data name="Tool_RememberFact_Msg_Sensitive" xml:space="preserve"><value>检测到疑似敏感信息（密码、密钥等），已拒绝记录。</value></data>
+  <data name="Tool_RememberFact_Msg_Remembered" xml:space="preserve"><value>已记住：{0} = {1}</value></data>
+  <data name="Tool_RememberFact_Msg_Failed" xml:space="preserve"><value>记住事实失败：{0}</value></data>
+
+  <!-- search_files -->
+  <data name="Tool_SearchFiles_Param_Query" xml:space="preserve"><value>文件名关键字，支持 * 和 ? 通配符</value></data>
+  <data name="Tool_SearchFiles_Param_Path" xml:space="preserve"><value>可选，限定搜索目录。支持别名 desktop/documents/downloads/pictures/music/videos/home（含中文），或绝对路径；留空则先搜常用目录再搜全部本地磁盘</value></data>
+  <data name="Tool_SearchFiles_Param_MaxResults" xml:space="preserve"><value>返回条数上限，默认 30，最大 100</value></data>
+  <data name="Tool_SearchFiles_Msg_NoDir" xml:space="preserve"><value>搜索目录不存在：{0}</value></data>
+  <data name="Tool_SearchFiles_Msg_BadPattern" xml:space="preserve"><value>无效的搜索表达式：{0}</value></data>
+  <data name="Tool_SearchFiles_Msg_None" xml:space="preserve"><value>未找到匹配的文件。</value></data>
+  <data name="Tool_SearchFiles_Msg_NoneTimeout" xml:space="preserve"><value>未找到匹配的文件（搜索超时，结果可能不完整）。</value></data>
+  <data name="Tool_SearchFiles_Msg_Source" xml:space="preserve"><value>来源：</value></data>
+  <data name="Tool_SearchFiles_Msg_SourceIndex" xml:space="preserve"><value>Windows 搜索索引</value></data>
+  <data name="Tool_SearchFiles_Msg_Truncated" xml:space="preserve"><value>…（结果已截断，请缩小搜索范围）</value></data>
+
+  <!-- send_notification -->
+  <data name="Tool_SendNotification_Param_Title" xml:space="preserve"><value>通知标题</value></data>
+  <data name="Tool_SendNotification_Param_Message" xml:space="preserve"><value>通知正文</value></data>
+  <data name="Tool_SendNotification_Param_TimeoutMs" xml:space="preserve"><value>显示时长（毫秒），默认 5000</value></data>
+  <data name="Tool_SendNotification_Msg_Sent" xml:space="preserve"><value>通知已发送。</value></data>
+  <data name="Tool_SendNotification_Msg_Failed" xml:space="preserve"><value>发送通知失败：{0}</value></data>
+
+  <!-- turn_search -->
+  <data name="Tool_TurnSearch_Param_Keyword" xml:space="preserve"><value>检索关键词</value></data>
+  <data name="Tool_TurnSearch_Param_Limit" xml:space="preserve"><value>返回条数上限，默认 5，最大 20</value></data>
+  <data name="Tool_TurnSearch_Msg_None" xml:space="preserve"><value>没有找到与「{0}」相关的对话轮次。</value></data>
+  <data name="Tool_TurnSearch_Msg_SessionPrefix" xml:space="preserve"><value>] 会话 </value></data>
+  <data name="Tool_TurnSearch_Msg_Failed" xml:space="preserve"><value>检索轮次摘要失败：{0}</value></data>
+  <data name="Tool_TurnSearch_Msg_NoSummary" xml:space="preserve"><value>（无摘要内容）</value></data>
+  <data name="Tool_TurnSearch_Msg_Files" xml:space="preserve"><value>涉及文件：</value></data>
+  <data name="Tool_TurnSearch_Msg_Topics" xml:space="preserve"><value>主题：</value></data>
+
+  <!-- web_search -->
+  <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>搜索关键词或问题</value></data>
+  <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。</value></data>
+  <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>未找到相关结果。</value></data>
+  <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>搜索失败: {0}</value></data>
+
+  <!-- write_file -->
+  <data name="Tool_WriteFile_Param_Path" xml:space="preserve"><value>相对输出目录的路径（也可用输出目录下的绝对路径）</value></data>
+  <data name="Tool_WriteFile_Param_Content" xml:space="preserve"><value>要写入的文件内容</value></data>
+  <data name="Tool_WriteFile_Param_Mode" xml:space="preserve"><value>写入模式，默认 create；create 遇已存在文件会失败，overwrite 覆盖前需确认，append 追加</value></data>
+  <data name="Tool_WriteFile_Msg_BadMode" xml:space="preserve"><value>不支持的 mode：{0}（可用：create / overwrite / append）。</value></data>
+  <data name="Tool_WriteFile_Msg_Binary" xml:space="preserve"><value>内容包含二进制数据（NUL 字节），已被安全策略拒绝。</value></data>
+  <data name="Tool_WriteFile_Msg_Exists" xml:space="preserve"><value>文件已存在：{0}。如需覆盖请使用 overwrite 模式。</value></data>
+  <data name="Tool_WriteFile_Msg_ConfirmOverwrite" xml:space="preserve"><value>覆盖文件 {0}？
+内容将丢失。</value></data>
+  <data name="Tool_WriteFile_Msg_DeniedOverwrite" xml:space="preserve"><value>用户拒绝覆盖。</value></data>
+  <data name="Tool_WriteFile_Msg_Written" xml:space="preserve"><value>已写入文件：{0}（{1} 字符）</value></data>
+  <data name="Tool_WriteFile_Msg_Appended" xml:space="preserve"><value>已追加文件：{0}（{1} 字符）</value></data>
+  <data name="Tool_WriteFile_Msg_Cancelled" xml:space="preserve"><value>写入文件被取消。</value></data>
+  <data name="Tool_WriteFile_Msg_Failed" xml:space="preserve"><value>写入文件失败：{0}</value></data>
+  <data name="Tool_WriteFile_Msg_NoOutputDir" xml:space="preserve"><value>未配置输出目录，请先在“设置 - 通用”中指定输出目录后再写入。</value></data>
+  <data name="Tool_WriteFile_Msg_BadOutputDir" xml:space="preserve"><value>输出目录无效：{0}</value></data>
+  <data name="Tool_WriteFile_Msg_NoOutputDirExists" xml:space="preserve"><value>输出目录不存在：{0}</value></data>
+  <data name="Tool_WriteFile_Msg_BadPath" xml:space="preserve"><value>无效路径：{0}</value></data>
+  <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>路径不在输出目录内。</value></data>
+  <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>文件没有扩展名，已被安全策略拒绝。</value></data>
+  <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>不允许写入的文件类型：{0}</value></data>
+</root>

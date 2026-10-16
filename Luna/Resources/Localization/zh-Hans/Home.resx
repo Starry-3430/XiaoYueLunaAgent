@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Home_NewChat" xml:space="preserve"><value>新对话</value></data>
+  <data name="Home_Nav_Diary" xml:space="preserve"><value>日记本</value></data>
+  <data name="Home_Nav_Tools" xml:space="preserve"><value>工具</value></data>
+  <data name="Home_Nav_Settings" xml:space="preserve"><value>设置</value></data>
+
+  <data name="Home_Status_LoadFailed" xml:space="preserve"><value>加载失败</value></data>
+  <data name="Home_Status_RenameFailed" xml:space="preserve"><value>重命名失败：{0}</value></data>
+  <data name="Home_Status_DeleteFailed" xml:space="preserve"><value>删除失败：{0}</value></data>
+
+  <data name="Home_Session_RenameTitle" xml:space="preserve"><value>重命名会话</value></data>
+  <data name="Home_Session_DeleteTitle" xml:space="preserve"><value>删除会话</value></data>
+  <data name="Home_Session_DeleteBody" xml:space="preserve"><value>确定删除会话「{0}」吗？
+将删除其全部对话记录、附件引用与摘要记忆，且不可恢复。已生成的日记不受影响。</value></data>
+  <data name="Home_Session_DeleteButton" xml:space="preserve"><value>删除</value></data>
+</root>

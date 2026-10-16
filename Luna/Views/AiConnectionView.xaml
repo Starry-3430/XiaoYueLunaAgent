@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:Luna.Models"
+             xmlns:loc="clr-namespace:Luna.Localization"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
@@ -30,7 +31,7 @@
                 <Setter Property="Foreground" Value="#5B4833"/>
                 <Setter Property="CaretBrush" Value="#5B4833"/>
                 <Setter Property="BorderThickness" Value="0"/>
-                <Setter Property="Padding" Value="10,6"/>
+                <Setter Property="Padding" Value="8,6"/>
                 <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Height" Value="{StaticResource SettingsControlHeight}"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -40,7 +41,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="PasswordBox">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="0">
                                 <ScrollViewer x:Name="PART_ContentHost"/>
                             </Border>
                         </ControlTemplate>
@@ -106,8 +107,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="昵称" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="AI 的名字，会代入系统提示词。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Nickname_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Nickname_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBox Style="{StaticResource SettingsInputWide}"
@@ -127,8 +128,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="用户称呼" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="AI 对你的称呼，会代入系统提示词。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_UserName_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_UserName_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBox Style="{StaticResource SettingsInputWide}"
@@ -143,8 +144,8 @@
         <!-- 提示词 -->
         <Border Style="{StaticResource SettingsCard}">
             <StackPanel>
-                <TextBlock Text="提示词" Style="{StaticResource SettingsTitle}"/>
-                <TextBlock Text="可用占位符：{nickname}（AI 昵称）、{user}（用户称呼）。" Style="{StaticResource SettingsDesc}"/>
+                <TextBlock Text="{loc:Loc AiConnection_SystemPrompt_Title}" Style="{StaticResource SettingsTitle}"/>
+                <TextBlock Text="{loc:Loc AiConnection_SystemPrompt_Desc}" Style="{StaticResource SettingsDesc}"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <TextBox Style="{StaticResource SettingsMultiline}"
                              HorizontalAlignment="Left"
@@ -164,8 +165,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="提供商" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="选择模型服务提供商，自动填充 Base URL 与模型。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Provider_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Provider_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Border x:Name="ProviderDropdown" Width="250" Height="{StaticResource SettingsControlHeight}"
@@ -207,8 +208,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="模型" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="从预设选择，或选「自定义」手动填写模型名。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Model_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Model_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <Grid>
@@ -256,8 +257,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Base URL" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="API 地址，切换提供商时自动填充，可手动覆盖。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_BaseUrl_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_BaseUrl_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <TextBox Grid.Column="1" Style="{StaticResource SettingsInputWide}"
                          Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"
@@ -273,8 +274,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="API Key" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="密钥使用 Windows DPAPI 加密后保存在本地。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_ApiKey_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_ApiKey_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <PasswordBox x:Name="ApiKeyBox" Grid.Column="1"
                              Style="{StaticResource SettingsPassword}"
@@ -291,8 +292,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Max Tokens" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="单次回复允许的最大 token 数。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_MaxTokens_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_MaxTokens_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBox Style="{StaticResource SettingsInput}"
@@ -312,8 +313,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="温度" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="采样温度，越高越发散（0 ~ 2.0）。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Temperature_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_Temperature_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -344,8 +345,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="top_p" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="核采样阈值（0 ~ 1.0），越低输出越保守。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_TopP_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_TopP_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -376,8 +377,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="frequency_penalty" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="频率惩罚（-2.0 ~ 2.0），越高越不重复用词。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_FrequencyPenalty_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_FrequencyPenalty_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -408,8 +409,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="presence_penalty" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="主题惩罚（-2.0 ~ 2.0），越高越发散新话题。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_PresencePenalty_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_PresencePenalty_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -440,8 +441,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="深度思考" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="开启后优先请求模型的推理能力。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_DeepThinking_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_DeepThinking_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <CheckBox Grid.Column="1" Style="{StaticResource SettingsToggle}"
                           IsChecked="{Binding DeepThinking}" VerticalAlignment="Center"/>
@@ -456,8 +457,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="回复语言" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="希望 AI 主要使用的回复语言。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc AiConnection_ResponseLanguage_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_ResponseLanguage_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Border x:Name="LanguageDropdown" Width="250" Height="{StaticResource SettingsControlHeight}"
@@ -493,9 +494,9 @@
 
         <!-- 操作区 -->
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-            <Button Content="连接测试" Style="{StaticResource SecondaryActionButton}"
+            <Button Content="{loc:Loc AiConnection_TestConnection_Button}" Style="{StaticResource SecondaryActionButton}"
                     Command="{Binding TestConnectionCommand}" Margin="0,0,8,0"/>
-            <Button Content="保存" Style="{StaticResource PrimaryActionButton}"
+            <Button Content="{loc:Loc AiConnection_Save_Button}" Style="{StaticResource PrimaryActionButton}"
                     Command="{Binding SaveCommand}"/>
             <TextBlock Text="{Binding TestStatus}" Foreground="#5B4833" FontSize="13"
                        VerticalAlignment="Center" Margin="12,0,0,0"/>

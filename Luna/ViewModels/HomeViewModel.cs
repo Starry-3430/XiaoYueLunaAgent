@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 using Luna.Services.Data;
@@ -44,7 +45,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private string _inputText = string.Empty;
 
     [ObservableProperty]
-    private string _status = "就绪";
+    private string _status = LocalizationService.Instance["Common_Status_Ready"];
 
     [ObservableProperty]
     private bool _isBusy;
@@ -97,6 +98,24 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _ = LoadSessionsAsync();
 
         PopulateTools();
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+            {
+                ApplyToolLocalization();
+                RefreshStatusText();
+            }
+        };
+    }
+
+    /// <summary>语言切换后刷新状态栏（仅在空闲时重置为“就绪”）。</summary>
+    private void RefreshStatusText()
+    {
+        if (_runtime is { IsBusy: true }) return;
+        var ready = LocalizationService.Instance["Common_Status_Ready"];
+        if (_runtime is not null) _runtime.Status = ready;
+        Status = ready;
     }
 
     /// <summary>当前显示/操作的会话运行期对象。生成的界面状态全部来自它，因此切换会话不会中断后台输出。</summary>
@@ -112,7 +131,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
             Messages = _runtime?.Messages ?? _emptyMessages;
             IsBusy = _runtime?.IsBusy ?? false;
-            Status = _runtime?.Status ?? "就绪";
+            Status = _runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
         }
     }
 
@@ -124,7 +143,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 IsBusy = _runtime?.IsBusy ?? false;
                 break;
             case nameof(SessionRuntime.Status):
-                Status = _runtime?.Status ?? "就绪";
+                Status = _runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
                 break;
         }
     }
@@ -133,83 +152,83 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     {
         ToolCategories.Add(new ToolCategory
         {
-            Name = "信息",
+            NameKey = "Tool_Category_Info",
             Tools =
             {
-                new ToolDefinition { Id = "web_search", Category = "信息", Name = "网页搜索", Description = "通过 Tavily 在互联网上搜索信息，返回标题、URL 与摘要", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "fetch_url", Category = "信息", Name = "网页阅读", Description = "抓取指定 URL 的网页正文，配合搜索使用", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "get_current_time", Category = "信息", Name = "当前时间", Description = "获取当前日期与时间", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "read_clipboard", Category = "信息", Name = "剪贴板读取", Description = "读取系统剪贴板中的文本内容", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "news_calendar", Category = "信息", Name = "新闻/日历", Description = "获取新闻摘要或日历信息", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "web_search", NameKey = "Tool_WebSearch_DisplayName", DescriptionKey = "Tool_WebSearch_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "fetch_url", NameKey = "Tool_FetchUrl_DisplayName", DescriptionKey = "Tool_FetchUrl_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "get_current_time", NameKey = "Tool_GetCurrentTime_DisplayName", DescriptionKey = "Tool_GetCurrentTime_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "read_clipboard", NameKey = "Tool_ReadClipboard_DisplayName", DescriptionKey = "Tool_ReadClipboard_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "news_calendar", NameKey = "Tool_NewsCalendar_DisplayName", DescriptionKey = "Tool_NewsCalendar_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "系统",
+            NameKey = "Tool_Category_System",
             Tools =
             {
-                new ToolDefinition { Id = "powershell", Category = "系统", Name = "PowerShell", Description = "执行 PowerShell 命令", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.High },
-                new ToolDefinition { Id = "search_files", Category = "系统", Name = "文件搜索", Description = "按文件名搜索文件，优先查 Windows 搜索索引", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "read_file", Category = "系统", Name = "读取文件", Description = "读取指定文件内容", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "write_file", Category = "系统", Name = "写入文件", Description = "写入文件内容、创建新文件", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "file_open", Category = "系统", Name = "打开文件/应用", Description = "打开指定文件或启动应用程序", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "screenshot", Category = "系统", Name = "截图", Description = "截取屏幕截图", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "window_manager", Category = "系统", Name = "窗口管理", Description = "管理窗口位置、大小和状态", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "volume_brightness", Category = "系统", Name = "音量/亮度", Description = "调节系统音量和屏幕亮度", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "powershell", NameKey = "Tool_Powershell_DisplayName", DescriptionKey = "Tool_Powershell_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.High },
+                new ToolDefinition { Id = "search_files", NameKey = "Tool_SearchFiles_DisplayName", DescriptionKey = "Tool_SearchFiles_Description", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "read_file", NameKey = "Tool_ReadFile_DisplayName", DescriptionKey = "Tool_ReadFile_Description", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "write_file", NameKey = "Tool_WriteFile_DisplayName", DescriptionKey = "Tool_WriteFile_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "file_open", NameKey = "Tool_FileOpen_DisplayName", DescriptionKey = "Tool_FileOpen_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "screenshot", NameKey = "Tool_Screenshot_DisplayName", DescriptionKey = "Tool_Screenshot_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "window_manager", NameKey = "Tool_WindowManager_DisplayName", DescriptionKey = "Tool_WindowManager_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "volume_brightness", NameKey = "Tool_VolumeBrightness_DisplayName", DescriptionKey = "Tool_VolumeBrightness_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "记忆",
+            NameKey = "Tool_Category_Memory",
             Tools =
             {
-                new ToolDefinition { Id = "diary_search", Category = "记忆", Name = "检索日记", Description = "在日记中搜索相关内容", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "turn_search", Category = "记忆", Name = "轮次检索", Description = "搜索历史对话轮次", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "long_term_facts", Category = "记忆", Name = "长期事实", Description = "检索和存储长期事实记忆", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "diary_search", NameKey = "Tool_DiarySearch_DisplayName", DescriptionKey = "Tool_DiarySearch_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "turn_search", NameKey = "Tool_TurnSearch_DisplayName", DescriptionKey = "Tool_TurnSearch_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "long_term_facts", NameKey = "Tool_LongTermFacts_DisplayName", DescriptionKey = "Tool_LongTermFacts_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "组织",
+            NameKey = "Tool_Category_Organize",
             Tools =
             {
-                new ToolDefinition { Id = "todo", Category = "组织", Name = "待办事项", Description = "创建/管理待办事项，可为待办设置截止时间与提醒时间", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "clipboard_history", Category = "组织", Name = "剪贴板历史", Description = "查看和管理剪贴板历史记录", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "todo", NameKey = "Tool_Todo_DisplayName", DescriptionKey = "Tool_Todo_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "clipboard_history", NameKey = "Tool_ClipboardHistory_DisplayName", DescriptionKey = "Tool_ClipboardHistory_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "输入",
+            NameKey = "Tool_Category_Input",
             Tools =
             {
-                new ToolDefinition { Id = "vision", Category = "输入", Name = "视觉", Description = "分析图片内容", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "ocr", Category = "输入", Name = "OCR", Description = "识别图片中的文字", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "speech", Category = "输入", Name = "语音", Description = "语音识别与合成", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "vision", NameKey = "Tool_Vision_DisplayName", DescriptionKey = "Tool_Vision_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "ocr", NameKey = "Tool_Ocr_DisplayName", DescriptionKey = "Tool_Ocr_Description", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "speech", NameKey = "Tool_Speech_DisplayName", DescriptionKey = "Tool_Speech_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "开发",
+            NameKey = "Tool_Category_Dev",
             Tools =
             {
-                new ToolDefinition { Id = "code_execute", Category = "开发", Name = "代码执行（沙箱）", Description = "在沙箱环境中执行代码", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
-                new ToolDefinition { Id = "git", Category = "开发", Name = "Git", Description = "执行 Git 操作", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
-                new ToolDefinition { Id = "file_tree", Category = "开发", Name = "文件树结构", Description = "获取目录的文件树结构", IsEnabled = true, IsAvailable = false },
+                new ToolDefinition { Id = "code_execute", NameKey = "Tool_CodeExecute_DisplayName", DescriptionKey = "Tool_CodeExecute_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
+                new ToolDefinition { Id = "git", NameKey = "Tool_Git_DisplayName", DescriptionKey = "Tool_Git_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
+                new ToolDefinition { Id = "file_tree", NameKey = "Tool_FileTree_DisplayName", DescriptionKey = "Tool_FileTree_Description", IsEnabled = true, IsAvailable = false },
             }
         });
 
         ToolCategories.Add(new ToolCategory
         {
-            Name = "通信",
+            NameKey = "Tool_Category_Communication",
             Tools =
             {
-                new ToolDefinition { Id = "send_notification", Category = "通信", Name = "系统通知", Description = "发送系统通知，为“定时提醒”铺路", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Low },
-                new ToolDefinition { Id = "email", Category = "通信", Name = "邮件", Description = "发送邮件", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
+                new ToolDefinition { Id = "send_notification", NameKey = "Tool_SendNotification_DisplayName", DescriptionKey = "Tool_SendNotification_Description", IsEnabled = true, IsAvailable = false, Risk = ToolRiskLevel.Low },
+                new ToolDefinition { Id = "email", NameKey = "Tool_Email_DisplayName", DescriptionKey = "Tool_Email_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true },
             }
         });
 
@@ -229,13 +248,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             }
         }
 
-        foreach (var cat in ToolCategories)
-        foreach (var tool in cat.Tools)
-        {
-            if (!tool.IsAvailable)
-                tool.StatusText = "未实现";
-        }
-
         // 载入用户保存的启用状态
         foreach (var cat in ToolCategories)
         foreach (var tool in cat.Tools)
@@ -243,24 +255,38 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             tool.IsEnabled = _toolSettings.IsEnabled(tool.Id);
         }
 
-        foreach (var cat in ToolCategories)
-        foreach (var tool in cat.Tools)
-        {
-            if (tool.Id == "web_search")
-            {
-                var hasKey = !string.IsNullOrEmpty(_aiSettings.TavilyApiKey);
-                tool.IsEnabled = hasKey && tool.IsEnabled;
-                tool.StatusText = hasKey ? "" : "未配置 API Key";
-            }
-            if (tool.Id == "read_clipboard")
-                tool.StatusText = "";
-        }
+        var webSearch = ToolCategories.SelectMany(c => c.Tools).FirstOrDefault(t => t.Id == "web_search");
+        if (webSearch is not null)
+            webSearch.IsEnabled = !string.IsNullOrEmpty(_aiSettings.TavilyApiKey) && webSearch.IsEnabled;
+
+        ApplyToolLocalization();
 
         // 用户切换开关时持久化，并即时影响暴露给 AI 的工具集合
         foreach (var cat in ToolCategories)
         foreach (var tool in cat.Tools)
         {
             tool.PropertyChanged += Tool_PropertyChanged;
+        }
+    }
+
+    /// <summary>按当前语言刷新工具页的分组名、工具名/说明、风险标签与状态文本。</summary>
+    private void ApplyToolLocalization()
+    {
+        var loc = LocalizationService.Instance;
+        foreach (var cat in ToolCategories)
+        {
+            if (!string.IsNullOrEmpty(cat.NameKey))
+                cat.Name = loc[cat.NameKey];
+
+            foreach (var tool in cat.Tools)
+            {
+                tool.RefreshLocalizedText();
+                tool.StatusText = !tool.IsAvailable
+                    ? loc["Tool_Status_NotImplemented"]
+                    : tool.Id == "web_search" && string.IsNullOrEmpty(_aiSettings.TavilyApiKey)
+                        ? loc["Tool_Status_NoApiKey"]
+                        : string.Empty;
+            }
         }
     }
 
@@ -281,7 +307,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         if (tool is null) return;
 
         var hasKey = !string.IsNullOrEmpty(value);
-        tool.StatusText = hasKey ? "" : "未配置 API Key";
+        tool.StatusText = hasKey ? "" : LocalizationService.Instance["Tool_Status_NoApiKey"];
         tool.IsEnabled = hasKey;
     }
 
@@ -313,7 +339,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             var item = new ChatSessionItem
             {
                 Id = s.Id,
-                Title = s.Title ?? "新对话",
+                Title = s.Title ?? LocalizationService.Instance["Home_NewChat"],
                 Preview = s.Preview ?? "",
             };
             ChatSessions.Add(item);
@@ -331,7 +357,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         Runtime = null;
         InputText = string.Empty;
         PendingAttachments.Clear();
-        Status = "就绪";
+        Status = LocalizationService.Instance["Common_Status_Ready"];
         _currentSessionId = null;
         SelectedSession = null;
     }
@@ -381,7 +407,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载会话消息失败");
-            Status = "加载失败";
+            Status = LocalizationService.Instance["Home_Status_LoadFailed"];
         }
     }
 
@@ -400,7 +426,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         catch (Exception ex)
         {
             _logger.LogError(ex, "重命名会话失败：{Id}", session.Id);
-            Status = "重命名失败：" + ex.Message;
+            Status = LocalizationService.Instance.Format("Home_Status_RenameFailed", ex.Message);
         }
     }
 
@@ -426,7 +452,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 SelectedSession = null;
                 InputText = string.Empty;
                 PendingAttachments.Clear();
-                Status = "就绪";
+                Status = LocalizationService.Instance["Common_Status_Ready"];
             }
 
             _logger.LogInformation("会话已删除：{Id}", session.Id);
@@ -434,7 +460,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         catch (Exception ex)
         {
             _logger.LogError(ex, "删除会话失败：{Id}", session.Id);
-            Status = "删除失败：" + ex.Message;
+            Status = LocalizationService.Instance.Format("Home_Status_DeleteFailed", ex.Message);
         }
     }
 
@@ -475,7 +501,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
         if (accepted.Count == 0)
         {
-            Status = $"没有可添加的附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）";
+            Status = LocalizationService.Instance.Format("Common_NoAttachments", AttachmentHelper.MaxCount, AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes));
             return;
         }
 
@@ -485,7 +511,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _attachmentCts = cts;
 
         IsLoadingAttachments = true;
-        Status = "正在读取附件…";
+        Status = LocalizationService.Instance["Common_ReadingAttachments"];
         try
         {
             foreach (var attachment in accepted)
@@ -510,8 +536,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             {
                 IsLoadingAttachments = false;
                 Status = skipped > 0
-                    ? $"已忽略 {skipped} 个附件（最多 {AttachmentHelper.MaxCount} 个，每个 ≤ {AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes)}）"
-                    : "就绪";
+                    ? LocalizationService.Instance.Format("Common_SkippedAttachments", skipped, AttachmentHelper.MaxCount, AttachmentHelper.FormatSize(AttachmentHelper.MaxBytes))
+                    : LocalizationService.Instance["Common_Status_Ready"];
             }
         }
     }
@@ -614,7 +640,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             // 先保存文件并转换 Markdown（可能耗时），再启动 AI 循环
             var prepared = hasAttachments ? await PrepareAttachmentsAsync() : new List<Attachment>();
             if (string.IsNullOrWhiteSpace(userText) && prepared.Count > 0)
-                userText = "请阅读我发送的附件内容。";
+                userText = LocalizationService.Instance["Common_ReadAttachmentsPrompt"];
             ApplyTokenBudget(prepared);
 
             if (_currentSessionId is null)
@@ -626,7 +652,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 var item = new ChatSessionItem
                 {
                     Id = session.Id,
-                    Title = "新对话",
+                    Title = LocalizationService.Instance["Home_NewChat"],
                     Preview = userText,
                 };
                 ChatSessions.Insert(0, item);
@@ -648,7 +674,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         catch (Exception ex)
         {
             _logger.LogError(ex, "发送消息失败");
-            Status = "发送失败：" + ex.Message;
+            Status = LocalizationService.Instance.Format("Common_SendFailed", ex.Message);
         }
     }
 

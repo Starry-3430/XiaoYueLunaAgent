@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 字体 -->
+  <data name="Settings_Font_Title" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="Settings_Font_Desc" xml:space="preserve">
+    <value>The font used by the interface.</value>
+  </data>
+  <data name="Settings_Font_DefaultOption" xml:space="preserve">
+    <value>Default (built-in font)</value>
+  </data>
+
+  <!-- 语言 -->
+  <data name="Settings_Language_Title" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language_Desc" xml:space="preserve">
+    <value>Interface display language.</value>
+  </data>
+  <data name="Settings_Language_SimplifiedChinese" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="Settings_Language_English" xml:space="preserve">
+    <value>English</value>
+  </data>
+
+  <!-- 快捷键 -->
+  <data name="Settings_Hotkey_Title" xml:space="preserve">
+    <value>Hotkey</value>
+  </data>
+  <data name="Settings_Hotkey_Desc" xml:space="preserve">
+    <value>The global hotkey to bring up the capsule window. Click the box on the right, then press the key combination.</value>
+  </data>
+  <data name="Settings_Hotkey_BindCopilot" xml:space="preserve">
+    <value>Bind to Copilot</value>
+  </data>
+  <data name="Settings_Hotkey_PressPrompt" xml:space="preserve">
+    <value>Press the hotkey…</value>
+  </data>
+
+  <!-- 开机自启动 -->
+  <data name="Settings_Startup_Title" xml:space="preserve">
+    <value>Launch at Startup</value>
+  </data>
+  <data name="Settings_Startup_Desc" xml:space="preserve">
+    <value>Automatically start Luna after you sign in. "Yes + Administrator" requires administrator privileges and runs with the highest privileges.</value>
+  </data>
+  <data name="Settings_Startup_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Settings_Startup_Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Settings_Startup_YesAdmin" xml:space="preserve">
+    <value>Yes + Administrator</value>
+  </data>
+
+  <!-- 代理 -->
+  <data name="Settings_Proxy_Title" xml:space="preserve">
+    <value>Proxy</value>
+  </data>
+  <data name="Settings_Proxy_Desc" xml:space="preserve">
+    <value>Access the network through a proxy.</value>
+  </data>
+  <data name="Settings_Proxy_None" xml:space="preserve">
+    <value>No proxy</value>
+  </data>
+  <data name="Settings_Proxy_Server" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="Settings_Proxy_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
+  <data name="Settings_Proxy_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Settings_Proxy_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Settings_Proxy_TestButton" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="Settings_Proxy_Testing" xml:space="preserve">
+    <value>Testing…</value>
+  </data>
+  <data name="Settings_Proxy_Available" xml:space="preserve">
+    <value>Proxy available ✓</value>
+  </data>
+  <data name="Settings_Proxy_HttpError" xml:space="preserve">
+    <value>Proxy returned HTTP {0}</value>
+  </data>
+  <data name="Settings_Proxy_Timeout" xml:space="preserve">
+    <value>Proxy test timed out</value>
+  </data>
+  <data name="Settings_Proxy_Unavailable" xml:space="preserve">
+    <value>Proxy unavailable: {0}</value>
+  </data>
+
+  <!-- 输出目录 -->
+  <data name="Settings_Output_Title" xml:space="preserve">
+    <value>Output Directory</value>
+  </data>
+  <data name="Settings_Output_Desc" xml:space="preserve">
+    <value>Directories that allow file writes. When empty, no writes are authorized (write_file will refuse to run).</value>
+  </data>
+  <data name="Settings_Output_Browse" xml:space="preserve">
+    <value>Browse…</value>
+  </data>
+
+  <!-- 软件更新 -->
+  <data name="Settings_Update_Title" xml:space="preserve">
+    <value>Software Update</value>
+  </data>
+  <data name="Settings_Update_Desc" xml:space="preserve">
+    <value>Check whether a new version of Luna is available.</value>
+  </data>
+  <data name="Settings_Update_CheckButton" xml:space="preserve">
+    <value>Check for Updates</value>
+  </data>
+  <data name="Settings_Update_StatusFormat" xml:space="preserve">
+    <value>Current version {0}, no updates available.</value>
+  </data>
+  <data name="Settings_Update_UnknownVersion" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+
+  <!-- 保存与配置文件 -->
+  <data name="Settings_Save_Button" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Settings_Save_Saved" xml:space="preserve">
+    <value>Saved</value>
+  </data>
+  <data name="Settings_EditConfig_Button" xml:space="preserve">
+    <value>Edit settings.json</value>
+  </data>
+  <data name="Settings_EditConfig_OpenFailed" xml:space="preserve">
+    <value>Cannot open the configuration file: {0}</value>
+  </data>
+
+  <!-- 设置页分区标题 -->
+  <data name="Settings_Section_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_Section_Chat" xml:space="preserve">
+    <value>Chat</value>
+  </data>
+  <data name="Settings_Section_Attachment" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
+  <data name="Settings_Section_Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+
+  <!-- 调试 -->
+  <data name="Settings_OpenLogsButton" xml:space="preserve">
+    <value>Open Logs Folder</value>
+  </data>
+  <data name="Settings_OpenLogs_Opened" xml:space="preserve">
+    <value>Opened logs folder: {0}</value>
+  </data>
+  <data name="Settings_OpenLogs_Failed" xml:space="preserve">
+    <value>Cannot open logs folder: {0}</value>
+  </data>
+  <data name="Settings_ClearDatabaseButton" xml:space="preserve">
+    <value>Clear Database File</value>
+  </data>
+  <data name="Settings_ClearDb_Title" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Settings_ClearDb_Confirm1" xml:space="preserve">
+    <value>This will completely delete all database contents, including chat history and diary entries. Continue? 1/3</value>
+  </data>
+  <data name="Settings_ClearDb_Confirm2" xml:space="preserve">
+    <value>This will completely delete all database contents, including chat history and diary entries. Continue? 2/3</value>
+  </data>
+  <data name="Settings_ClearDb_Confirm3" xml:space="preserve">
+    <value>This will completely delete all database contents, including chat history and diary entries. Continue? 
+This is the final reminder 3/3</value>
+  </data>
+  <data name="Settings_ClearDb_Failed" xml:space="preserve">
+    <value>Failed to clear database: {0}</value>
+  </data>
+  <data name="Settings_ClearDb_DoneTitle" xml:space="preserve">
+    <value>Data Cleared</value>
+  </data>
+  <data name="Settings_ClearDb_DoneBody" xml:space="preserve">
+    <value>Restart the program to apply the changes.</value>
+  </data>
+  <data name="Settings_ClearDb_RestartButton" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+
+  <!-- 开机自启动失败原因 -->
+  <data name="Settings_StartupMsg_NoExe" xml:space="preserve">
+    <value>Cannot determine the executable path.</value>
+  </data>
+  <data name="Settings_StartupMsg_AdminProcFailed" xml:space="preserve">
+    <value>Failed to start the elevated process.</value>
+  </data>
+  <data name="Settings_StartupMsg_AdminIncomplete" xml:space="preserve">
+    <value>The elevated process did not complete the setup.</value>
+  </data>
+  <data name="Settings_StartupMsg_RegistryFailed" xml:space="preserve">
+    <value>Failed to write the registry Run entry.</value>
+  </data>
+  <data name="Settings_StartupMsg_SchtasksFailed" xml:space="preserve">
+    <value>Cannot start schtasks.</value>
+  </data>
+  <data name="Settings_StartupMsg_Unknown" xml:space="preserve">
+    <value>Unknown error.</value>
+  </data>
+  <data name="Settings_StartupMsg_Canceled" xml:space="preserve">
+    <value>Authorization canceled.</value>
+  </data>
+</root>

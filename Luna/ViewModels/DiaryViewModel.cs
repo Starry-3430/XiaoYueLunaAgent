@@ -10,6 +10,8 @@ namespace Luna.ViewModels;
 public partial class DiaryViewModel : ObservableObject
 {
     private readonly DiaryService _diary;
+    private readonly AiSettings _settings;
+    private readonly SettingsService _settingsService;
     private readonly ILogger<DiaryViewModel> _logger;
 
     public ObservableCollection<DiaryDayView> Days { get; } = new();
@@ -20,13 +22,33 @@ public partial class DiaryViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
+    /// <summary>日记本是否启用（是否自动整理日记）。</summary>
+    [ObservableProperty]
+    private bool _diaryEnabled;
+
     public string Nickname { get; }
 
-    public DiaryViewModel(DiaryService diary, AiSettings settings, ILogger<DiaryViewModel> logger)
+    public DiaryViewModel(DiaryService diary, AiSettings settings, SettingsService settingsService,
+        ILogger<DiaryViewModel> logger)
     {
         _diary = diary;
+        _settings = settings;
+        _settingsService = settingsService;
         _logger = logger;
         Nickname = string.IsNullOrWhiteSpace(settings.Nickname) ? "Luna" : settings.Nickname;
+        _diaryEnabled = settings.DiaryEnabled;
+    }
+
+    /// <summary>设置日记本开关并持久化；重新启用时立即补写最近窗口内的日记。</summary>
+    public void SetDiaryEnabled(bool enabled)
+    {
+        DiaryEnabled = enabled;
+        if (_settings.DiaryEnabled == enabled) return;
+
+        _settings.DiaryEnabled = enabled;
+        _settingsService.Save(_settings);
+
+        if (enabled) _diary.Trigger();
     }
 
     public async Task LoadAsync()

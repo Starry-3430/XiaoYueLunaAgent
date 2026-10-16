@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 昵称 -->
+  <data name="AiConnection_Nickname_Title" xml:space="preserve">
+    <value>Nickname</value>
+  </data>
+  <data name="AiConnection_Nickname_Desc" xml:space="preserve">
+    <value>The AI's name, inserted into the system prompt.</value>
+  </data>
+
+  <!-- 用户称呼 -->
+  <data name="AiConnection_UserName_Title" xml:space="preserve">
+    <value>Your Name</value>
+  </data>
+  <data name="AiConnection_UserName_Desc" xml:space="preserve">
+    <value>How the AI addresses you, inserted into the system prompt.</value>
+  </data>
+
+  <!-- 提示词 -->
+  <data name="AiConnection_SystemPrompt_Title" xml:space="preserve">
+    <value>Personality Prompt</value>
+  </data>
+  <data name="AiConnection_SystemPrompt_Desc" xml:space="preserve">
+    <value>Available placeholders: {nickname} (AI name), {user} (your name). System rules are always appended automatically.</value>
+  </data>
+
+  <!-- 提供商 -->
+  <data name="AiConnection_Provider_Title" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="AiConnection_Provider_Desc" xml:space="preserve">
+    <value>Choose a model service provider; Base URL and model are filled automatically.</value>
+  </data>
+  <data name="AiConnection_Provider_Zhipu" xml:space="preserve">
+    <value>Zhipu</value>
+  </data>
+  <data name="AiConnection_Provider_Qwen" xml:space="preserve">
+    <value>Qwen (Tongyi)</value>
+  </data>
+  <data name="AiConnection_Provider_Custom" xml:space="preserve">
+    <value>Custom (OpenAI-compatible)</value>
+  </data>
+
+  <!-- 模型 -->
+  <data name="AiConnection_Model_Title" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="AiConnection_Model_Desc" xml:space="preserve">
+    <value>Pick from presets, or choose "Custom" to enter a model name manually.</value>
+  </data>
+  <data name="AiConnection_Model_Custom" xml:space="preserve">
+    <value>Custom…</value>
+  </data>
+
+  <!-- Base URL -->
+  <data name="AiConnection_BaseUrl_Title" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="AiConnection_BaseUrl_Desc" xml:space="preserve">
+    <value>API endpoint.</value>
+  </data>
+
+  <!-- API Key -->
+  <data name="AiConnection_ApiKey_Title" xml:space="preserve">
+    <value>API Key</value>
+  </data>
+  <data name="AiConnection_ApiKey_Desc" xml:space="preserve">
+    <value>The key is encrypted and stored locally.</value>
+  </data>
+
+  <!-- Max Tokens -->
+  <data name="AiConnection_MaxTokens_Title" xml:space="preserve">
+    <value>Max Tokens</value>
+  </data>
+  <data name="AiConnection_MaxTokens_Desc" xml:space="preserve">
+    <value>Maximum number of tokens allowed per reply.</value>
+  </data>
+
+  <!-- 温度 -->
+  <data name="AiConnection_Temperature_Title" xml:space="preserve">
+    <value>Temperature</value>
+  </data>
+  <data name="AiConnection_Temperature_Desc" xml:space="preserve">
+    <value>Sampling temperature; higher is more random (0 ~ 2.0).</value>
+  </data>
+
+  <!-- top_p -->
+  <data name="AiConnection_TopP_Title" xml:space="preserve">
+    <value>top_p</value>
+  </data>
+  <data name="AiConnection_TopP_Desc" xml:space="preserve">
+    <value>Nucleus sampling threshold (0 ~ 1.0); lower is more conservative.</value>
+  </data>
+
+  <!-- frequency_penalty -->
+  <data name="AiConnection_FrequencyPenalty_Title" xml:space="preserve">
+    <value>frequency_penalty</value>
+  </data>
+  <data name="AiConnection_FrequencyPenalty_Desc" xml:space="preserve">
+    <value>Frequency penalty (-2.0 ~ 2.0); higher reduces repeated wording.</value>
+  </data>
+
+  <!-- presence_penalty -->
+  <data name="AiConnection_PresencePenalty_Title" xml:space="preserve">
+    <value>presence_penalty</value>
+  </data>
+  <data name="AiConnection_PresencePenalty_Desc" xml:space="preserve">
+    <value>Presence penalty (-2.0 ~ 2.0); higher encourages new topics.</value>
+  </data>
+
+  <!-- 深度思考 -->
+  <data name="AiConnection_DeepThinking_Title" xml:space="preserve">
+    <value>Deep Thinking</value>
+  </data>
+  <data name="AiConnection_DeepThinking_Desc" xml:space="preserve">
+    <value>When enabled, prefer the model's reasoning capability.</value>
+  </data>
+
+  <!-- 回复语言 -->
+  <data name="AiConnection_ResponseLanguage_Title" xml:space="preserve">
+    <value>Response Language</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_Desc" xml:space="preserve">
+    <value>The language you want the AI to mainly reply in.</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_Auto" xml:space="preserve">
+    <value>Follow user</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_SimplifiedChinese" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_English" xml:space="preserve">
+    <value>English</value>
+  </data>
+
+  <!-- 操作区 -->
+  <data name="AiConnection_TestConnection_Button" xml:space="preserve">
+    <value>Test Connection</value>
+  </data>
+  <data name="AiConnection_Save_Button" xml:space="preserve">
+    <value>Save</value>
+  </data>
+
+  <!-- 状态提示 -->
+  <data name="AiConnection_Save_Saved" xml:space="preserve">
+    <value>Saved</value>
+  </data>
+  <data name="AiConnection_Save_Failed" xml:space="preserve">
+    <value>Save failed: {0}</value>
+  </data>
+  <data name="AiConnection_Test_NoBaseUrl" xml:space="preserve">
+    <value>Base URL is not set</value>
+  </data>
+  <data name="AiConnection_Test_Testing" xml:space="preserve">
+    <value>Testing connection…</value>
+  </data>
+  <data name="AiConnection_Test_Success" xml:space="preserve">
+    <value>Connected ✓</value>
+  </data>
+  <data name="AiConnection_Test_FailedHttp" xml:space="preserve">
+    <value>Connection failed: HTTP {0} {1}</value>
+  </data>
+  <data name="AiConnection_Test_Timeout" xml:space="preserve">
+    <value>Connection timed out (15 s)</value>
+  </data>
+  <data name="AiConnection_Test_Failed" xml:space="preserve">
+    <value>Connection failed: {0}</value>
+  </data>
+</root>

@@ -1,12 +1,15 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownViewer;
 using Microsoft.Extensions.Hosting;
@@ -30,11 +33,14 @@ namespace Luna;
 /// </summary>
 public partial class App : Application
 {
-    private readonly IHost _host;                       // 依赖注入与后台服务宿主
+    private readonly IHost _host = null!;              // 依赖注入与后台服务宿主
+    private readonly bool _isStartupHelper;             // 是否为“管理员自启动”提权辅助进程
     private Mutex? _singleInstanceMutex;                // 单实例互斥体
     private EventWaitHandle? _showWindowEvent;          // 显示窗口事件
     private Win32Icon? _trayIconImage;                  // 托盘图标图像
     private TrayIconHost? _trayIcon;                    // 托盘图标宿主
+    private TrayMenuItem? _trayOpenItem;                // 托盘菜单：主界面
+    private TrayMenuItem? _trayCloseItem;               // 托盘菜单：关闭
     private HomeWindow? _homeWindow;                    // 主窗口实例
     private bool _restarting;                           // 是否正在重启进程
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
@@ -47,7 +53,15 @@ public partial class App : Application
     {
         // 强制使用软件渲染，避免硬件加速导致的兼容性问题
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
-        
+
+        // 管理员提权辅助进程：仅执行“管理员自启动”设置，不初始化日志/托盘/宿主与界面。
+        _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
+            string.Equals(arg, StartupService.AdminHelperArgument, StringComparison.OrdinalIgnoreCase));
+        if (_isStartupHelper) return;
+
+        // 托盘菜单等早期 UI 在设置加载前即创建，先用默认语言初始化；启动时会按用户设置重新应用。
+        LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
+
         // ===== 日志配置 =====
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -94,6 +108,14 @@ public partial class App : Application
             ThemeMode = TrayThemeMode.System // 跟随系统
         };
 
+        _trayOpenItem = new TrayMenuItem
+        {
+            Command = new TrayCommand(_ => Dispatcher.Invoke(ShowHomeWindow))
+        };
+        _trayCloseItem = new TrayMenuItem
+        {
+            Command = new TrayCommand(_ => Dispatcher.Invoke(Shutdown))
+        };
         _trayIcon = new TrayIconHost
         {
             IconSource = _trayIconImage,
@@ -101,18 +123,11 @@ public partial class App : Application
             // 右击托盘图标显示菜单
             Menu = new TrayMenu
             {
-                new TrayMenuItem
-                {
-                    Header = "主界面",
-                    Command = new TrayCommand(_ => Dispatcher.Invoke(ShowHomeWindow))
-                },
-                new TrayMenuItem
-                {
-                    Header = "关闭",
-                    Command = new TrayCommand(_ => Dispatcher.Invoke(Shutdown))
-}
+                _trayOpenItem,
+                _trayCloseItem
             }
         };
+        RefreshTrayText();
         // 订阅托盘单击事件
         _trayIcon.Click += (sender, e) => Dispatcher.Invoke(OnTrayClick);
         
@@ -144,6 +159,7 @@ public partial class App : Application
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
                 }));
                 services.AddSingleton<HotkeyService>();
+                services.AddSingleton<StartupService>();
                 services.AddSingleton<SystemPromptBuilder>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
@@ -311,6 +327,17 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 提权辅助进程：执行“管理员自启动”设置后立即退出，不进入正常启动流程。
+        if (_isStartupHelper)
+        {
+            Shutdown(StartupService.RunAdminHelper());
+            return;
+        }
+
+        // 开机自启动：带 --startup 参数时静默启动，不显示主窗口
+        var launchedAtStartup = e.Args.Any(arg =>
+            string.Equals(arg, StartupService.StartupArgument, StringComparison.OrdinalIgnoreCase));
+
         // 1. 单实例检查
         _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
 
@@ -348,9 +375,12 @@ public partial class App : Application
 
         // 5. 应用字体设置
         var settings = _host.Services.GetRequiredService<AiSettings>();
+        ApplyCulture(settings.UiLanguage);
+        RefreshTrayText();
+        LocalizationService.Instance.PropertyChanged += (_, _) => RefreshTrayText();
         ThemeService.ApplyFont(settings.FontFamily);
 
-        // 6. 显示主窗口（MainWindow：紧凑悬浮输入窗）
+        // 6. 初始化主窗口（MainWindow：紧凑悬浮输入窗）；开机自启动时不显示
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         var hotkey = _host.Services.GetRequiredService<HotkeyService>();
         hotkey.Attach(mainWindow);
@@ -363,8 +393,11 @@ public partial class App : Application
             mainWindow.Activate();
         });
 
-        mainWindow.Show();
-        mainWindow.ShowInternal();
+        if (!launchedAtStartup)
+        {
+            mainWindow.Show();
+            mainWindow.ShowInternal();
+        }
 
         // 7. 启动提醒服务（轮询待办提醒）
         _host.Services.GetRequiredService<ReminderService>().Start();
@@ -382,16 +415,39 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    /// <summary>应用界面语言：切换本地化服务、UI Culture 与 WPF 的 XmlLanguage（影响 XAML 内的格式化）。</summary>
+    private static void ApplyCulture(string? uiLanguage)
+    {
+        var culture = LocalizationService.ResolveCulture(uiLanguage);
+        LocalizationService.Instance.SetLanguage(culture);
+
+        Thread.CurrentThread.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+        FrameworkElement.LanguageProperty.OverrideMetadata(
+            typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
+    }
+
+    /// <summary>刷新托盘菜单的本地化文本。</summary>
+    private void RefreshTrayText()
+    {
+        var loc = LocalizationService.Instance;
+        if (_trayOpenItem is not null) _trayOpenItem.Header = loc["App_Tray_OpenMain"];
+        if (_trayCloseItem is not null) _trayCloseItem.Header = loc["App_Tray_Close"];
+    }
+
     /// <summary>配置文件丢失或结构损坏并已重置时弹出的提示。</summary>
     private static void ShowSettingsResetDialog(Window owner)
     {
+        var loc = LocalizationService.Instance;
         var dialog = new LunaDialog
         {
             Owner = owner,
-            DialogTitle = "配置文件已损坏",
+            DialogTitle = loc["Dialog_SettingsReset_Title"],
             DialogContent = new TextBlock
             {
-                Text = "由于settings.json配置文件丢失或结构被破坏，已重置工具和设置的相关配置",
+                Text = loc["Dialog_SettingsReset_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -402,7 +458,7 @@ public partial class App : Application
         {
             new()
             {
-                Text = "确定",
+                Text = loc["Dialog_Button_OK"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
@@ -436,6 +492,13 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // 提权辅助进程未初始化日志、宿主与单实例资源，直接退出。
+        if (_isStartupHelper)
+        {
+            base.OnExit(e);
+            return;
+        }
+
         Log.Information("Luna 正在退出");
 
         // 释放单实例相关资源

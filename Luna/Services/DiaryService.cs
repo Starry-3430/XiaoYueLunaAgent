@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Threading;
 using Dapper;
+using Luna.Localization;
 using Luna.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,10 @@ public class DiaryService
     private const string StatusDone = "Done";
     private const string StatusFailed = "Failed";
     private const string StatusNoData = "NoData";
+    private const string StatusNotGenerated = "NotGenerated";
+
+    /// <summary>自动补写窗口：只处理最近这些逻辑日内的日记；更早且未生成的按 NotGenerated 展示。</summary>
+    private const int AutoGenerateWindowDays = 7;
 
     /// <summary>日记正文的字数上限，超过则触发一次精简重生成。</summary>
     private const int MaximumDiaryLength = 300;
@@ -82,6 +87,10 @@ public class DiaryService
     /// <summary>检查并生成所有需要处理的逻辑日。串行执行，不并发。</summary>
     public async Task TryRunDiaryCheckAsync()
     {
+        // 日记本已关闭：不自动整理日记（轮次关键词与摘要由 TurnSummaryService 照常生成）
+        if (!_settings.DiaryEnabled)
+            return;
+
         if (!await _gate.WaitAsync(0))
             return; // 已有一次检查在运行
 
@@ -118,16 +127,28 @@ public class DiaryService
     private async Task<List<string>> GetCandidateDatesAsync()
     {
         var today = LogicalDate.Now();
+        var windowStart = WindowStart(today);
         using var conn = new SqliteConnection(_db.ConnectionString);
         var rows = await conn.QueryAsync<string>(
-            @"SELECT LogicalDate FROM TurnSummaries WHERE LogicalDate < @Today GROUP BY LogicalDate
+            @"SELECT LogicalDate FROM TurnSummaries
+              WHERE LogicalDate < @Today AND LogicalDate >= @WindowStart GROUP BY LogicalDate
               UNION
               SELECT d.LogicalDate FROM DiaryDays d
               WHERE d.Status IN ('Pending','Failed')
+                AND d.LogicalDate < @Today AND d.LogicalDate >= @WindowStart
                 AND EXISTS (SELECT 1 FROM TurnSummaries t WHERE t.LogicalDate = d.LogicalDate)
               ORDER BY LogicalDate",
-            new { Today = today });
+            new { Today = today, WindowStart = windowStart });
         return rows.ToList();
+    }
+
+    /// <summary>自动补写窗口的起始逻辑日（含）。</summary>
+    private static string WindowStart(string today)
+    {
+        var start = DateOnly.TryParse(today, out var d)
+            ? d.AddDays(-AutoGenerateWindowDays)
+            : DateOnly.FromDateTime(DateTime.Today).AddDays(-AutoGenerateWindowDays);
+        return start.ToString("yyyy-MM-dd");
     }
 
     private async Task ProcessLogicalDateAsync(string date)
@@ -168,7 +189,8 @@ public class DiaryService
             .Replace("{nickname}", nickname)
             .Replace("{user}", userName)
             .Replace("{date}", date)
-            .Replace("{summary}", aggregated);
+            .Replace("{summary}", aggregated)
+            + DefaultPrompts.ResponseLanguageDirective(_settings.ResponseLanguage);
 
         string content;
         try
@@ -196,7 +218,7 @@ public class DiaryService
         content = content.Trim();
         if (string.IsNullOrWhiteSpace(content))
         {
-            await SetStatusAsync(date, StatusFailed, "模型返回空内容");
+            await SetStatusAsync(date, StatusFailed, LocalizationService.Instance["Diary_Service_EmptyResponse"]);
             return;
         }
 
@@ -260,7 +282,8 @@ public class DiaryService
         {
             var prompt = DefaultPrompts.DiaryShortenPrompt
                 .Replace("{nickname}", nickname)
-                .Replace("{content}", content);
+                .Replace("{content}", content)
+                + DefaultPrompts.ResponseLanguageDirective(_settings.ResponseLanguage);
 
             var shortened = await _aiService.ChatAsync(
                 new[] { new ChatMessage { Role = "user", Content = prompt } },
@@ -431,7 +454,10 @@ public class DiaryService
 
     // ===== 读取 / 检索 / 重试（供日记本 UI 使用） =====
 
-    /// <summary>返回从安装日（最早记录）到当前逻辑日的所有日期视图，缺记录的日子为 NoData。</summary>
+    /// <summary>
+    /// 返回从安装日（最早记录）到当前逻辑日的所有日期视图，缺记录的日子为 NoData。
+    /// 有活动但超出自动补写窗口（最近 7 天）且未生成的日子标记为 NotGenerated。
+    /// </summary>
     public async Task<List<DiaryDayView>> GetDaysAsync()
     {
         var today = LogicalDate.Now();
@@ -444,7 +470,10 @@ public class DiaryService
         if (start < minStart) start = minStart;
         if (start > end) start = end;
 
+        var windowStart = WindowStart(today);
+
         var records = new Dictionary<string, DiaryDayView>(StringComparer.Ordinal);
+        var activity = new HashSet<string>(StringComparer.Ordinal);
         using (var conn = new SqliteConnection(_db.ConnectionString))
         {
             var rows = await conn.QueryAsync<DiaryDayView>(
@@ -453,18 +482,25 @@ public class DiaryService
                   LEFT JOIN DiaryEntries e ON e.LogicalDate = d.LogicalDate");
             foreach (var r in rows)
                 records[r.LogicalDate] = r;
+
+            var activeDates = await conn.QueryAsync<string>("SELECT DISTINCT LogicalDate FROM TurnSummaries");
+            foreach (var a in activeDates)
+                activity.Add(a);
         }
 
         var result = new List<DiaryDayView>();
         for (var d = start; d <= end; d = d.AddDays(1))
         {
             var key = d.ToString("yyyy-MM-dd");
+            var isToday = key == today;
+            var hasActivity = activity.Contains(key);
+            var isRecent = string.CompareOrdinal(key, windowStart) >= 0;
+
             if (records.TryGetValue(key, out var rec))
             {
-                rec.IsToday = key == today;
-                // 当天若尚未生成，按“还在记录”展示
-                if (rec.IsToday && rec.Status is not StatusDone)
-                    rec.Status = StatusPending;
+                if (rec.Status is not StatusDone and not StatusFailed)
+                    rec.Status = DeriveStatus(isToday, hasActivity, isRecent);
+                rec.IsToday = isToday;
                 result.Add(rec);
             }
             else
@@ -472,13 +508,21 @@ public class DiaryService
                 result.Add(new DiaryDayView
                 {
                     LogicalDate = key,
-                    Status = key == today ? StatusPending : StatusNoData,
-                    IsToday = key == today,
+                    Status = DeriveStatus(isToday, hasActivity, isRecent),
+                    IsToday = isToday,
                 });
             }
         }
 
         return result;
+    }
+
+    /// <summary>根据“是否今天 / 是否有活动 / 是否在自动补写窗口内”推导展示状态。</summary>
+    private static string DeriveStatus(bool isToday, bool hasActivity, bool isRecent)
+    {
+        if (isToday) return StatusPending;            // 当天仍在记录
+        if (!hasActivity) return StatusNoData;        // 当天没有互动
+        return isRecent ? StatusPending : StatusNotGenerated; // 窗口内待生成；更早且未生成则视为漏写
     }
 
     private async Task<string?> GetEarliestLogicalDateAsync()

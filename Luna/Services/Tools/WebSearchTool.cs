@@ -1,4 +1,4 @@
-﻿// 工具：联网搜索（Tavily API，含请求/响应/结果 DTO）。
+// 工具：联网搜索（Tavily API，含请求/响应/结果 DTO）。
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Luna.Models;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -13,8 +14,8 @@ public class WebSearchTool : ITool
 {
     private const string TavilyApiUrl = "https://api.tavily.com/search";
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"query":{"type":"string","description":"搜索关键词或问题"}},"required":["query"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"query":{"type":"string","description":"$query$"}},"required":["query"]}""";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -26,9 +27,9 @@ public class WebSearchTool : ITool
     private readonly ILogger<WebSearchTool> _logger;
 
     public string Name => "web_search";
-    public string DisplayName => "网页搜索";
-    public string Description => "在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$query$", Param("Tool_WebSearch_Param_Query")));
 
     public WebSearchTool(HttpClient httpClient, AiSettings settings, ILogger<WebSearchTool> logger)
     {
@@ -40,11 +41,11 @@ public class WebSearchTool : ITool
     public async Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_settings.TavilyApiKey))
-            return ToolResult.Error("未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。");
+            return ToolResult.Error(Text("Tool_WebSearch_Msg_NoApiKey"));
 
         var query = ExtractQuery(args);
         if (string.IsNullOrWhiteSpace(query))
-            return ToolResult.Error("缺少参数 query。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "query"));
 
         try
         {
@@ -54,7 +55,7 @@ public class WebSearchTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "Tavily 搜索失败: {Query}", query);
-            return ToolResult.Error($"搜索失败: {ex.Message}");
+            return ToolResult.Error(Text("Tool_WebSearch_Msg_Failed", ex.Message));
         }
     }
 
@@ -84,7 +85,7 @@ public class WebSearchTool : ITool
 
     private static string FormatResults(List<WebSearchResult> results)
     {
-        if (results.Count == 0) return "未找到相关结果。";
+        if (results.Count == 0) return Text("Tool_WebSearch_Msg_NoResults");
 
         var sb = new StringBuilder();
         for (var i = 0; i < results.Count; i++)

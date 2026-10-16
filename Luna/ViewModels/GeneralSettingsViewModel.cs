@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Luna.Models;
+using Luna.Localization;
 using Luna.Services;
 
 namespace Luna.ViewModels;
@@ -16,11 +17,14 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly AiSettings _settings;
     private readonly SettingsService _settingsService;
     private readonly HotkeyService _hotkeyService;
+    private readonly StartupService _startupService;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
 
     public SelectSetting FontSetting { get; } = new();
     public SelectSetting ProxyTypeSetting { get; } = new();
+    public SelectSetting LanguageSetting { get; } = new();
+    public SelectSetting StartupSetting { get; } = new();
 
     public string SettingsPath => _settingsService.SettingsPath;
 
@@ -54,14 +58,18 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _saveStatus = string.Empty;
 
+    [ObservableProperty]
+    private string _updateStatus = string.Empty;
+
     private readonly DispatcherTimer _saveStatusTimer;
 
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
-        HotkeyService hotkeyService, ILogger<GeneralSettingsViewModel> logger)
+        HotkeyService hotkeyService, StartupService startupService, ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
+        _startupService = startupService;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -71,7 +79,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             SaveStatus = string.Empty;
         };
 
-        FontSetting.Options.Add(new SelectOption { Value = string.Empty, Label = "默认（内置字体）" });
+        FontSetting.Options.Add(new SelectOption { Value = string.Empty, Label = LocalizationService.Instance["Settings_Font_DefaultOption"] });
         foreach (var source in System.Windows.Media.Fonts.SystemFontFamilies
                      .Select(f => f.Source)
                      .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -87,12 +95,42 @@ public partial class GeneralSettingsViewModel : ObservableObject
             FontSetting.Options.Insert(1, new SelectOption { Value = _settings.FontFamily, Label = _settings.FontFamily });
         }
 
-        ProxyTypeSetting.Options.Add(new SelectOption { Value = "none", Label = "无代理" });
+        ProxyTypeSetting.Options.Add(new SelectOption { Value = "none", Label = LocalizationService.Instance["Settings_Proxy_None"] });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "http", Label = "HTTP" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks4", Label = "SOCKS4" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks5", Label = "SOCKS5" });
 
+        LanguageSetting.Options.Add(new SelectOption { Value = "zh", Label = "简体中文" });
+        LanguageSetting.Options.Add(new SelectOption { Value = "en", Label = "English" });
+
+        StartupSetting.Options.Add(new SelectOption { Value = "none", Label = LocalizationService.Instance["Settings_Startup_No"] });
+        StartupSetting.Options.Add(new SelectOption { Value = "user", Label = LocalizationService.Instance["Settings_Startup_Yes"] });
+        StartupSetting.Options.Add(new SelectOption { Value = "admin", Label = LocalizationService.Instance["Settings_Startup_YesAdmin"] });
+
         LoadFromSettings();
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+                ApplyLocalizedOptionLabels();
+        };
+    }
+
+    /// <summary>语言切换后刷新下拉选项的本地化标签。</summary>
+    private void ApplyLocalizedOptionLabels()
+    {
+        var loc = LocalizationService.Instance;
+        SetOptionLabel(FontSetting, string.Empty, loc["Settings_Font_DefaultOption"]);
+        SetOptionLabel(ProxyTypeSetting, "none", loc["Settings_Proxy_None"]);
+        SetOptionLabel(StartupSetting, "none", loc["Settings_Startup_No"]);
+        SetOptionLabel(StartupSetting, "user", loc["Settings_Startup_Yes"]);
+        SetOptionLabel(StartupSetting, "admin", loc["Settings_Startup_YesAdmin"]);
+    }
+
+    private static void SetOptionLabel(SelectSetting setting, string value, string label)
+    {
+        var option = setting.Options.FirstOrDefault(o => o.Value == value);
+        if (option is not null) option.Label = label;
     }
 
     private void LoadFromSettings()
@@ -112,6 +150,12 @@ public partial class GeneralSettingsViewModel : ObservableObject
             ProxyTypeSetting.SelectedOption =
                 ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == _settings.ProxyType)
                 ?? ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultProxyType);
+            LanguageSetting.SelectedOption =
+                LanguageSetting.Options.FirstOrDefault(o => o.Value == _settings.UiLanguage)
+                ?? LanguageSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultUiLanguage);
+            StartupSetting.SelectedOption =
+                StartupSetting.Options.FirstOrDefault(o => o.Value == _settings.StartupMode)
+                ?? StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode);
         }
         finally
         {
@@ -148,12 +192,49 @@ public partial class GeneralSettingsViewModel : ObservableObject
         Persist();
     }
 
+    /// <summary>由外部（下拉选择）调用，更新界面语言并保存。切换即时生效，无需重启。</summary>
+    public void ApplyLanguage()
+    {
+        if (_loading) return;
+        LocalizationService.Instance.SetLanguage(LanguageSetting.SelectedOption?.Value ?? AiSettings.DefaultUiLanguage);
+        Persist();
+    }
+
+    /// <summary>由外部（下拉选择）调用，应用开机自启动模式。返回结果供界面提示。</summary>
+    public StartupApplyResult ApplyStartup()
+    {
+        if (_loading) return StartupApplyResult.Ok();
+
+        var mode = StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
+        var result = _startupService.Apply(mode);
+        if (result.Success) Persist();
+        return result;
+    }
+
+    /// <summary>以管理员身份（弹出 UAC）应用“管理员自启动”，成功后保存。返回结果供界面提示。</summary>
+    public StartupApplyResult ApplyStartupElevated()
+    {
+        if (_loading) return StartupApplyResult.Ok();
+
+        var result = _startupService.ApplyElevatedAdmin();
+        if (result.Success) Persist();
+        return result;
+    }
+
+    /// <summary>把开机自启动下拉恢复到上一次成功保存的模式。</summary>
+    public void RevertStartupSelection()
+    {
+        StartupSetting.SelectedOption =
+            StartupSetting.Options.FirstOrDefault(o => o.Value == _settings.StartupMode)
+            ?? StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode);
+    }
+
     /// <summary>保存通用设置。</summary>
     [RelayCommand]
     private void Save()
     {
         Persist();
-        SaveStatus = "已保存";
+        SaveStatus = LocalizationService.Instance["Settings_Save_Saved"];
         _saveStatusTimer.Stop();
         _saveStatusTimer.Start();
     }
@@ -165,6 +246,8 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _settings.FontFamily = FontSetting.SelectedOption?.Value ?? string.Empty;
         _settings.Hotkey = HotkeyText;
         _settings.OutputDirectory = OutputDirectory;
+        _settings.UiLanguage = LanguageSetting.SelectedOption?.Value ?? AiSettings.DefaultUiLanguage;
+        _settings.StartupMode = StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
         _settings.ProxyType = ProxyTypeSetting.SelectedOption?.Value ?? AiSettings.DefaultProxyType;
         _settings.ProxyServer = ProxyServer;
         _settings.ProxyPort = ProxyPort;
@@ -189,6 +272,24 @@ public partial class GeneralSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ResetLanguage()
+    {
+        LanguageSetting.SelectedOption =
+            LanguageSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultUiLanguage)
+            ?? LanguageSetting.Options.FirstOrDefault();
+        ApplyLanguage();
+    }
+
+    [RelayCommand]
+    private void ResetStartup()
+    {
+        StartupSetting.SelectedOption =
+            StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode)
+            ?? StartupSetting.Options.FirstOrDefault();
+        ApplyStartup();
+    }
+
+    [RelayCommand]
     private void ResetOutputDirectory() => OutputDirectory = AiSettings.DefaultOutputDirectory;
 
     [RelayCommand]
@@ -200,14 +301,25 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [RelayCommand]
     private void ResetProxyUsername() => ProxyUsername = string.Empty;
 
+    /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
+    [RelayCommand]
+    private void CheckUpdate()
+    {
+        var loc = LocalizationService.Instance;
+        var version = typeof(GeneralSettingsViewModel).Assembly.GetName().Version;
+        var versionText = version is null ? loc["Settings_Update_UnknownVersion"] : $"{version.Major}.{version.Minor}.{version.Build}";
+        UpdateStatus = loc.Format("Settings_Update_StatusFormat", versionText);
+    }
+
     /// <summary>测试当前代理是否可用。</summary>
     [RelayCommand]
     private async Task TestProxyAsync()
     {
         if (IsTestingProxy) return;
 
+        var loc = LocalizationService.Instance;
         IsTestingProxy = true;
-        ProxyTestStatus = "测试中…";
+        ProxyTestStatus = loc["Settings_Proxy_Testing"];
 
         try
         {
@@ -220,17 +332,17 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
             using var response = await client.GetAsync("https://www.baidu.com");
             ProxyTestStatus = response.IsSuccessStatusCode
-                ? "代理可用 ✓"
-                : $"代理返回 HTTP {(int)response.StatusCode}";
+                ? loc["Settings_Proxy_Available"]
+                : loc.Format("Settings_Proxy_HttpError", (int)response.StatusCode);
         }
         catch (OperationCanceledException)
         {
-            ProxyTestStatus = "代理测试超时";
+            ProxyTestStatus = loc["Settings_Proxy_Timeout"];
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "代理测试失败");
-            ProxyTestStatus = "代理不可用：" + ex.Message;
+            ProxyTestStatus = loc.Format("Settings_Proxy_Unavailable", ex.Message);
         }
         finally
         {

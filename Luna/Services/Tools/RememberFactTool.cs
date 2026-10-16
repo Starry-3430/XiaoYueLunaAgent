@@ -2,14 +2,15 @@
 using System.Text.Json;
 using Luna.Services.Data;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
 /// <summary>长期记住一条关于用户的事实。归“长期事实”开关（long_term_facts）。</summary>
 public class RememberFactTool : ITool
 {
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"key":{"type":"string","description":"英文短语 + 下划线的事实标识，如 preferred_language、editor_theme"},"value":{"type":"string","description":"用中文自然语言描述的事实内容"}},"required":["key","value"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"key":{"type":"string","description":"$key$"},"value":{"type":"string","description":"$value$"}},"required":["key","value"]}""";
 
     /// <summary>敏感信息关键字：命中则拒绝写入（简单关键字匹配，不做复杂检测）。</summary>
     private static readonly string[] SensitiveKeywords =
@@ -19,11 +20,11 @@ public class RememberFactTool : ITool
     private readonly ILogger<RememberFactTool> _logger;
 
     public string Name => "remember_fact";
-    public string DisplayName => "记住事实";
-    public string Description =>
-        "长期记住一条关于用户的事实，供以后回忆。key 必须用英文短语加下划线（如 preferred_language、editor_theme），" +
-        "value 用中文自然描述。不要记录密码、API Key 等敏感信息。";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$key$", Param("Tool_RememberFact_Param_Key"))
+        .Replace("$value$", Param("Tool_RememberFact_Param_Value")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
     public string SettingsKey => "long_term_facts";
 
@@ -38,13 +39,13 @@ public class RememberFactTool : ITool
         var key = GetString(args, "key");
         var value = GetString(args, "value");
         if (string.IsNullOrWhiteSpace(key))
-            return ToolResult.Error("缺少参数 key。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "key"));
         if (string.IsNullOrWhiteSpace(value))
-            return ToolResult.Error("缺少参数 value。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "value"));
 
         // 只对 value 做敏感信息检查，key 不强制（中文 key 允许）。
         if (ContainsSensitive(value))
-            return ToolResult.Error("检测到疑似敏感信息（密码、密钥等），已拒绝记录。");
+            return ToolResult.Error(Text("Tool_RememberFact_Msg_Sensitive"));
 
         key = key.Trim();
         value = value.Trim();
@@ -53,12 +54,12 @@ public class RememberFactTool : ITool
         {
             await _repo.UpsertAsync(key, value, sourceTurnId: null);
             _logger.LogInformation("已记住事实：{Key}", key);
-            return ToolResult.Ok($"已记住：{key} = {value}");
+            return ToolResult.Ok(Text("Tool_RememberFact_Msg_Remembered", key, value));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "记住事实失败：{Key}", key);
-            return ToolResult.Error($"记住事实失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_RememberFact_Msg_Failed", ex.Message));
         }
     }
 

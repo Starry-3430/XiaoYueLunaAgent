@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Main_Placeholder" xml:space="preserve"><value>在此处键入内容</value></data>
+  <data name="Main_ClearAttachments" xml:space="preserve"><value>全部删除</value></data>
+  <data name="Main_Reminder" xml:space="preserve"><value>提醒</value></data>
+  <data name="Main_Snooze" xml:space="preserve"><value>稍后</value></data>
+  <data name="Main_Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Main_AttachmentCount" xml:space="preserve"><value>{0} 个附件</value></data>
+</root>

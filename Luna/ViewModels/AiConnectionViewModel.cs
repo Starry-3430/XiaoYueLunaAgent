@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 
@@ -104,11 +105,12 @@ public partial class AiConnectionViewModel : ObservableObject
         _logger = logger;
 
         foreach (var preset in AiProviderCatalog.Presets)
-            ProviderSetting.Options.Add(new SelectOption { Value = preset.Id, Label = preset.Name });
+            ProviderSetting.Options.Add(new SelectOption { Value = preset.Id, Label = ProviderLabel(preset.Id) });
 
-        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "auto", Label = "跟随用户" });
-        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "zh", Label = "简体中文" });
-        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "en", Label = "English" });
+        var loc = LocalizationService.Instance;
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "auto", Label = loc["AiConnection_ResponseLanguage_Auto"] });
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "zh", Label = loc["AiConnection_ResponseLanguage_SimplifiedChinese"] });
+        ResponseLanguageSetting.Options.Add(new SelectOption { Value = "en", Label = loc["AiConnection_ResponseLanguage_English"] });
 
         ProviderSetting.PropertyChanged += OnProviderSettingChanged;
         ModelSetting.PropertyChanged += OnModelSettingChanged;
@@ -121,6 +123,38 @@ public partial class AiConnectionViewModel : ObservableObject
         };
 
         LoadFromSettings();
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+                ApplyLocalizedOptionLabels();
+        };
+    }
+
+    /// <summary>提供商显示名（本地化）。</summary>
+    private static string ProviderLabel(string id)
+    {
+        var loc = LocalizationService.Instance;
+        return id switch
+        {
+            "zhipu" => loc["AiConnection_Provider_Zhipu"],
+            "qwen" => loc["AiConnection_Provider_Qwen"],
+            "custom" => loc["AiConnection_Provider_Custom"],
+            _ => AiProviderCatalog.Find(id)?.Name ?? id,
+        };
+    }
+
+    /// <summary>语言切换后刷新下拉选项的本地化标签。</summary>
+    private void ApplyLocalizedOptionLabels()
+    {
+        var loc = LocalizationService.Instance;
+        foreach (var option in ProviderSetting.Options)
+            option.Label = ProviderLabel(option.Value);
+
+        ResponseLanguageSetting.SetOptionLabel("auto", loc["AiConnection_ResponseLanguage_Auto"]);
+        ResponseLanguageSetting.SetOptionLabel("zh", loc["AiConnection_ResponseLanguage_SimplifiedChinese"]);
+        ResponseLanguageSetting.SetOptionLabel("en", loc["AiConnection_ResponseLanguage_English"]);
+        ModelSetting.SetOptionLabel(CustomModelValue, loc["AiConnection_Model_Custom"]);
     }
 
     private void LoadFromSettings()
@@ -218,7 +252,7 @@ public partial class AiConnectionViewModel : ObservableObject
                 ModelSetting.Options.Add(new SelectOption { Value = m, Label = m });
         }
 
-        ModelSetting.Options.Add(new SelectOption { Value = CustomModelValue, Label = "自定义…" });
+        ModelSetting.Options.Add(new SelectOption { Value = CustomModelValue, Label = LocalizationService.Instance["AiConnection_Model_Custom"] });
     }
 
     partial void OnCustomModelChanged(string value)
@@ -300,7 +334,7 @@ public partial class AiConnectionViewModel : ObservableObject
             _settings.UserName = UserName;
 
             _settingsService.Save(_settings);
-            SaveStatus = "已保存";
+            SaveStatus = LocalizationService.Instance["AiConnection_Save_Saved"];
             _saveStatusTimer.Stop();
             _saveStatusTimer.Start();
             _logger.LogInformation("AI 连接设置已保存，Provider={Provider}", _settings.Provider);
@@ -308,7 +342,7 @@ public partial class AiConnectionViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "保存 AI 连接设置失败");
-            SaveStatus = "保存失败：" + ex.Message;
+            SaveStatus = LocalizationService.Instance.Format("AiConnection_Save_Failed", ex.Message);
         }
     }
 
@@ -317,15 +351,16 @@ public partial class AiConnectionViewModel : ObservableObject
     {
         if (IsTesting) return;
 
+        var loc = LocalizationService.Instance;
         var url = BuildBaseUrl();
         if (string.IsNullOrWhiteSpace(url))
         {
-            TestStatus = "未填写 Base URL";
+            TestStatus = loc["AiConnection_Test_NoBaseUrl"];
             return;
         }
 
         IsTesting = true;
-        TestStatus = "连接测试中…";
+        TestStatus = loc["AiConnection_Test_Testing"];
 
         try
         {
@@ -352,7 +387,7 @@ public partial class AiConnectionViewModel : ObservableObject
 
             if (response.IsSuccessStatusCode)
             {
-                TestStatus = "连接成功 ✓";
+                TestStatus = loc["AiConnection_Test_Success"];
                 _logger.LogInformation("连接测试成功：{Url} model={Model}", endpoint, Model);
             }
             else
@@ -360,22 +395,22 @@ public partial class AiConnectionViewModel : ObservableObject
                 var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
                 var snippet = errorBody.Replace('\n', ' ').Replace('\r', ' ').Trim();
                 if (snippet.Length > 160) snippet = snippet[..160] + "…";
-                TestStatus = $"连接失败：HTTP {(int)response.StatusCode} {snippet}";
+                TestStatus = loc.Format("AiConnection_Test_FailedHttp", (int)response.StatusCode, snippet);
                 _logger.LogWarning("连接测试失败：{Status} {Body}", (int)response.StatusCode, errorBody);
             }
         }
         catch (OperationCanceledException)
         {
-            TestStatus = "连接超时（15 秒）";
+            TestStatus = loc["AiConnection_Test_Timeout"];
         }
         catch (HttpRequestException ex)
         {
-            TestStatus = "连接失败：" + (ex.InnerException?.Message ?? ex.Message);
+            TestStatus = loc.Format("AiConnection_Test_Failed", ex.InnerException?.Message ?? ex.Message);
             _logger.LogError(ex, "连接测试异常：{Url}", BuildBaseUrl());
         }
         catch (Exception ex)
         {
-            TestStatus = "连接失败：" + ex.Message;
+            TestStatus = loc.Format("AiConnection_Test_Failed", ex.Message);
             _logger.LogError(ex, "连接测试异常");
         }
         finally
@@ -431,7 +466,7 @@ public partial class AiConnectionViewModel : ObservableObject
     [RelayCommand]
     private void ResetSystemPrompt()
     {
-        SystemPrompt = DefaultPrompts.SystemPrompt;
+        SystemPrompt = DefaultPrompts.PersonalityPrompt;
     }
 
     [RelayCommand]

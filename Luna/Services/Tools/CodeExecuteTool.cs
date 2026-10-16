@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -29,21 +30,21 @@ public class CodeExecuteTool : ITool
         ("subprocess", new(@"\bsubprocess\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("shutil", new(@"\bshutil\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("pathlib", new(@"\bpathlib\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
-        ("os 模块", new(@"\bimport\s+os\b|\bfrom\s+os\b|\bos\.", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
+        ("os module", new(@"\bimport\s+os\b|\bfrom\s+os\b|\bos\.", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("open()", new(@"\bopen\s*\(", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("__import__", new(@"\b__import__\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("eval/exec/compile", new(@"\b(eval|exec|compile)\s*\(", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
     ];
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"code":{"type":"string","description":"要执行的 Python 代码（仅支持 Python）。沙箱为尽力而为：禁止联网与文件系统访问（正则黑名单拦截 import socket/urllib/requests、open()、os./shutil/pathlib/subprocess 等）"}},"required":["code"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"code":{"type":"string","description":"$code$"}},"required":["code"]}""";
 
     private readonly ILogger<CodeExecuteTool> _logger;
 
     public string Name => "code_execute";
-    public string DisplayName => "代码执行";
-    public string Description => "在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$code$", Param("Tool_CodeExecute_Param_Code")));
     public ToolRiskLevel Risk => ToolRiskLevel.High;
 
     public CodeExecuteTool(ILogger<CodeExecuteTool> logger)
@@ -55,13 +56,12 @@ public class CodeExecuteTool : ITool
     {
         var code = GetString(args, "code");
         if (string.IsNullOrWhiteSpace(code))
-            return Task.FromResult(ToolResult.Error("缺少参数 code。"));
+            return Task.FromResult(ToolResult.Error(Text("Tool_Msg_MissingParam", "code")));
 
         var blocked = FindForbidden(code);
         if (blocked is not null)
             return Task.FromResult(ToolResult.Error(
-                $"代码包含被禁止的用法（{blocked}）。沙箱禁止联网与文件系统访问。\n" +
-                "注意：该沙箱为“尽力而为”，并非绝对安全。"));
+                Text("Tool_CodeExecute_Msg_Forbidden", blocked)));
 
         return Task.Run(() => Run(code, ct), ct);
     }
@@ -69,7 +69,7 @@ public class CodeExecuteTool : ITool
     private ToolResult Run(string code, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
-            return ToolResult.Error("执行被取消。");
+            return ToolResult.Error(Text("Tool_Msg_Cancelled"));
 
         var sandboxDir = Path.Combine(Path.GetTempPath(), $"luna_run_{Guid.NewGuid():N}");
         var scriptPath = Path.Combine(Path.GetTempPath(), $"luna_{Guid.NewGuid():N}.py");
@@ -103,7 +103,7 @@ public class CodeExecuteTool : ITool
             catch (Exception ex)
             {
                 _logger.LogError(ex, "启动 python.exe 失败");
-                return ToolResult.Error($"无法启动 python.exe，请确认已安装 Python 并加入 PATH：{ex.Message}");
+                return ToolResult.Error(Text("Tool_CodeExecute_Msg_StartFailed", ex.Message));
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -138,7 +138,7 @@ public class CodeExecuteTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "执行 Python 代码失败");
-            return ToolResult.Error($"执行失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_CodeExecute_Msg_Failed", ex.Message));
         }
         finally
         {
@@ -187,16 +187,16 @@ public class CodeExecuteTool : ITool
     private static string Format(int exitCode, bool timedOut, TimeSpan elapsed, string stdOut, string stdErr, bool truncated)
     {
         var sb = new StringBuilder();
-        sb.Append("退出码：").Append(timedOut ? "（超时终止）" : exitCode.ToString()).AppendLine();
-        sb.Append("耗时：").Append(elapsed.TotalSeconds.ToString("0.0")).AppendLine("s");
+        sb.Append(Text("Tool_CodeExecute_Msg_ExitCode")).Append(timedOut ? Text("Tool_CodeExecute_Msg_TimedOut") : exitCode.ToString()).AppendLine();
+        sb.Append(Text("Tool_CodeExecute_Msg_Elapsed")).Append(elapsed.TotalSeconds.ToString("0.0")).AppendLine("s");
         sb.AppendLine();
         sb.AppendLine("=== stdout ===");
-        sb.AppendLine(string.IsNullOrEmpty(stdOut) ? "（空）" : stdOut.TrimEnd());
+        sb.AppendLine(string.IsNullOrEmpty(stdOut) ? Text("Tool_CodeExecute_Msg_Empty") : stdOut.TrimEnd());
         if (truncated)
-            sb.AppendLine("…（输出已超过 100 KB，已截断）");
+            sb.AppendLine(Text("Tool_CodeExecute_Msg_Truncated"));
         sb.AppendLine();
         sb.Append("=== stderr ===").AppendLine();
-        sb.Append(string.IsNullOrEmpty(stdErr) ? "（空）" : stdErr.TrimEnd());
+        sb.Append(string.IsNullOrEmpty(stdErr) ? Text("Tool_CodeExecute_Msg_Empty") : stdErr.TrimEnd());
         return sb.ToString();
     }
 

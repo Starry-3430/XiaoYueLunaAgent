@@ -1,4 +1,5 @@
 using System.IO;
+using Luna.Localization;
 
 namespace Luna.Services;
 
@@ -67,27 +68,28 @@ public static class UserEnvironment
     /// <summary>生成注入系统提示词的用户目录说明，让 AI 知道用户名与常用路径。</summary>
     public static string BuildPromptSection()
     {
+        var loc = LocalizationService.Instance;
         var lines = new List<string>
         {
-            "## 当前用户环境",
-            $"- 用户名/主目录：{Home}",
+            loc["Common_UserEnv_Title"],
+            loc.Format("Common_UserEnv_Home", Home),
         };
 
-        Add(lines, "桌面", Desktop);
-        Add(lines, "文档", Documents);
-        Add(lines, "下载", Downloads);
-        Add(lines, "图片", Pictures);
-        Add(lines, "音乐", Music);
-        Add(lines, "视频", Videos);
+        Add(lines, loc["Common_UserEnv_Desktop"], Desktop);
+        Add(lines, loc["Common_UserEnv_Documents"], Documents);
+        Add(lines, loc["Common_UserEnv_Downloads"], Downloads);
+        Add(lines, loc["Common_UserEnv_Pictures"], Pictures);
+        Add(lines, loc["Common_UserEnv_Music"], Music);
+        Add(lines, loc["Common_UserEnv_Videos"], Videos);
 
-        lines.Add($"- 当前时间：{DateTime.Now:yyyy-MM-dd HH:mm}（本地时间，用于计算待办的截止/提醒时间）");
-        lines.Add("搜索或读取文件时，可直接使用上述绝对路径，或使用别名 desktop/documents/downloads/pictures/music/videos/home。");
+        lines.Add(loc.Format("Common_UserEnv_Time", DateTime.Now.ToString("yyyy-MM-dd HH:mm")));
+        lines.Add(loc["Common_UserEnv_Aliases"]);
         return string.Join('\n', lines);
 
         static void Add(List<string> list, string name, string path)
         {
             if (!string.IsNullOrWhiteSpace(path))
-                list.Add($"- {name}：{path}");
+                list.Add(LocalizationService.Instance.Format("Common_UserEnv_Line", name, path));
         }
     }
 }

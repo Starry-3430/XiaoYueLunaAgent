@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 
@@ -20,7 +21,7 @@ public class BubbleContextMenu
     {
         _target = target;
 
-        var copyButton = CreateMenuItem("复制", (_, _) => { CopyContent(); CloseMenu(); });
+        var copyButton = CreateMenuItem(LocalizationService.Instance["Common_Copy"], (_, _) => { CopyContent(); CloseMenu(); });
 
         var panel = new StackPanel();
         panel.Children.Add(copyButton);
