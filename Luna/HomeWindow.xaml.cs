@@ -148,8 +148,14 @@ public partial class HomeWindow : Window
         // 左侧历史记录右键菜单：重命名 / 删除
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
 
-        // 为输入框挂载自定义右键菜单
-        _ = new EditorContextMenu(InputBox);
+        // 为输入框挂载自定义右键菜单（主输入框、会话搜索框，以及设置/日记页内的所有文本框）
+        EditorContextMenu.Attach(InputBox);
+        EditorContextMenu.Attach(SearchBox);
+        Loaded += (_, _) =>
+        {
+            EditorContextMenu.AttachTree(SettingsContent);
+            EditorContextMenu.AttachTree(DiaryContent);
+        };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;

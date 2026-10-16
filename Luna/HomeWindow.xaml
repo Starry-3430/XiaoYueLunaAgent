@@ -62,12 +62,6 @@ Background="#E4E0CA"
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="#3D362F"/>
-                                <Setter TargetName="Bg" Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect Color="#000000" BlurRadius="14" ShadowDepth="3"
-                                                          Direction="270" Opacity="0.45"/>
-                                    </Setter.Value>
-                                </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="#332D27"/>
@@ -779,7 +773,7 @@ Background="#E4E0CA"
 
                 <!-- 搜索框：固定在“新对话”下方，不随历史列表滚动 -->
                 <Border Grid.Row="1" Margin="10,0,10,8" Height="36"
-                        CornerRadius="8" Background="#3D362F" Padding="10,0">
+                        CornerRadius="8" Background="#3D362F" Padding="16,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

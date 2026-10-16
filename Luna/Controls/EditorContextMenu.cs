@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Runtime.CompilerServices;
 using Luna.Localization;
 using Luna.Services;
 
@@ -12,12 +13,32 @@ namespace Luna.Controls;
 
 public class EditorContextMenu
 {
+    private static readonly ConditionalWeakTable<TextBox, EditorContextMenu> Attached = new();
+
     private readonly Popup _popup;
     private readonly TextBox _target;
     private readonly Button _cutButton;
     private readonly Button _copyButton;
     private readonly Button _pasteButton;
     private bool _isOpen;
+
+    /// <summary>为指定输入框挂载自定义右键菜单；重复调用同一输入框不会重复挂钩。</summary>
+    public static void Attach(TextBox target)
+    {
+        if (Attached.TryGetValue(target, out _)) return;
+        Attached.Add(target, new EditorContextMenu(target));
+    }
+
+    /// <summary>递归为子树内所有 <see cref="TextBox"/> 挂载自定义右键菜单。</summary>
+    public static void AttachTree(DependencyObject root)
+    {
+        if (root is TextBox textBox)
+            Attach(textBox);
+
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+            AttachTree(VisualTreeHelper.GetChild(root, i));
+    }
 
     public EditorContextMenu(TextBox target)
     {
