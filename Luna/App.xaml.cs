@@ -374,6 +374,9 @@ public partial class App : Application
 
         Log.Information("Luna 已启动");
 
+        // 4.1 全局启用输入框自定义右键菜单（TextBox / PasswordBox 在加载时自动挂载）
+        EditorContextMenu.EnableAutoAttach();
+
         // 5. 应用字体设置
         var settings = _host.Services.GetRequiredService<AiSettings>();
         ApplyCulture(settings.UiLanguage);
