@@ -72,6 +72,8 @@ public partial class GeneralSettingsView : UserControl
 
         vm.ProxyTypeSetting.IsOpen = false;
         vm.FontSetting.IsOpen = false;
+        vm.LanguageSetting.IsOpen = false;
+        vm.StartupSetting.IsOpen = false;
     }
 
     private static bool IsInsidePopup(DependencyObject? source)
@@ -110,6 +112,116 @@ public partial class GeneralSettingsView : UserControl
         {
             vm.ApplyProxyType();
         }
+        else if (setting == vm.LanguageSetting)
+        {
+            vm.ApplyLanguage();
+        }
+        else if (setting == vm.StartupSetting)
+        {
+            HandleStartupSelected(vm);
+        }
+    }
+
+    /// <summary>处理开机自启动的选择：管理员模式需要先确认并弹出 UAC 提权。</summary>
+    private void HandleStartupSelected(GeneralSettingsViewModel vm)
+    {
+        var mode = vm.StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
+
+        // 普通用户选择“是 + 管理员”：先确认，再尝试提权
+        if (mode == "admin" && !StartupService.IsRunningAsAdministrator())
+        {
+            if (!ConfirmElevation())
+            {
+                vm.RevertStartupSelection();
+                return;
+            }
+
+            var elevated = vm.ApplyStartupElevated();
+            if (!elevated.Success)
+            {
+                vm.RevertStartupSelection();
+                if (!elevated.Canceled) ShowStartupFailure(elevated.Message);
+            }
+            return;
+        }
+
+        var result = vm.ApplyStartup();
+        if (!result.Success)
+        {
+            vm.RevertStartupSelection();
+            ShowStartupFailure(result.Message);
+        }
+    }
+
+    /// <summary>询问用户是否继续以管理员权限设置自启动。</summary>
+    private bool ConfirmElevation()
+    {
+        var confirmed = false;
+
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = "需要授权",
+            DialogContent = new TextBlock
+            {
+                Text = "需要管理员权限才能设置带管理员权限的开机自启动，是否继续？",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "否",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = "是",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+        return confirmed;
+    }
+
+    /// <summary>开机自启动设置失败时的提示。</summary>
+    private void ShowStartupFailure(string message)
+    {
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = "设置失败",
+            DialogContent = new TextBlock
+            {
+                Text = "无法应用开机自启动设置：\n" + message,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "确定",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
     }
 
     /// <summary>字体修改后提示用户保存并重启。</summary>

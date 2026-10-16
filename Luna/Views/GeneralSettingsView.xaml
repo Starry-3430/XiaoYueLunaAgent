@@ -62,6 +62,53 @@
             </Grid>
         </Border>
 
+        <!-- 语言 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="语言" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="界面显示语言。本地化资源尚未提供，当前仅保存选择，暂不生效。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid>
+                        <Border x:Name="LanguageDropdown" Width="180" Height="{StaticResource SettingsControlHeight}"
+                                Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                Tag="{Binding LanguageSetting}">
+                            <Grid>
+                                <TextBlock Text="{Binding LanguageSetting.SelectedLabel}" Foreground="#5B4833"
+                                           FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                        <Popup IsOpen="{Binding LanguageSetting.IsOpen}"
+                               PlacementTarget="{Binding ElementName=LanguageDropdown}"
+                               Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                            <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                                <ItemsControl ItemsSource="{Binding LanguageSetting.Options}" Tag="{Binding LanguageSetting}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:SelectOption}">
+                                            <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                    PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <Button Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetLanguageCommand}" Margin="6,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 快捷键 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>
@@ -117,6 +164,53 @@
                     </Grid>
                     <Button Style="{StaticResource SettingsResetButton}"
                             Command="{Binding ResetHotkeyCommand}" Margin="6,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 开机自启动 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="开机自启动" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="登录系统后自动启动 Luna。“是 + 管理员”需要管理员权限，将以最高权限运行。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid>
+                        <Border x:Name="StartupDropdown" Width="180" Height="{StaticResource SettingsControlHeight}"
+                                Background="#D4D0BA" CornerRadius="6" Padding="10,0" Cursor="Hand"
+                                PreviewMouseLeftButtonDown="SelectToggle_Click"
+                                Tag="{Binding StartupSetting}">
+                            <Grid>
+                                <TextBlock Text="{Binding StartupSetting.SelectedLabel}" Foreground="#5B4833"
+                                           FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="▾" Foreground="#5B4833" FontSize="10" VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                        <Popup IsOpen="{Binding StartupSetting.IsOpen}"
+                               PlacementTarget="{Binding ElementName=StartupDropdown}"
+                               Placement="Bottom" StaysOpen="True" AllowsTransparency="True">
+                            <Border Background="#FFFFFF" CornerRadius="10" Padding="5" MaxWidth="350">
+                                <ItemsControl ItemsSource="{Binding StartupSetting.Options}" Tag="{Binding StartupSetting}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:SelectOption}">
+                                            <Border Padding="10,8" CornerRadius="6" Cursor="Hand" Background="Transparent"
+                                                    PreviewMouseLeftButtonDown="SelectOption_Click">
+                                                <TextBlock Text="{Binding Label}" Foreground="#5B4833" FontSize="13" TextWrapping="Wrap"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <Button Style="{StaticResource SettingsResetButton}"
+                            Command="{Binding ResetStartupCommand}" Margin="6,0,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -265,6 +359,26 @@
                             Padding="12,6" Margin="6,0,0,0" Click="BrowseOutputDirectory_Click"/>
                     <Button Style="{StaticResource SettingsResetButton}"
                             Command="{Binding ResetOutputDirectoryCommand}" Margin="6,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 软件更新 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="软件更新" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="检查 Luna 是否有新版本。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Content="检查更新" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>

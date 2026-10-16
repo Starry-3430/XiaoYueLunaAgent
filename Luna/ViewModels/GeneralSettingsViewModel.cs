@@ -16,11 +16,14 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly AiSettings _settings;
     private readonly SettingsService _settingsService;
     private readonly HotkeyService _hotkeyService;
+    private readonly StartupService _startupService;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
 
     public SelectSetting FontSetting { get; } = new();
     public SelectSetting ProxyTypeSetting { get; } = new();
+    public SelectSetting LanguageSetting { get; } = new();
+    public SelectSetting StartupSetting { get; } = new();
 
     public string SettingsPath => _settingsService.SettingsPath;
 
@@ -54,14 +57,18 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _saveStatus = string.Empty;
 
+    [ObservableProperty]
+    private string _updateStatus = string.Empty;
+
     private readonly DispatcherTimer _saveStatusTimer;
 
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
-        HotkeyService hotkeyService, ILogger<GeneralSettingsViewModel> logger)
+        HotkeyService hotkeyService, StartupService startupService, ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
+        _startupService = startupService;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -92,6 +99,13 @@ public partial class GeneralSettingsViewModel : ObservableObject
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks4", Label = "SOCKS4" });
         ProxyTypeSetting.Options.Add(new SelectOption { Value = "socks5", Label = "SOCKS5" });
 
+        LanguageSetting.Options.Add(new SelectOption { Value = "zh", Label = "简体中文" });
+        LanguageSetting.Options.Add(new SelectOption { Value = "en", Label = "English" });
+
+        StartupSetting.Options.Add(new SelectOption { Value = "none", Label = "否" });
+        StartupSetting.Options.Add(new SelectOption { Value = "user", Label = "是" });
+        StartupSetting.Options.Add(new SelectOption { Value = "admin", Label = "是 + 管理员" });
+
         LoadFromSettings();
     }
 
@@ -112,6 +126,12 @@ public partial class GeneralSettingsViewModel : ObservableObject
             ProxyTypeSetting.SelectedOption =
                 ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == _settings.ProxyType)
                 ?? ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultProxyType);
+            LanguageSetting.SelectedOption =
+                LanguageSetting.Options.FirstOrDefault(o => o.Value == _settings.UiLanguage)
+                ?? LanguageSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultUiLanguage);
+            StartupSetting.SelectedOption =
+                StartupSetting.Options.FirstOrDefault(o => o.Value == _settings.StartupMode)
+                ?? StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode);
         }
         finally
         {
@@ -148,6 +168,42 @@ public partial class GeneralSettingsViewModel : ObservableObject
         Persist();
     }
 
+    /// <summary>由外部（下拉选择）调用，更新界面语言并保存。当前尚未接入本地化资源。</summary>
+    public void ApplyLanguage()
+    {
+        if (_loading) return;
+        Persist();
+    }
+
+    /// <summary>由外部（下拉选择）调用，应用开机自启动模式。返回结果供界面提示。</summary>
+    public StartupApplyResult ApplyStartup()
+    {
+        if (_loading) return StartupApplyResult.Ok();
+
+        var mode = StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
+        var result = _startupService.Apply(mode);
+        if (result.Success) Persist();
+        return result;
+    }
+
+    /// <summary>以管理员身份（弹出 UAC）应用“管理员自启动”，成功后保存。返回结果供界面提示。</summary>
+    public StartupApplyResult ApplyStartupElevated()
+    {
+        if (_loading) return StartupApplyResult.Ok();
+
+        var result = _startupService.ApplyElevatedAdmin();
+        if (result.Success) Persist();
+        return result;
+    }
+
+    /// <summary>把开机自启动下拉恢复到上一次成功保存的模式。</summary>
+    public void RevertStartupSelection()
+    {
+        StartupSetting.SelectedOption =
+            StartupSetting.Options.FirstOrDefault(o => o.Value == _settings.StartupMode)
+            ?? StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode);
+    }
+
     /// <summary>保存通用设置。</summary>
     [RelayCommand]
     private void Save()
@@ -165,6 +221,8 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _settings.FontFamily = FontSetting.SelectedOption?.Value ?? string.Empty;
         _settings.Hotkey = HotkeyText;
         _settings.OutputDirectory = OutputDirectory;
+        _settings.UiLanguage = LanguageSetting.SelectedOption?.Value ?? AiSettings.DefaultUiLanguage;
+        _settings.StartupMode = StartupSetting.SelectedOption?.Value ?? AiSettings.DefaultStartupMode;
         _settings.ProxyType = ProxyTypeSetting.SelectedOption?.Value ?? AiSettings.DefaultProxyType;
         _settings.ProxyServer = ProxyServer;
         _settings.ProxyPort = ProxyPort;
@@ -189,6 +247,24 @@ public partial class GeneralSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ResetLanguage()
+    {
+        LanguageSetting.SelectedOption =
+            LanguageSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultUiLanguage)
+            ?? LanguageSetting.Options.FirstOrDefault();
+        ApplyLanguage();
+    }
+
+    [RelayCommand]
+    private void ResetStartup()
+    {
+        StartupSetting.SelectedOption =
+            StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode)
+            ?? StartupSetting.Options.FirstOrDefault();
+        ApplyStartup();
+    }
+
+    [RelayCommand]
     private void ResetOutputDirectory() => OutputDirectory = AiSettings.DefaultOutputDirectory;
 
     [RelayCommand]
@@ -199,6 +275,15 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void ResetProxyUsername() => ProxyUsername = string.Empty;
+
+    /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
+    [RelayCommand]
+    private void CheckUpdate()
+    {
+        var version = typeof(GeneralSettingsViewModel).Assembly.GetName().Version;
+        var versionText = version is null ? "未知" : $"{version.Major}.{version.Minor}.{version.Build}";
+        UpdateStatus = $"当前版本 {versionText}，暂无可用更新。";
+    }
 
     /// <summary>测试当前代理是否可用。</summary>
     [RelayCommand]

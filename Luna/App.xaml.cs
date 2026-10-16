@@ -30,7 +30,8 @@ namespace Luna;
 /// </summary>
 public partial class App : Application
 {
-    private readonly IHost _host;                       // 依赖注入与后台服务宿主
+    private readonly IHost _host = null!;              // 依赖注入与后台服务宿主
+    private readonly bool _isStartupHelper;             // 是否为“管理员自启动”提权辅助进程
     private Mutex? _singleInstanceMutex;                // 单实例互斥体
     private EventWaitHandle? _showWindowEvent;          // 显示窗口事件
     private Win32Icon? _trayIconImage;                  // 托盘图标图像
@@ -47,7 +48,12 @@ public partial class App : Application
     {
         // 强制使用软件渲染，避免硬件加速导致的兼容性问题
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
-        
+
+        // 管理员提权辅助进程：仅执行“管理员自启动”设置，不初始化日志/托盘/宿主与界面。
+        _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
+            string.Equals(arg, StartupService.AdminHelperArgument, StringComparison.OrdinalIgnoreCase));
+        if (_isStartupHelper) return;
+
         // ===== 日志配置 =====
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -144,6 +150,7 @@ public partial class App : Application
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
                 }));
                 services.AddSingleton<HotkeyService>();
+                services.AddSingleton<StartupService>();
                 services.AddSingleton<SystemPromptBuilder>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
@@ -311,6 +318,17 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 提权辅助进程：执行“管理员自启动”设置后立即退出，不进入正常启动流程。
+        if (_isStartupHelper)
+        {
+            Shutdown(StartupService.RunAdminHelper());
+            return;
+        }
+
+        // 开机自启动：带 --startup 参数时静默启动，不显示主窗口
+        var launchedAtStartup = e.Args.Any(arg =>
+            string.Equals(arg, StartupService.StartupArgument, StringComparison.OrdinalIgnoreCase));
+
         // 1. 单实例检查
         _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
 
@@ -350,7 +368,7 @@ public partial class App : Application
         var settings = _host.Services.GetRequiredService<AiSettings>();
         ThemeService.ApplyFont(settings.FontFamily);
 
-        // 6. 显示主窗口（MainWindow：紧凑悬浮输入窗）
+        // 6. 初始化主窗口（MainWindow：紧凑悬浮输入窗）；开机自启动时不显示
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         var hotkey = _host.Services.GetRequiredService<HotkeyService>();
         hotkey.Attach(mainWindow);
@@ -363,8 +381,11 @@ public partial class App : Application
             mainWindow.Activate();
         });
 
-        mainWindow.Show();
-        mainWindow.ShowInternal();
+        if (!launchedAtStartup)
+        {
+            mainWindow.Show();
+            mainWindow.ShowInternal();
+        }
 
         // 7. 启动提醒服务（轮询待办提醒）
         _host.Services.GetRequiredService<ReminderService>().Start();
@@ -436,6 +457,13 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // 提权辅助进程未初始化日志、宿主与单实例资源，直接退出。
+        if (_isStartupHelper)
+        {
+            base.OnExit(e);
+            return;
+        }
+
         Log.Information("Luna 正在退出");
 
         // 释放单实例相关资源

@@ -24,6 +24,8 @@ public class AiSettings
     public const string DefaultFontFamily = "";
     public const string DefaultHotkey = "Ctrl + Alt + Y";
     public const string DefaultProxyType = "none"; // none / http / socks4 / socks5
+    public const string DefaultUiLanguage = "zh"; // zh / en
+    public const string DefaultStartupMode = "none"; // none / user / admin
 
     /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>
     public string Provider { get; set; } = DefaultProvider;
@@ -50,6 +52,13 @@ public class AiSettings
     // ===== 通用 =====
     public string FontFamily { get; set; } = DefaultFontFamily;
     public string Hotkey { get; set; } = DefaultHotkey;
+
+    /// <summary>界面语言（zh / en）。当前仅保存选择，本地化资源尚未提供。</summary>
+    public string UiLanguage { get; set; } = DefaultUiLanguage;
+
+    /// <summary>开机自启动模式（none / user / admin）。</summary>
+    public string StartupMode { get; set; } = DefaultStartupMode;
+
     public string ProxyType { get; set; } = DefaultProxyType;
     public string ProxyServer { get; set; } = string.Empty;
     public int ProxyPort { get; set; }
