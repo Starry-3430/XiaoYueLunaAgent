@@ -5,7 +5,7 @@ public class DiaryDayView
 {
     public string LogicalDate { get; set; } = string.Empty;
 
-    /// <summary>Pending / Done / Failed / NoData</summary>
+    /// <summary>Pending / Done / Failed / NoData / NotGenerated</summary>
     public string Status { get; set; } = "NoData";
 
     public string? Content { get; set; }
@@ -16,4 +16,7 @@ public class DiaryDayView
     public bool IsPending => Status == "Pending";
     public bool IsNoData => Status == "NoData";
     public bool IsFailed => Status == "Failed";
+
+    /// <summary>有活动但长时间（超过自动补写窗口）未生成的日记。</summary>
+    public bool IsNotGenerated => Status == "NotGenerated";
 }

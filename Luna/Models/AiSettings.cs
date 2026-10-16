@@ -26,6 +26,7 @@ public class AiSettings
     public const string DefaultProxyType = "none"; // none / http / socks4 / socks5
     public const string DefaultUiLanguage = "zh"; // zh / en
     public const string DefaultStartupMode = "none"; // none / user / admin
+    public const bool DefaultDiaryEnabled = true;
 
     /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>
     public string Provider { get; set; } = DefaultProvider;
@@ -84,6 +85,9 @@ public class AiSettings
 
     /// <summary>允许写入文件工具（write_file）落盘的输出目录；为空表示不授权任何写入，工具将拒绝执行。</summary>
     public string OutputDirectory { get; set; } = DefaultOutputDirectory;
+
+    /// <summary>是否启用日记本：关闭后不再自动整理日记，但轮次关键词与摘要照常生成。</summary>
+    public bool DiaryEnabled { get; set; } = DefaultDiaryEnabled;
 }
 
 public class ChatCompletionRequest

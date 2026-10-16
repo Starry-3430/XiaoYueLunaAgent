@@ -7,6 +7,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using CommunityToolkit.Mvvm.Input;
+using Luna.Controls;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -62,8 +64,8 @@ public partial class DiaryView : UserControl
     public DiaryView()
     {
         InitializeComponent();
-        DataContextChanged += (_, _) => Hook();
-        Loaded += (_, _) => { Hook(); Layout(); };
+        DataContextChanged += (_, _) => { Hook(); SyncDiaryToggle(); };
+        Loaded += (_, _) => { Hook(); SyncDiaryToggle(); Layout(); };
 
         // 页面被切到可见时才播放入场动画（预加载时内容在后台已就绪，隐藏期间尺寸为 0 不会构建卡片）。
         IsVisibleChanged += (_, _) => { if (IsVisible) Layout(); };
@@ -314,7 +316,9 @@ public partial class DiaryView : UserControl
     /// <summary>状态插图：固定大小，横向居中，贴在下半区的顶部之上（即卡片中间偏上位置）。</summary>
     private static FrameworkElement BuildIllustration(DiaryDayView day)
     {
-        var source = day.IsFailed ? FailedIllustration : day.IsPending ? PendingIllustration : NoDataIllustration;
+        var source = day.IsFailed ? FailedIllustration
+            : day.IsPending || day.IsNotGenerated ? PendingIllustration
+            : NoDataIllustration;
 
         return new Image
         {
@@ -377,6 +381,46 @@ public partial class DiaryView : UserControl
             return panel;
         }
 
+        // 长时间未整理：显示“还没写”的提示与“补写”按钮
+        if (day.IsNotGenerated)
+        {
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, PlaceholderTextTop, 0, 0),
+            };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "这一天的日记还没写哦！",
+                FontSize = 13,
+                LineHeight = 22,
+                Foreground = SubtleBrush,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                MaxWidth = ContentWidth,
+                Margin = new Thickness(0, 0, 0, 12),
+            });
+
+            var fill = new Button
+            {
+                Content = "补写",
+                Tag = day,
+                Background = BeigeBrush,
+                Foreground = TitleBrush,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(18, 6, 18, 6),
+                FontSize = 13,
+                Cursor = Cursors.Hand,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Template = BuildRoundedButtonTemplate(),
+            };
+            fill.Click += Retry_Click;
+            panel.Children.Add(fill);
+            return panel;
+        }
+
         var nickname = Vm?.Nickname ?? "Luna";
         var message = day.IsPending
             ? $"{nickname}还在记录\n稍后再来看看吧！"
@@ -425,6 +469,72 @@ public partial class DiaryView : UserControl
     {
         if (sender is FrameworkElement { Tag: DiaryDayView day } && Vm is not null)
             await Vm.RetryAsync(day);
+    }
+
+    // ===== 日记本开关 =====
+
+    private void SyncDiaryToggle()
+    {
+        if (Vm is not null)
+            DiaryToggle.IsChecked = Vm.DiaryEnabled;
+    }
+
+    private void DiaryToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox cb || Vm is null) return;
+
+        var wantEnabled = cb.IsChecked == true;
+
+        // 关闭前二次确认；取消则恢复为开启
+        if (!wantEnabled && !ConfirmDisableDiary())
+        {
+            cb.IsChecked = true;
+            return;
+        }
+
+        Vm.SetDiaryEnabled(wantEnabled);
+    }
+
+    private bool ConfirmDisableDiary()
+    {
+        var confirmed = false;
+        var nickname = Vm?.Nickname ?? "Luna";
+
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = "提示",
+            DialogContent = new TextBlock
+            {
+                Text = $"关闭日记本，{nickname}将不再整理日记，重新启用日记本后，将会补写最近7天的日记",
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = "关闭",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+            new()
+            {
+                Text = "取消",
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
+        return confirmed;
     }
 
     // ===== 翻页按钮 =====
