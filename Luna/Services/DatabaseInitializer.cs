@@ -319,5 +319,16 @@ public class DatabaseInitializer
             INSERT INTO DiaryFts(LogicalDate, Content)
             VALUES (new.LogicalDate, new.Content);
         END;
+
+        CREATE TABLE IF NOT EXISTS Facts (
+            Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            Key          TEXT NOT NULL UNIQUE,
+            Value        TEXT NOT NULL,
+            Confidence   REAL NOT NULL DEFAULT 1.0,
+            SourceTurnId TEXT,
+            CreatedAtUtc TEXT NOT NULL,
+            UpdatedAtUtc TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_Facts_Key ON Facts(Key);
         """;
 }
