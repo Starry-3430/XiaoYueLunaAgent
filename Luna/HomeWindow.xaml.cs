@@ -240,8 +240,7 @@ public partial class HomeWindow : Window
     }
 
     // 保持视图滚动到底部（流式内容变化时）
-    private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
+    private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)    {
         if (e.PropertyName is not (nameof(ChatMessage.Content) or nameof(ChatMessage.Role)))
             return;
 
@@ -1095,6 +1094,72 @@ public partial class HomeWindow : Window
         };
 
         dialog.ShowDialog();
+    }
+
+    // ===== 历史会话搜索 =====
+
+    private int _jumpSeq;
+
+    /// <summary>点击搜索结果：打开对应会话并滚动到命中的那条消息。</summary>
+    private async void SearchResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SearchResultsList.SelectedItem is not SearchResult result) return;
+        SearchResultsList.SelectedItem = null;
+
+        await _viewModel.OpenSessionAtMessageAsync(result);
+
+        var session = _viewModel.ChatSessions.FirstOrDefault(s => s.Id == result.SessionId);
+        if (session is not null)
+        {
+            ChatTitle.Text = session.Title;
+            BindSelectedSession(session);
+        }
+
+        SwitchToChat();
+        await ScrollToMessageAsync(result.MessageId, ++_jumpSeq);
+    }
+
+    /// <summary>把命中的消息滚动到可视区域；随延迟渲染造成的布局变化重试，直到位置稳定。</summary>
+    private async Task ScrollToMessageAsync(long messageId, int seq)
+    {
+        var lastContentY = double.NaN;
+        var stableCount = 0;
+
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+            if (seq != _jumpSeq) return;
+
+            var container = FindMessageContainer(messageId);
+            if (container is not null)
+            {
+                var contentY = MessageScrollViewer.VerticalOffset
+                    + container.TranslatePoint(new Point(0, 0), MessageScrollViewer).Y;
+                var target = Math.Clamp(contentY - 80, 0, MessageScrollViewer.ScrollableHeight);
+                MessageScrollViewer.ScrollToVerticalOffset(target);
+
+                if (Math.Abs(contentY - lastContentY) < 1)
+                    stableCount++;
+                else
+                    stableCount = 0;
+                lastContentY = contentY;
+
+                if (stableCount >= 2) return;
+            }
+
+            await Task.Delay(50);
+        }
+    }
+
+    private FrameworkElement? FindMessageContainer(long messageId)
+    {
+        var messages = _viewModel.Messages;
+        for (var i = 0; i < messages.Count; i++)
+        {
+            if (messages[i].DbId != messageId) continue;
+            return MessageList.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+        }
+        return null;
     }
 
     // ===== 左侧历史记录：重命名 / 删除 =====
