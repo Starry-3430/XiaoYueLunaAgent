@@ -303,6 +303,17 @@ public partial class HomeWindow : Window
             SmoothScroll.Vertical(MessageScrollViewer, e.Delta);
     }
 
+    /// <summary>左侧侧栏列表（历史会话 / 搜索结果）的滚轮平滑滚动。</summary>
+    private void SideList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not DependencyObject element) return;
+        var scrollViewer = FindChildScrollViewer(element);
+        if (scrollViewer is null) return;
+
+        e.Handled = true;
+        SmoothScroll.Vertical(scrollViewer, e.Delta);
+    }
+
     /// <summary>
     /// 显示设置/日记/工具内容区，隐藏聊天区与输入区。
     /// </summary>

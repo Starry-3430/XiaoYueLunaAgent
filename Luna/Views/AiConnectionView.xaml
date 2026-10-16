@@ -496,12 +496,21 @@
         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
             <Button Content="{loc:Loc AiConnection_TestConnection_Button}" Style="{StaticResource SecondaryActionButton}"
                     Command="{Binding TestConnectionCommand}" Margin="0,0,8,0"/>
-            <Button Content="{loc:Loc AiConnection_Save_Button}" Style="{StaticResource PrimaryActionButton}"
-                    Command="{Binding SaveCommand}"/>
             <TextBlock Text="{Binding TestStatus}" Foreground="#5B4833" FontSize="13"
                        VerticalAlignment="Center" Margin="12,0,0,0"/>
             <TextBlock Text="{Binding SaveStatus}" Foreground="#78A29F" FontSize="13"
-                       VerticalAlignment="Center" Margin="8,0,0,0"/>
+                       VerticalAlignment="Center" Margin="8,0,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SaveStatus}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </StackPanel>
     </StackPanel>
 </UserControl>

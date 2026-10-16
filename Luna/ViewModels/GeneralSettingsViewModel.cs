@@ -229,16 +229,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             ?? StartupSetting.Options.FirstOrDefault(o => o.Value == AiSettings.DefaultStartupMode);
     }
 
-    /// <summary>保存通用设置。</summary>
-    [RelayCommand]
-    private void Save()
-    {
-        Persist();
-        SaveStatus = LocalizationService.Instance["Settings_Save_Saved"];
-        _saveStatusTimer.Stop();
-        _saveStatusTimer.Start();
-    }
-
+    /// <summary>保存通用设置（每次修改后自动调用）。</summary>
     private void Persist()
     {
         if (_loading) return;
@@ -255,6 +246,10 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _settings.ProxyPassword = ProxyPassword;
 
         _settingsService.Save(_settings);
+
+        SaveStatus = LocalizationService.Instance["Settings_Save_Saved"];
+        _saveStatusTimer.Stop();
+        _saveStatusTimer.Start();
     }
 
     // ===== 恢复默认值 =====

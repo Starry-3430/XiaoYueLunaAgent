@@ -828,7 +828,8 @@ Background="#E4E0CA"
                              BorderThickness="0"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseWheel="SideList_PreviewMouseWheel">
                         <ListBox.Style>
                             <Style TargetType="ListBox">
                                 <Style.Triggers>
@@ -848,6 +849,7 @@ Background="#E4E0CA"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseWheel="SideList_PreviewMouseWheel"
                              SelectionChanged="SearchResultsList_SelectionChanged">
                         <ListBox.Style>
                             <Style TargetType="ListBox">
