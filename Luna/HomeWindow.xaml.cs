@@ -1113,6 +1113,62 @@ public partial class HomeWindow : Window
         dialog.ShowDialog();
     }
 
+    // ===== 重新启动 =====
+
+    /// <summary>弹出确认框，确认后重新启动程序。</summary>
+    private void RestartButton_Click(object sender, RoutedEventArgs e)
+    {
+        var loc = LocalizationService.Instance;
+        var confirmed = false;
+
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = loc["Settings_Restart_ConfirmTitle"],
+            DialogContent = new TextBlock
+            {
+                Text = loc["Settings_Restart_ConfirmBody"],
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_Cancel"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+
+        if (confirmed && Application.Current is App app)
+            app.Restart();
+    }
+
+    // ===== 关于 =====
+
+    /// <summary>打开项目 GitHub 页面。</summary>
+    private void AboutGitHub_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
+    }
+
     // ===== 历史会话搜索 =====
 
     private int _jumpSeq;

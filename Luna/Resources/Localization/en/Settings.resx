@@ -227,4 +227,26 @@ This is the final reminder 3/3</value>
   <data name="Settings_StartupMsg_Canceled" xml:space="preserve">
     <value>Authorization canceled.</value>
   </data>
+
+  <!-- Restart -->
+  <data name="Settings_RestartButton" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="Settings_Restart_ConfirmTitle" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Settings_Restart_ConfirmBody" xml:space="preserve">
+    <value>Are you sure you want to restart?</value>
+  </data>
+
+  <!-- About -->
+  <data name="Settings_Section_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings_About_Version" xml:space="preserve">
+    <value>Luna V0.1.0</value>
+  </data>
+  <data name="Settings_About_GitHub" xml:space="preserve">
+    <value>Visit GitHub</value>
+  </data>
 </root>
