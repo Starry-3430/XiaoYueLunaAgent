@@ -25,6 +25,7 @@ public partial class AiConnectionViewModel : ObservableObject
     private readonly HttpClient _httpClient;
     private readonly ILogger<AiConnectionViewModel> _logger;
     private readonly DispatcherTimer _saveStatusTimer;
+    private readonly DispatcherTimer _autoSaveTimer;
     private bool _syncingTemperature;
 
     public SelectSetting ProviderSetting { get; } = new();
@@ -114,12 +115,21 @@ public partial class AiConnectionViewModel : ObservableObject
 
         ProviderSetting.PropertyChanged += OnProviderSettingChanged;
         ModelSetting.PropertyChanged += OnModelSettingChanged;
+        ResponseLanguageSetting.PropertyChanged += OnResponseLanguageSettingChanged;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
         _saveStatusTimer.Tick += (_, _) =>
         {
             _saveStatusTimer.Stop();
             SaveStatus = string.Empty;
+        };
+
+        // 自动保存：合并连续修改，停止输入 400ms 后落盘一次。
+        _autoSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _autoSaveTimer.Tick += (_, _) =>
+        {
+            _autoSaveTimer.Stop();
+            Persist();
         };
 
         LoadFromSettings();
@@ -239,6 +249,12 @@ public partial class AiConnectionViewModel : ObservableObject
         }
     }
 
+    private void OnResponseLanguageSettingChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SelectSetting.SelectedOption)) return;
+        ScheduleSave();
+    }
+
     private void RebuildModelOptions()
     {
         ModelSetting.Options.Clear();
@@ -262,17 +278,50 @@ public partial class AiConnectionViewModel : ObservableObject
             Model = value;
     }
 
+    // ===== 自动保存：任一可持久化字段变化后延迟落盘 =====
+
+    partial void OnBaseUrlChanged(string value) => ScheduleSave();
+    partial void OnApiKeyChanged(string value) => ScheduleSave();
+    partial void OnMaxTokensChanged(int value) => ScheduleSave();
+    partial void OnDeepThinkingChanged(bool value) => ScheduleSave();
+    partial void OnSystemPromptChanged(string value) => ScheduleSave();
+    partial void OnNicknameChanged(string value) => ScheduleSave();
+    partial void OnUserNameChanged(string value) => ScheduleSave();
+    partial void OnModelChanged(string value) => ScheduleSave();
+
+    private void ScheduleSave()
+    {
+        if (_loading) return;
+        _autoSaveTimer.Stop();
+        _autoSaveTimer.Start();
+    }
+
     partial void OnTemperatureChanged(double value)
     {
         if (_syncingTemperature) return;
         _syncingTemperature = true;
         TemperatureText = value.ToString("0.0", CultureInfo.InvariantCulture);
         _syncingTemperature = false;
+        ScheduleSave();
     }
 
-    partial void OnTopPChanged(double value) => TopPText = FormatValue(value);
-    partial void OnFrequencyPenaltyChanged(double value) => FrequencyPenaltyText = FormatValue(value);
-    partial void OnPresencePenaltyChanged(double value) => PresencePenaltyText = FormatValue(value);
+    partial void OnTopPChanged(double value)
+    {
+        TopPText = FormatValue(value);
+        ScheduleSave();
+    }
+
+    partial void OnFrequencyPenaltyChanged(double value)
+    {
+        FrequencyPenaltyText = FormatValue(value);
+        ScheduleSave();
+    }
+
+    partial void OnPresencePenaltyChanged(double value)
+    {
+        PresencePenaltyText = FormatValue(value);
+        ScheduleSave();
+    }
 
     private static string FormatValue(double value) => value.ToString("0.0", CultureInfo.InvariantCulture);
 
@@ -313,9 +362,11 @@ public partial class AiConnectionViewModel : ObservableObject
         PresencePenaltyText = FormatValue(PresencePenalty);
     }
 
-    [RelayCommand]
-    private void Save()
+    /// <summary>把当前编辑内容写入设置并保存（每次修改后自动调用）。</summary>
+    private void Persist()
     {
+        if (_loading) return;
+
         try
         {
             _settings.Provider = ProviderSetting.SelectedOption?.Value ?? "custom";
@@ -337,7 +388,7 @@ public partial class AiConnectionViewModel : ObservableObject
             SaveStatus = LocalizationService.Instance["AiConnection_Save_Saved"];
             _saveStatusTimer.Stop();
             _saveStatusTimer.Start();
-            _logger.LogInformation("AI 连接设置已保存，Provider={Provider}", _settings.Provider);
+            _logger.LogInformation("AI 连接设置已自动保存，Provider={Provider}", _settings.Provider);
         }
         catch (Exception ex)
         {

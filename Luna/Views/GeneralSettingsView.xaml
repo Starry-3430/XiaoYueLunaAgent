@@ -105,7 +105,7 @@
                         </Popup>
                     </Grid>
                     <Button Style="{StaticResource SettingsResetButton}"
-                            Command="{Binding ResetLanguageCommand}" Margin="6,0,0,0"/>
+                            Click="ResetLanguage_Click" Margin="6,0,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -384,13 +384,20 @@
             </Grid>
         </Border>
 
-        <!-- 保存 -->
-        <StackPanel Orientation="Horizontal" Margin="0,10,0,2">
-            <Button Content="{loc:Loc Settings_Save_Button}" Style="{StaticResource PrimaryActionButton}"
-                    Command="{Binding SaveCommand}"/>
-            <TextBlock Text="{Binding SaveStatus}" Foreground="#78A29F" FontSize="13"
-                       VerticalAlignment="Center" Margin="10,0,0,0"/>
-        </StackPanel>
+        <!-- 自动保存状态 -->
+        <TextBlock Text="{Binding SaveStatus}" Foreground="#78A29F" FontSize="13"
+                   HorizontalAlignment="Left" Margin="0,10,0,2">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SaveStatus}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
 
         <!-- 编辑配置文件 -->
         <Button x:Name="EditSettingsJsonButton"

@@ -94,8 +94,7 @@ public partial class GeneralSettingsView : UserControl
         setting.ToggleOpenCommand.Execute(null);
     }
 
-    private void SelectOption_Click(object sender, MouseButtonEventArgs e)
-    {
+    private void SelectOption_Click(object sender, MouseButtonEventArgs e)    {
         if (sender is not FrameworkElement fe || fe.DataContext is not SelectOption option) return;
         e.Handled = true;
 
@@ -116,11 +115,20 @@ public partial class GeneralSettingsView : UserControl
         else if (setting == vm.LanguageSetting)
         {
             vm.ApplyLanguage();
+            ShowLanguageReminder();
         }
         else if (setting == vm.StartupSetting)
         {
             HandleStartupSelected(vm);
         }
+    }
+
+    /// <summary>重置语言为默认值，并弹出与选择语言一致的提示。</summary>
+    private void ResetLanguage_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GeneralSettingsViewModel vm) return;
+        vm.ResetLanguageCommand.Execute(null);
+        ShowLanguageReminder();
     }
 
     /// <summary>处理开机自启动的选择：管理员模式需要先确认并弹出 UAC 提权。</summary>
@@ -227,9 +235,38 @@ public partial class GeneralSettingsView : UserControl
         dialog.ShowDialog();
     }
 
-    /// <summary>字体修改后提示用户保存并重启。</summary>
-    private void ShowFontReminder()
+    /// <summary>切换语言后提示用户可能需重启才能完全生效（弹窗使用切换后的语言）。</summary>
+    private void ShowLanguageReminder()
     {
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = Window.GetWindow(this),
+            DialogTitle = loc["Dialog_LanguageReminder_Title"],
+            DialogContent = new TextBlock
+            {
+                Text = loc["Dialog_LanguageReminder_Body"],
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+
+        dialog.ShowDialog();
+    }
+
+    /// <summary>字体修改后提示用户保存并重启。</summary>
+    private void ShowFontReminder()    {
         var loc = LocalizationService.Instance;
         var dialog = new LunaDialog
         {

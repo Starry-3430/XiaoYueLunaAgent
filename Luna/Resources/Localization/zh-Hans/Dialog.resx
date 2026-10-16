@@ -55,6 +55,14 @@
     <value>修改字体后，部分界面需要保存设置配置并重启后才能生效</value>
   </data>
 
+  <!-- 语言提示 -->
+  <data name="Dialog_LanguageReminder_Title" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Dialog_LanguageReminder_Body" xml:space="preserve">
+    <value>修改语言后，部分场景可能需要重新启动才能生效。</value>
+  </data>
+
   <!-- Copilot 快捷键提示 -->
   <data name="Dialog_CopilotWarning_Title" xml:space="preserve">
     <value>注意</value>

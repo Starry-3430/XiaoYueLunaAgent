@@ -62,12 +62,6 @@ Background="#E4E0CA"
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="#3D362F"/>
-                                <Setter TargetName="Bg" Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect Color="#000000" BlurRadius="14" ShadowDepth="3"
-                                                          Direction="270" Opacity="0.45"/>
-                                    </Setter.Value>
-                                </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="#332D27"/>
@@ -779,7 +773,7 @@ Background="#E4E0CA"
 
                 <!-- 搜索框：固定在“新对话”下方，不随历史列表滚动 -->
                 <Border Grid.Row="1" Margin="10,0,10,8" Height="36"
-                        CornerRadius="8" Background="#3D362F" Padding="10,0">
+                        CornerRadius="8" Background="#3D362F" Padding="16,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -834,7 +828,8 @@ Background="#E4E0CA"
                              BorderThickness="0"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseWheel="SideList_PreviewMouseWheel">
                         <ListBox.Style>
                             <Style TargetType="ListBox">
                                 <Style.Triggers>
@@ -854,6 +849,7 @@ Background="#E4E0CA"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseWheel="SideList_PreviewMouseWheel"
                              SelectionChanged="SearchResultsList_SelectionChanged">
                         <ListBox.Style>
                             <Style TargetType="ListBox">
@@ -1156,6 +1152,50 @@ Background="#E4E0CA"
                                 </Style>
                             </Button.Style>
                         </Button>
+
+                        <!-- 重新启动 -->
+                        <Button x:Name="RestartButton"
+                                Content="{loc:Loc Settings_RestartButton}"
+                                Click="RestartButton_Click"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,8">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Foreground" Value="#5B4833"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Height" Value="34"/>
+                                    <Setter Property="Padding" Value="20,0"/>
+                                    <Setter Property="Background" Value="#D4D0BA"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bg" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                                        Background="{TemplateBinding Background}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#DDD9C5"/></Trigger>
+                                                    <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- 关于 -->
+                        <TextBlock Text="{loc:Loc Settings_Section_About}" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,12,0,12"/>
+                        <TextBlock Text="{loc:Loc Settings_About_Version}" Foreground="#5B4833" FontSize="13" Margin="0,0,0,6"/>
+                        <TextBlock FontSize="13" Margin="0,0,0,8">
+                            <Hyperlink RequestNavigate="AboutGitHub_RequestNavigate"
+                                       NavigateUri="https://github.com/Starry-3430/XiaoYueLunaAgent"
+                                       Foreground="#78A29F"
+                                       TextDecorations="Underline">
+                                <Run Text="{loc:Loc Settings_About_GitHub}"/>
+                            </Hyperlink>
+                        </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

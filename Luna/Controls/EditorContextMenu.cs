@@ -5,46 +5,84 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Runtime.CompilerServices;
 using Luna.Localization;
 using Luna.Services;
 
 namespace Luna.Controls;
 
+/// <summary>
+/// 为 <see cref="TextBox"/> 与 <see cref="PasswordBox"/> 提供统一的自定义右键菜单。
+/// 文本类控件提供剪切 / 复制 / 粘贴；密码类控件仅提供粘贴（与系统一致，不允许复制明文）。
+/// </summary>
 public class EditorContextMenu
 {
+    private static readonly ConditionalWeakTable<Control, EditorContextMenu> Attached = new();
+    private static bool _autoAttachEnabled;
+
+    private readonly Control _target;
+    private readonly TextBox? _textBox;
+    private readonly PasswordBox? _passwordBox;
     private readonly Popup _popup;
-    private readonly TextBox _target;
     private readonly Button _cutButton;
     private readonly Button _copyButton;
     private readonly Button _pasteButton;
     private bool _isOpen;
+    private bool _windowEventsAttached;
+    private Window? _window;
 
-    public EditorContextMenu(TextBox target)
+    /// <summary>
+    /// 全局启用自动挂载：任何已加载的 <see cref="TextBox"/> / <see cref="PasswordBox"/> 都会使用自定义右键菜单。
+    /// 这样无需在视图里逐个枚举（尤其对折叠后才实现、或列表模板里延迟生成的输入框同样有效）。
+    /// </summary>
+    public static void EnableAutoAttach()
+    {
+        if (_autoAttachEnabled) return;
+        _autoAttachEnabled = true;
+
+        EventManager.RegisterClassHandler(typeof(TextBox), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler(OnTargetLoaded));
+        EventManager.RegisterClassHandler(typeof(PasswordBox), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler(OnTargetLoaded));
+    }
+
+    private static void OnTargetLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Control control)
+            Attach(control);
+    }
+
+    /// <summary>判断该控件是否支持自定义右键菜单。</summary>
+    public static bool IsSupported(Control target) => target is TextBox or PasswordBox;
+
+    /// <summary>为指定输入框挂载自定义右键菜单；重复调用同一输入框不会重复挂钩。</summary>
+    public static void Attach(Control target)
+    {
+        if (!IsSupported(target)) return;
+        if (Attached.TryGetValue(target, out _)) return;
+        Attached.Add(target, new EditorContextMenu(target));
+    }
+
+    /// <summary>递归为子树内所有受支持的输入框挂载自定义右键菜单。</summary>
+    public static void AttachTree(DependencyObject root)
+    {
+        if (root is Control control && IsSupported(control))
+            Attach(control);
+
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+            AttachTree(VisualTreeHelper.GetChild(root, i));
+    }
+
+    public EditorContextMenu(Control target)
     {
         _target = target;
+        _textBox = target as TextBox;
+        _passwordBox = target as PasswordBox;
 
         _cutButton = CreateMenuItem(LocalizationService.Instance["Common_Cut"], (_, _) => { Cut(); CloseMenu(); });
         _copyButton = CreateMenuItem(LocalizationService.Instance["Common_Copy"], (_, _) => { Copy(); CloseMenu(); });
         _pasteButton = CreateMenuItem(LocalizationService.Instance["Common_Paste"], (_, _) => { Paste(); CloseMenu(); });
-        
-        target.Loaded += (_, _) =>
-        {
-            var window = Window.GetWindow(target);
-            if (window != null)
-            {
-                window.Deactivated += (_, _) =>
-                {
-                    if (_popup.IsOpen) CloseMenu();
-                };
-            }
-        };
-        // 即使点到别的窗口，本窗口失去激活时也会立即关闭菜单 保险
-        
-        // target.PreviewMouseDown += (_, _) =>
-        // {
-        //     if (_popup.IsOpen && !_popup.Child.IsMouseOver)
-        //         CloseMenu();
-        // };
 
         var panel = new StackPanel();
         panel.Children.Add(_cutButton);
@@ -74,26 +112,27 @@ public class EditorContextMenu
         target.PreviewMouseRightButtonDown += OnPreviewRightButtonDown;
         target.PreviewMouseRightButtonUp += (_, e) => e.Handled = true;
 
-        // 挂窗口级事件（关菜单）
-        target.Loaded += (_, _) =>
-        {
-            var window = Window.GetWindow(target);
-            if (window == null) return;
-
-            window.Deactivated += (_, _) => CloseMenu();
-            window.PreviewMouseDown += OnWindowPreviewMouseDown ;
-        };
-
         // 控件卸载时关掉，避免残留
         target.Unloaded += (_, _) => CloseMenu();
-        // // 阻止系统默认右键菜单
-        // target.ContextMenu = null;
-        // target.ContextMenuOpening += (_, e) => e.Handled = true;
-        //
-        // target.PreviewMouseRightButtonDown += OnPreviewRightButtonDown;
-        // target.PreviewMouseRightButtonUp += (_, e) => e.Handled = true;
+
+        // 若构造时已处于窗口内，立即挂窗口级事件；否则在首次打开菜单时再挂。
+        EnsureWindowEvents();
     }
-    
+
+    private void EnsureWindowEvents()
+    {
+        if (_windowEventsAttached) return;
+
+        _window = Window.GetWindow(_target);
+        if (_window is null) return;
+
+        _window.Deactivated += OnWindowDeactivated;
+        _window.PreviewMouseDown += OnWindowPreviewMouseDown;
+        _windowEventsAttached = true;
+    }
+
+    private void OnWindowDeactivated(object? sender, EventArgs e) => CloseMenu();
+
     private void OnWindowPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (!_popup.IsOpen) return;
@@ -103,7 +142,7 @@ public class EditorContextMenu
         // 点在 Popup 内部：不关
         if (IsInsidePopup(source)) return;
 
-        // 右键点在自己 TextBox 上：由 OnPreviewRightButtonDown 做 toggle，不在这里关
+        // 右键点在自己控件上：由 OnPreviewRightButtonDown 做 toggle，不在这里关
         if (e.ChangedButton == MouseButton.Right && IsInsideTarget(source)) return;
 
         CloseMenu();
@@ -132,7 +171,7 @@ public class EditorContextMenu
         }
         return false;
     }
-    
+
     // 关闭右键菜单方法
     private void CloseMenu()
     {
@@ -145,12 +184,15 @@ public class EditorContextMenu
     {
         e.Handled = true;
 
-        // 已经打开：先关掉（或者你想重新定位也可以直接挪位置）
+        // 已经打开：先关掉
         if (_popup.IsOpen)
         {
             _popup.IsOpen = false;
             return;
         }
+
+        // 延迟挂载窗口级关闭事件（构造早于窗口就绪时兜底）
+        EnsureWindowEvents();
 
         UpdateStates();
 
@@ -168,33 +210,32 @@ public class EditorContextMenu
 
     private void Cut()
     {
-        if (_target.SelectionLength <= 0) return;
-
-        Clipboard.SetText(_target.SelectedText);
-        _target.SelectedText = string.Empty;
+        if (_textBox is null) return;
+        if (_textBox.SelectionLength > 0)
+            _textBox.Cut();
     }
 
     private void Copy()
     {
-        if (_target.SelectionLength > 0)
-            Clipboard.SetText(_target.SelectedText);
+        if (_textBox is null) return;
+        if (_textBox.SelectionLength > 0)
+            _textBox.Copy();
     }
 
     private void Paste()
     {
         if (!Clipboard.ContainsText()) return;
 
-        var text = Clipboard.GetText();
-        if (string.IsNullOrEmpty(text)) return;
-
-        _target.SelectedText = text;   // 替换当前选中内容
-        _target.SelectionStart += text.Length;
-        _target.SelectionLength = 0;
+        if (_textBox is not null)
+            _textBox.Paste();
+        else
+            _passwordBox?.Paste();
     }
 
     private void UpdateStates()
     {
-        var hasSelection = _target.SelectionLength > 0;
+        // 密码框不支持选中复制，此时剪切 / 复制隐藏，仅保留粘贴。
+        var hasSelection = _textBox is { SelectionLength: > 0 };
         var canPaste = Clipboard.ContainsText();
 
         _cutButton.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;

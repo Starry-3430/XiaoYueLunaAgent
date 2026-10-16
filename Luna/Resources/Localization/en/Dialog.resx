@@ -55,6 +55,14 @@
     <value>After changing the font, some interfaces take effect only after you save the settings and restart Luna.</value>
   </data>
 
+  <!-- 语言提示 -->
+  <data name="Dialog_LanguageReminder_Title" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Dialog_LanguageReminder_Body" xml:space="preserve">
+    <value>After changing the language, some parts may require a restart to take effect.</value>
+  </data>
+
   <!-- Copilot 快捷键提示 -->
   <data name="Dialog_CopilotWarning_Title" xml:space="preserve">
     <value>Attention</value>

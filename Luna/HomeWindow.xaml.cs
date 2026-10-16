@@ -148,8 +148,14 @@ public partial class HomeWindow : Window
         // 左侧历史记录右键菜单：重命名 / 删除
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
 
-        // 为输入框挂载自定义右键菜单
-        _ = new EditorContextMenu(InputBox);
+        // 为输入框挂载自定义右键菜单（主输入框、会话搜索框，以及设置/日记页内的所有文本框）
+        EditorContextMenu.Attach(InputBox);
+        EditorContextMenu.Attach(SearchBox);
+        Loaded += (_, _) =>
+        {
+            EditorContextMenu.AttachTree(SettingsContent);
+            EditorContextMenu.AttachTree(DiaryContent);
+        };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
         MessageScrollViewer.RequestBringIntoView += (_, e) => e.Handled = true;
@@ -295,6 +301,17 @@ public partial class HomeWindow : Window
         e.Handled = true;
         if (MessageScrollViewer is not null)
             SmoothScroll.Vertical(MessageScrollViewer, e.Delta);
+    }
+
+    /// <summary>左侧侧栏列表（历史会话 / 搜索结果）的滚轮平滑滚动。</summary>
+    private void SideList_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not DependencyObject element) return;
+        var scrollViewer = FindChildScrollViewer(element);
+        if (scrollViewer is null) return;
+
+        e.Handled = true;
+        SmoothScroll.Vertical(scrollViewer, e.Delta);
     }
 
     /// <summary>
@@ -1094,6 +1111,62 @@ public partial class HomeWindow : Window
         };
 
         dialog.ShowDialog();
+    }
+
+    // ===== 重新启动 =====
+
+    /// <summary>弹出确认框，确认后重新启动程序。</summary>
+    private void RestartButton_Click(object sender, RoutedEventArgs e)
+    {
+        var loc = LocalizationService.Instance;
+        var confirmed = false;
+
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = loc["Settings_Restart_ConfirmTitle"],
+            DialogContent = new TextBlock
+            {
+                Text = loc["Settings_Restart_ConfirmBody"],
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_Cancel"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+
+        if (confirmed && Application.Current is App app)
+            app.Restart();
+    }
+
+    // ===== 关于 =====
+
+    /// <summary>打开项目 GitHub 页面。</summary>
+    private void AboutGitHub_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
     }
 
     // ===== 历史会话搜索 =====

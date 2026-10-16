@@ -227,4 +227,26 @@
   <data name="Settings_StartupMsg_Canceled" xml:space="preserve">
     <value>已取消授权。</value>
   </data>
+
+  <!-- 重新启动 -->
+  <data name="Settings_RestartButton" xml:space="preserve">
+    <value>重新启动</value>
+  </data>
+  <data name="Settings_Restart_ConfirmTitle" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Settings_Restart_ConfirmBody" xml:space="preserve">
+    <value>确定要重新启动吗？</value>
+  </data>
+
+  <!-- 关于 -->
+  <data name="Settings_Section_About" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Settings_About_Version" xml:space="preserve">
+    <value>Luna V0.1.0</value>
+  </data>
+  <data name="Settings_About_GitHub" xml:space="preserve">
+    <value>访问 GitHub</value>
+  </data>
 </root>
