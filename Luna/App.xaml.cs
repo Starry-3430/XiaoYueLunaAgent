@@ -208,6 +208,7 @@ public partial class App : Application
                 services.AddSingleton<DatabaseInitializer>();
                 services.AddSingleton<SessionRepository>();
                 services.AddSingleton<MessageRepository>();
+                services.AddSingleton<SearchRepository>();
                 services.AddSingleton<TaskRepository>();
                 services.AddSingleton<FactRepository>();
                 services.AddSingleton<AttachmentRepository>();

@@ -27,4 +27,8 @@
   <data name="Home_Session_DeleteBody" xml:space="preserve"><value>确定删除会话「{0}」吗？
 将删除其全部对话记录、附件引用与摘要记忆，且不可恢复。已生成的日记不受影响。</value></data>
   <data name="Home_Session_DeleteButton" xml:space="preserve"><value>删除</value></data>
+
+  <data name="Home_Search_Placeholder" xml:space="preserve"><value>搜索历史会话</value></data>
+  <data name="Home_Search_Clear" xml:space="preserve"><value>清除搜索</value></data>
+  <data name="Home_Search_Empty" xml:space="preserve"><value>未找到匹配的对话</value></data>
 </root>

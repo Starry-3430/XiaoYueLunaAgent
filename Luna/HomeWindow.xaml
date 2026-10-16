@@ -123,8 +123,65 @@ Background="#E4E0CA"
             </Setter>
         </Style>
 
-        <Style x:Key="PillButton" TargetType="Button">
+        <Style x:Key="SearchItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="10,0,10,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="12,8">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TitleText"
+                                               Grid.Column="0"
+                                               Text="{Binding SessionTitle}"
+                                               Foreground="#FEFAE1"
+                                               FontSize="13"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="TimeText"
+                                               Grid.Column="1"
+                                               Text="{Binding TimeText}"
+                                               Foreground="#8B7B6B"
+                                               FontSize="10"
+                                               Margin="8,0,0,0"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                                <TextBlock x:Name="SnippetText"
+                                           Margin="0,3,0,0"
+                                           TextWrapping="Wrap"
+                                           Foreground="#B0A090"
+                                           FontSize="11"
+                                           controls:HighlightText.Source="{Binding Snippet}"
+                                           controls:HighlightText.Query="{Binding Keyword}"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#3D362F"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#F1E8B2"/>
+                                <Setter TargetName="TitleText" Property="Foreground" Value="#5B4833"/>
+                                <Setter TargetName="TimeText" Property="Foreground" Value="#8B7B6B"/>
+                                <Setter TargetName="SnippetText" Property="Foreground" Value="#8B7B6B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PillButton" TargetType="Button">            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="Template">
@@ -172,6 +229,7 @@ Background="#E4E0CA"
         <PathGeometry x:Key="IconCopy" Figures="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
         <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
         <PathGeometry x:Key="IconChevronDown" Figures="M6 9 L12 15 L18 9"/>
+        <PathGeometry x:Key="IconSearch" Figures="M10 4 A6 6 0 1 0 10 16 A6 6 0 1 0 10 4 Z M15 15 L20 20"/>
 
         <Style x:Key="LineIconGlyph" TargetType="Path">
             <Setter Property="Stroke" Value="#5B4833"/>
@@ -241,6 +299,15 @@ Background="#E4E0CA"
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Background" Value="#CFC7A8"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <!-- 搜索结果加载占位灰条（深色侧栏配色） -->
+        <Style x:Key="SearchSkeletonBar" TargetType="Border">
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Background" Value="#57504A"/>
+            <Setter Property="Margin" Value="0,0,0,7"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
 
@@ -690,6 +757,7 @@ Background="#E4E0CA"
             <Grid Margin="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -709,7 +777,55 @@ Background="#E4E0CA"
                     </StackPanel>
                 </Button>
 
-                <Grid Grid.Row="1">
+                <!-- 搜索框：固定在“新对话”下方，不随历史列表滚动 -->
+                <Border Grid.Row="1" Margin="10,0,10,8" Height="36"
+                        CornerRadius="8" Background="#3D362F" Padding="10,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Path Grid.Column="0" Style="{StaticResource LineIconGlyph}"
+                              Stroke="#B0A090" Data="{StaticResource IconSearch}"
+                              Width="15" Height="15" Stretch="Uniform"
+                              VerticalAlignment="Center"/>
+                        <Grid Grid.Column="1" Margin="8,0,0,0">
+                            <TextBox x:Name="SearchBox"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#FEFAE1" CaretBrush="#FEFAE1" FontSize="13"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{loc:Loc Home_Search_Placeholder}"
+                                       Foreground="#8B7B6B" FontSize="13"
+                                       VerticalAlignment="Center" IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchQuery}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <Button Grid.Column="2" Style="{StaticResource RemoveChipButton}"
+                                Width="20" Height="20" VerticalAlignment="Center"
+                                ToolTip="{loc:Loc Home_Search_Clear}"
+                                Command="{Binding ClearSearchCommand}"
+                                Visibility="{Binding IsSearchActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Viewbox Width="11" Height="11">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconClose}"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="2">
                     <ListBox x:Name="HistoryList"
                              ItemsSource="{Binding ChatSessions}"
                              ItemContainerStyle="{StaticResource HistoryItemStyle}"
@@ -718,7 +834,90 @@ Background="#E4E0CA"
                              BorderThickness="0"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.Style>
+                            <Style TargetType="ListBox">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSearchActive}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.Style>
+                    </ListBox>
+
+                    <ListBox x:Name="SearchResultsList"
+                             ItemsSource="{Binding SearchResults}"
+                             ItemContainerStyle="{StaticResource SearchItemStyle}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.CanContentScroll="False"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="SearchResultsList_SelectionChanged">
+                        <ListBox.Style>
+                            <Style TargetType="ListBox">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsSearchActive}" Value="True"/>
+                                            <Condition Binding="{Binding IsSearchLoading}" Value="False"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.Style>
+                    </ListBox>
+
+                    <!-- 搜索中占位：呼吸动画（与正文加载占位一致） -->
+                    <StackPanel x:Name="SearchLoadingPlaceholder"
+                                Margin="10,0,10,0"
+                                IsHitTestVisible="False"
+                                Visibility="{Binding IsSearchLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0.35" To="0.85" Duration="0:0:0.9"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </StackPanel.Triggers>
+
+                        <Border Background="#3D362F" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                            <StackPanel>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="130"/>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="210"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#3D362F" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                            <StackPanel>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="100"/>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="230"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#3D362F" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                            <StackPanel>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="150"/>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="180"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#3D362F" CornerRadius="8" Padding="12,8" Margin="0,0,0,4">
+                            <StackPanel>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="115"/>
+                                <Border Style="{StaticResource SearchSkeletonBar}" Width="200"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="{loc:Loc Home_Search_Empty}"
+                               Foreground="#B0A090" FontSize="12"
+                               HorizontalAlignment="Center" Margin="20,24,20,0"
+                               TextWrapping="Wrap" TextAlignment="Center"
+                               Visibility="{Binding ShowSearchEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <Rectangle VerticalAlignment="Bottom"
                                Height="5"
@@ -726,7 +925,7 @@ Background="#E4E0CA"
                                IsHitTestVisible="False"/>
                 </Grid>
 
-                <StackPanel Grid.Row="2" Margin="10,0,10,10">
+                <StackPanel Grid.Row="3" Margin="10,0,10,10">
                     <!-- <Rectangle Height="1" Fill="#E4E0CA" Margin="0,0,0,8"/> -->
                     <Button x:Name="DiaryButton" Style="{StaticResource SideButton}" Margin="0,0,0,5">
                         <StackPanel Orientation="Horizontal">
@@ -832,7 +1031,8 @@ Background="#E4E0CA"
                               ScrollViewer.CanContentScroll="False"
                               PreviewMouseWheel="SmoothScroll_PreviewMouseWheel"
                               Padding="20,16">
-                <ItemsControl ItemsSource="{Binding Messages}"
+                <ItemsControl x:Name="MessageList"
+                              ItemsSource="{Binding Messages}"
                               ItemTemplateSelector="{StaticResource MessageTemplateSelector}"/>
             </ScrollViewer>
 

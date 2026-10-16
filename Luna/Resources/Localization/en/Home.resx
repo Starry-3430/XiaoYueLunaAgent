@@ -27,4 +27,8 @@
   <data name="Home_Session_DeleteBody" xml:space="preserve"><value>Delete conversation "{0}"?
 All its messages, attachment references and summary memories will be removed, and this cannot be undone. Generated diaries are unaffected.</value></data>
   <data name="Home_Session_DeleteButton" xml:space="preserve"><value>Delete</value></data>
+
+  <data name="Home_Search_Placeholder" xml:space="preserve"><value>Search conversations</value></data>
+  <data name="Home_Search_Clear" xml:space="preserve"><value>Clear search</value></data>
+  <data name="Home_Search_Empty" xml:space="preserve"><value>No matching conversations</value></data>
 </root>

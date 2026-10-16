@@ -34,12 +34,15 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly ChatGenerationService _generation;
     private readonly FileStorageService _fileStorage;
     private readonly IDocumentConverterService _documentConverter;
+    private readonly SearchRepository _searchRepo;
     private readonly ILogger<HomeViewModel> _logger;
     private string? _currentSessionId;
     private readonly Dictionary<string, string> _sessionDrafts = new();
     private readonly Dictionary<string, List<Attachment>> _sessionAttachments = new();
     private SessionRuntime? _runtime;
     private readonly ObservableCollection<ChatMessage> _emptyMessages = new();
+    private CancellationTokenSource? _searchCts;
+    private const int SearchResultLimit = 50;
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -62,6 +65,19 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [ObservableProperty]
     private string _tavilyApiKey = string.Empty;
 
+    /// <summary>历史会话搜索关键词。</summary>
+    [ObservableProperty]
+    private string _searchQuery = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSearchLoading;
+
+    public ObservableCollection<SearchResult> SearchResults { get; } = new();
+
+    public bool IsSearchActive => !string.IsNullOrWhiteSpace(SearchQuery);
+
+    public bool ShowSearchEmpty => IsSearchActive && !IsSearchLoading && SearchResults.Count == 0;
+
     private ObservableCollection<ChatMessage> _messages = new();
     public ObservableCollection<ChatMessage> Messages
     {
@@ -79,7 +95,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         ToolRegistry toolRegistry, ToolSettingsService toolSettings,
         ToolPermissionService toolPermission, SettingsService settingsService,
         ChatGenerationService generation, FileStorageService fileStorage,
-        IDocumentConverterService documentConverter, ILogger<HomeViewModel> logger)
+        IDocumentConverterService documentConverter, SearchRepository searchRepo,
+        ILogger<HomeViewModel> logger)
     {
         _sessionRepo = sessionRepo;
         _aiSettings = aiSettings;
@@ -90,6 +107,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _generation = generation;
         _fileStorage = fileStorage;
         _documentConverter = documentConverter;
+        _searchRepo = searchRepo;
         _logger = logger;
 
         _tavilyApiKey = _aiSettings.TavilyApiKey;
@@ -309,6 +327,119 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         var hasKey = !string.IsNullOrEmpty(value);
         tool.StatusText = hasKey ? "" : LocalizationService.Instance["Tool_Status_NoApiKey"];
         tool.IsEnabled = hasKey;
+    }
+
+    // ===== 历史会话搜索 =====
+
+    /// <summary>搜索关键词变化：防抖后异步检索，并刷新空态/激活态。</summary>
+    partial void OnSearchQueryChanged(string value)
+    {
+        _searchCts?.Cancel();
+        _searchCts?.Dispose();
+        _searchCts = null;
+
+        OnPropertyChanged(nameof(IsSearchActive));
+        OnPropertyChanged(nameof(ShowSearchEmpty));
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            IsSearchLoading = false;
+            SearchResults.Clear();
+            OnPropertyChanged(nameof(ShowSearchEmpty));
+            return;
+        }
+
+        IsSearchLoading = true;
+        var cts = new CancellationTokenSource();
+        _searchCts = cts;
+        _ = SearchAsync(value.Trim(), cts.Token);
+    }
+
+    private async Task SearchAsync(string keyword, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(250, ct);
+            var hits = await _searchRepo.SearchAsync(keyword, SearchResultLimit);
+            ct.ThrowIfCancellationRequested();
+
+            SearchResults.Clear();
+            foreach (var hit in hits)
+                SearchResults.Add(ToSearchResult(hit, keyword));
+            IsSearchLoading = false;
+        }
+        catch (OperationCanceledException)
+        {
+            // 已由更新的关键词取代，加载态交给新的查询控制，忽略。
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "搜索历史会话失败：{Keyword}", keyword);
+            IsSearchLoading = false;
+        }
+    }
+
+    partial void OnIsSearchLoadingChanged(bool value)
+        => OnPropertyChanged(nameof(ShowSearchEmpty));
+
+    private static SearchResult ToSearchResult(SearchRepository.SearchHit hit, string keyword) => new()
+    {
+        SessionId = hit.SessionId,
+        SessionTitle = string.IsNullOrWhiteSpace(hit.SessionTitle)
+            ? LocalizationService.Instance["Home_NewChat"]
+            : hit.SessionTitle,
+        MessageId = hit.MessageId,
+        Role = hit.Role,
+        Snippet = BuildSnippet(hit.Content, keyword),
+        Keyword = keyword,
+        TimeText = FormatSearchTime(hit.CreatedAtUtc)
+    };
+
+    /// <summary>截取关键词周围的上下文片段，折叠换行并加省略号。</summary>
+    private static string BuildSnippet(string content, string keyword, int radius = 40)
+    {
+        if (string.IsNullOrEmpty(content)) return string.Empty;
+
+        var index = content.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return Collapse(content.Length > radius * 2 ? content[..(radius * 2)] + "…" : content);
+
+        var start = Math.Max(0, index - radius);
+        var end = Math.Min(content.Length, index + keyword.Length + radius);
+        var text = Collapse(content[start..end]);
+        if (start > 0) text = "…" + text;
+        if (end < content.Length) text += "…";
+        return text;
+    }
+
+    private static string Collapse(string text)
+        => text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
+    private static string FormatSearchTime(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        var today = DateTime.Today;
+        if (local.Date == today) return local.ToString("HH:mm");
+        if (local.Year == today.Year) return local.ToString("MM-dd HH:mm");
+        return local.ToString("yyyy-MM-dd");
+    }
+
+    /// <summary>清空搜索关键词并退出搜索态。</summary>
+    [RelayCommand]
+    private void ClearSearch() => SearchQuery = string.Empty;
+
+    /// <summary>打开搜索结果所在会话（供界面随后滚动到对应消息）。</summary>
+    public async Task OpenSessionAtMessageAsync(SearchResult result)
+    {
+        var session = ChatSessions.FirstOrDefault(s => s.Id == result.SessionId);
+        if (session is null)
+        {
+            await LoadSessionsAsync();
+            session = ChatSessions.FirstOrDefault(s => s.Id == result.SessionId);
+        }
+
+        session ??= new ChatSessionItem { Id = result.SessionId, Title = result.SessionTitle };
+        await SelectSessionCommand.ExecuteAsync(session);
     }
 
     private async Task LoadSessionsAsync()
