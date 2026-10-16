@@ -15,6 +15,7 @@ public class OpenAiService : IAiService
     private readonly HttpClient _httpClient;
     private readonly AiSettings _settings;
     private readonly ToolRegistry _toolRegistry;
+    private readonly SystemPromptBuilder _systemPromptBuilder;
     private readonly ILogger<OpenAiService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -23,11 +24,13 @@ public class OpenAiService : IAiService
     };
 
     public OpenAiService(HttpClient httpClient, AiSettings settings,
-        ToolRegistry toolRegistry, ILogger<OpenAiService> logger)
+        ToolRegistry toolRegistry, SystemPromptBuilder systemPromptBuilder,
+        ILogger<OpenAiService> logger)
     {
         _httpClient = httpClient;
         _settings = settings;
         _toolRegistry = toolRegistry;
+        _systemPromptBuilder = systemPromptBuilder;
         _logger = logger;
     }
 
@@ -37,7 +40,7 @@ public class OpenAiService : IAiService
     public async Task<string> ChatAsync(IEnumerable<ChatMessage> messages, AiRequestOptions options,
         CancellationToken cancellationToken = default)
     {
-        var requestBody = BuildRequestBody(messages, stream: false, options);
+        var requestBody = await BuildRequestBodyAsync(messages, stream: false, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
@@ -77,7 +80,7 @@ public class OpenAiService : IAiService
         IEnumerable<ChatMessage> messages,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var requestBody = BuildRequestBody(messages, stream: true, new AiRequestOptions());
+        var requestBody = await BuildRequestBodyAsync(messages, stream: true, new AiRequestOptions(), cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
@@ -200,40 +203,6 @@ public class OpenAiService : IAiService
         }
     }
 
-    private string BuildSystemPrompt(AiRequestOptions options)
-    {
-        if (!options.IncludeSystemPrompt)
-            return string.Empty;
-
-        var useOverride = options.SystemPrompt is not null;
-        var prompt = options.SystemPrompt ?? _settings.SystemPrompt;
-        if (string.IsNullOrWhiteSpace(prompt))
-            return string.Empty;
-
-        prompt = prompt
-            .Replace("{nickname}", _settings.Nickname)
-            .Replace("{Nickname}", _settings.Nickname)
-            .Replace("{user}", _settings.UserName)
-            .Replace("{User}", _settings.UserName);
-
-        // 覆盖提示词（如轮次摘要）自带完整指令，不追加用户目录与语言偏好
-        if (useOverride)
-            return prompt;
-
-        // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
-        if (options.IncludeUserEnvironment)
-            prompt += "\n\n" + UserEnvironment.BuildPromptSection();
-
-        prompt += _settings.ResponseLanguage switch
-        {
-            "zh" => "\n\n请始终使用简体中文回复。",
-            "en" => "\n\nAlways reply in English.",
-            _ => string.Empty,
-        };
-
-        return prompt;
-    }
-
     /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
     private string ResolveModel(JsonObject root)
     {
@@ -264,7 +233,8 @@ public class OpenAiService : IAiService
         return model;
     }
 
-    private JsonObject BuildRequestBody(IEnumerable<ChatMessage> messages, bool stream, AiRequestOptions options)
+    private async Task<JsonObject> BuildRequestBodyAsync(IEnumerable<ChatMessage> messages, bool stream,
+        AiRequestOptions options, CancellationToken ct)
     {
         var root = new JsonObject
         {
@@ -287,7 +257,7 @@ public class OpenAiService : IAiService
 
         var messagesArray = new JsonArray();
 
-        var systemPrompt = BuildSystemPrompt(options);
+        var systemPrompt = await _systemPromptBuilder.BuildAsync(options, ct);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
             messagesArray.Add(new JsonObject

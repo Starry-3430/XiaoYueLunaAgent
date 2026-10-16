@@ -74,6 +74,17 @@ public class DatabaseService
         CREATE INDEX IF NOT EXISTS IX_Attachments_SessionId ON Attachments(SessionId);
         CREATE INDEX IF NOT EXISTS IX_Attachments_TurnId ON Attachments(TurnId);
         CREATE INDEX IF NOT EXISTS IX_Attachments_Sha256 ON Attachments(Sha256);
+
+        CREATE TABLE IF NOT EXISTS Facts (
+            Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            Key          TEXT NOT NULL UNIQUE,
+            Value        TEXT NOT NULL,
+            Confidence   REAL NOT NULL DEFAULT 1.0,
+            SourceTurnId TEXT,
+            CreatedAtUtc TEXT NOT NULL,
+            UpdatedAtUtc TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_Facts_Key ON Facts(Key);
         """;
 
     private const string CreateFtsSql = """
@@ -153,6 +164,7 @@ public class DatabaseService
         conn.Execute("DELETE FROM DiaryFts;", transaction: tx);
         conn.Execute("DELETE FROM DiaryDays;", transaction: tx);
         conn.Execute("DELETE FROM Attachments;", transaction: tx);
+        conn.Execute("DELETE FROM Facts;", transaction: tx);
         conn.Execute("DELETE FROM Messages;", transaction: tx);
         conn.Execute("DELETE FROM TurnSummaries;", transaction: tx);
         conn.Execute("DELETE FROM Sessions;", transaction: tx);

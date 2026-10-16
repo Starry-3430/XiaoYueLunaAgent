@@ -144,6 +144,7 @@ public partial class App : Application
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
                 }));
                 services.AddSingleton<HotkeyService>();
+                services.AddSingleton<SystemPromptBuilder>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
                 // 文档转换（MarkItDown）：注册 IMarkItDownClient，并把转换工作区定向到 Luna 缓存目录，
@@ -172,6 +173,11 @@ public partial class App : Application
                 services.AddSingleton<ITool, FileOpenTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
+                services.AddSingleton<ITool, DiarySearchTool>();
+                services.AddSingleton<ITool, TurnSearchTool>();
+                services.AddSingleton<ITool, RememberFactTool>();
+                services.AddSingleton<ITool, ForgetFactTool>();
+                services.AddSingleton<ITool, ListFactsTool>();
                 services.AddSingleton<ITool, CompleteTaskTool>();
                 services.AddSingleton<ITool, DeleteTaskTool>();
                 services.AddSingleton<ToolRegistry>();
@@ -187,6 +193,7 @@ public partial class App : Application
                 services.AddSingleton<SessionRepository>();
                 services.AddSingleton<MessageRepository>();
                 services.AddSingleton<TaskRepository>();
+                services.AddSingleton<FactRepository>();
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
                 services.AddSingleton<TurnSummaryService>();
