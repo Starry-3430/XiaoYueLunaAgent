@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -23,18 +24,18 @@ public class TurnSearchTool : ITool
     private const int DefaultLimit = 5;
     private const int HardMaxLimit = 20;
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"keyword":{"type":"string","description":"检索关键词"},"limit":{"type":"integer","description":"返回条数上限，默认 5，最大 20"}},"required":["keyword"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"keyword":{"type":"string","description":"$keyword$"},"limit":{"type":"integer","description":"$limit$"}},"required":["keyword"]}""";
 
     private readonly DatabaseInitializer _db;
     private readonly ILogger<TurnSearchTool> _logger;
 
     public string Name => "turn_search";
-    public string DisplayName => "轮次检索";
-    public string Description =>
-        "在历史对话轮次摘要中按关键词搜索。当用户提及具体事件、文件、决定，但不确定是哪天时调用。" +
-        "返回匹配的轮次摘要和所属日期，比日记粒度更细。";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$keyword$", Param("Tool_TurnSearch_Param_Keyword"))
+        .Replace("$limit$", Param("Tool_TurnSearch_Param_Limit")));
     public ToolRiskLevel Risk => ToolRiskLevel.None;
 
     public TurnSearchTool(DatabaseInitializer db, ILogger<TurnSearchTool> logger)
@@ -47,7 +48,7 @@ public class TurnSearchTool : ITool
     {
         var keyword = GetString(args, "keyword");
         if (string.IsNullOrWhiteSpace(keyword))
-            return ToolResult.Error("缺少参数 keyword。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "keyword"));
 
         var limit = DefaultLimit;
         if (args.ValueKind == JsonValueKind.Object &&
@@ -66,13 +67,13 @@ public class TurnSearchTool : ITool
                 new { Keyword = keyword, Limit = limit })).ToList();
 
             if (rows.Count == 0)
-                return ToolResult.Ok($"没有找到与「{keyword}」相关的对话轮次。");
+                return ToolResult.Ok(Text("Tool_TurnSearch_Msg_None", keyword));
 
             var sb = new StringBuilder();
             for (var i = 0; i < rows.Count; i++)
             {
                 if (i > 0) sb.AppendLine();
-                sb.Append('[').Append(rows[i].LogicalDate).Append("] 会话 ")
+                sb.Append('[').Append(rows[i].LogicalDate).Append(Text("Tool_TurnSearch_Msg_SessionPrefix"))
                   .AppendLine(ShortId(rows[i].SessionId));
                 sb.AppendLine(BuildBody(rows[i].SummaryJson));
             }
@@ -81,7 +82,7 @@ public class TurnSearchTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "检索轮次摘要失败：{Keyword}", keyword);
-            return ToolResult.Error($"检索轮次摘要失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_TurnSearch_Msg_Failed", ex.Message));
         }
     }
 
@@ -94,7 +95,7 @@ public class TurnSearchTool : ITool
     private static string BuildBody(string summaryJson)
     {
         if (string.IsNullOrWhiteSpace(summaryJson))
-            return "（无摘要内容）";
+            return Text("Tool_TurnSearch_Msg_NoSummary");
 
         try
         {
@@ -110,11 +111,11 @@ public class TurnSearchTool : ITool
 
             var files = ReadFileNames(root).Distinct().ToList();
             if (files.Count > 0)
-                sb.Append("涉及文件：").AppendLine(string.Join("、", files));
+                sb.Append(Text("Tool_TurnSearch_Msg_Files")).AppendLine(string.Join(Text("Tool_Msg_ListSeparator"), files));
 
             var topics = ReadStringArray(root, "topics").Distinct().ToList();
             if (topics.Count > 0)
-                sb.Append("主题：").AppendLine(string.Join("、", topics));
+                sb.Append(Text("Tool_TurnSearch_Msg_Topics")).AppendLine(string.Join(Text("Tool_Msg_ListSeparator"), topics));
 
             var text = sb.ToString().TrimEnd();
             return text.Length > 0 ? text : Truncate(summaryJson.Trim());

@@ -1,8 +1,9 @@
-﻿// 工具：输出指定目录的文件树结构。
+// 工具：输出指定目录的文件树结构。
 using System.IO;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -18,8 +19,8 @@ public class FileTreeTool : ITool
     private const int DefaultMaxEntries = 500;
     private const int HardMaxEntries = 2000;
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"path":{"type":"string","description":"要列出目录树的目录。支持 desktop/documents/downloads/pictures/home 等别名（含中文）或绝对路径；相对路径基于工作目录；留空则使用工作目录"},"depth":{"type":"integer","description":"递归深度，默认 2，最大 6"},"max_entries":{"type":"integer","description":"返回条目上限，默认 500，最大 2000"}}}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"},"depth":{"type":"integer","description":"$depth$"},"max_entries":{"type":"integer","description":"$maxEntries$"}}}""";
 
     private static readonly EnumerationOptions EnumerationOptions = new()
     {
@@ -30,9 +31,12 @@ public class FileTreeTool : ITool
     private readonly ILogger<FileTreeTool> _logger;
 
     public string Name => "file_tree";
-    public string DisplayName => "目录树浏览";
-    public string Description => "获取指定目录的文件树结构（支持深度与条目数限制）";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$path$", Param("Tool_FileTree_Param_Path"))
+        .Replace("$depth$", Param("Tool_FileTree_Param_Depth"))
+        .Replace("$maxEntries$", Param("Tool_FileTree_Param_MaxEntries")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
 
     public FileTreeTool(ILogger<FileTreeTool> logger)
@@ -58,7 +62,7 @@ public class FileTreeTool : ITool
         var count = 0;
         var truncated = false;
 
-        sb.Append("目录：").AppendLine(root);
+        sb.Append(Text("Tool_FileTree_Msg_Dir")).AppendLine(root);
 
         void Walk(string dir, string prefix, int level)
         {
@@ -114,7 +118,7 @@ public class FileTreeTool : ITool
         Walk(root, string.Empty, 1);
 
         if (truncated)
-            sb.AppendLine($"…（已达到条目上限 {maxEntries}，结果被截断）");
+            sb.AppendLine(Text("Tool_FileTree_Msg_Truncated", maxEntries));
 
         _logger.LogInformation("目录树浏览：{Root}，条目 {Count}", root, count);
         return ToolResult.Ok(sb.ToString().TrimEnd());

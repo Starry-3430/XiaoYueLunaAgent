@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:Luna.Models"
+             xmlns:loc="clr-namespace:Luna.Localization"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
@@ -23,8 +24,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="字体" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="界面使用的字体。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Font_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Font_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <Grid Grid.Column="1" VerticalAlignment="Center">
                     <Border x:Name="FontDropdown" Width="250" Height="{StaticResource SettingsControlHeight}"
@@ -70,8 +71,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="语言" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="界面显示语言。本地化资源尚未提供，当前仅保存选择，暂不生效。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Language_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Language_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Grid>
@@ -117,11 +118,11 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="快捷键" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="呼出胶囊窗口的全局快捷键，点击右侧输入框后按下组合键。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Hotkey_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Hotkey_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BindCopilotButton" Content="绑定到Copilot"
+                    <Button x:Name="BindCopilotButton" Content="{loc:Loc Settings_Hotkey_BindCopilot}"
                             Click="BindCopilot_Click" Margin="0,0,10,0">
                         <Button.Style>
                             <Style TargetType="Button">
@@ -158,7 +159,7 @@
                                  GotFocus="HotkeyBox_GotFocus"
                                  LostFocus="HotkeyBox_LostFocus"
                                  PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
-                        <TextBlock x:Name="HotkeyHint" Text="请按下快捷键…" Foreground="#8B7B6B" FontSize="12"
+                        <TextBlock x:Name="HotkeyHint" Text="{loc:Loc Settings_Hotkey_PressPrompt}" Foreground="#8B7B6B" FontSize="12"
                                    VerticalAlignment="Center" HorizontalAlignment="Center"
                                    IsHitTestVisible="False" Visibility="Collapsed"/>
                     </Grid>
@@ -176,8 +177,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="开机自启动" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="登录系统后自动启动 Luna。“是 + 管理员”需要管理员权限，将以最高权限运行。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Startup_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Startup_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Grid>
@@ -224,8 +225,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="代理" Style="{StaticResource SettingsTitle}"/>
-                        <TextBlock Text="通过代理访问网络。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Title}" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Grid>
@@ -268,7 +269,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="服务器" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Server}" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
@@ -285,7 +286,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="端口" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Port}" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
@@ -302,7 +303,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="用户名" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Username}" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBox Width="180" Style="{StaticResource SettingsInputWide}"
@@ -319,7 +320,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="密码" Style="{StaticResource SettingsTitle}"/>
+                        <TextBlock Text="{loc:Loc Settings_Proxy_Password}" Style="{StaticResource SettingsTitle}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <PasswordBox x:Name="ProxyPasswordBox" Width="180"
@@ -332,7 +333,7 @@
                 </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="测试" Style="{StaticResource SecondaryActionButton}"
+                    <Button Content="{loc:Loc Settings_Proxy_TestButton}" Style="{StaticResource SecondaryActionButton}"
                             Command="{Binding TestProxyCommand}"/>
                     <TextBlock Text="{Binding ProxyTestStatus}" Foreground="#5B4833" FontSize="13"
                                VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -348,14 +349,14 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="输出目录" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="允许写入文件的目录，为空则不授权任何写入（write_file 将拒绝执行）。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Output_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Output_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBox Width="240" Style="{StaticResource SettingsInputWide}"
                              Text="{Binding OutputDirectory, UpdateSourceTrigger=PropertyChanged}"
                              VerticalAlignment="Center"/>
-                    <Button Content="浏览…" Style="{StaticResource SecondaryActionButton}"
+                    <Button Content="{loc:Loc Settings_Output_Browse}" Style="{StaticResource SecondaryActionButton}"
                             Padding="12,6" Margin="6,0,0,0" Click="BrowseOutputDirectory_Click"/>
                     <Button Style="{StaticResource SettingsResetButton}"
                             Command="{Binding ResetOutputDirectoryCommand}" Margin="6,0,0,0"/>
@@ -371,13 +372,13 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="软件更新" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="检查 Luna 是否有新版本。" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Update_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Update_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <Button Content="检查更新" Style="{StaticResource SecondaryActionButton}"
+                    <Button Content="{loc:Loc Settings_Update_CheckButton}" Style="{StaticResource SecondaryActionButton}"
                             Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
                 </StackPanel>
             </Grid>
@@ -385,7 +386,7 @@
 
         <!-- 保存 -->
         <StackPanel Orientation="Horizontal" Margin="0,10,0,2">
-            <Button Content="保存" Style="{StaticResource PrimaryActionButton}"
+            <Button Content="{loc:Loc Settings_Save_Button}" Style="{StaticResource PrimaryActionButton}"
                     Command="{Binding SaveCommand}"/>
             <TextBlock Text="{Binding SaveStatus}" Foreground="#78A29F" FontSize="13"
                        VerticalAlignment="Center" Margin="10,0,0,0"/>
@@ -393,7 +394,7 @@
 
         <!-- 编辑配置文件 -->
         <Button x:Name="EditSettingsJsonButton"
-                Content="编辑 settings.json"
+                Content="{loc:Loc Settings_EditConfig_Button}"
                 Click="EditSettingsJson_Click"
                 HorizontalAlignment="Left"
                 Margin="0,6,0,8">

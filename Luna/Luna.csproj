@@ -17,10 +17,6 @@
         <ApplicationIcon>Assets\Luna.ico</ApplicationIcon>
     </PropertyGroup>
 
-    <PropertyGroup>
-        <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
-    </PropertyGroup>
-
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <DebugType>none</DebugType>
         <DebugSymbols>false</DebugSymbols>

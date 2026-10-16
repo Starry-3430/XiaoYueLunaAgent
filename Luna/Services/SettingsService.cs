@@ -77,7 +77,17 @@ public class SettingsService
     {
         if (settings.MaxTokens == AiSettings.LegacyDefaultMaxTokens)
             settings.MaxTokens = AiSettings.DefaultMaxTokens;
+
+        // 旧版默认提示词把“系统规范”也写进了人格提示词；若仍是旧默认，迁移为仅人格提示词（规范改由系统强制注入）。
+        if (IsLegacyCombinedPrompt(settings.SystemPrompt))
+            settings.SystemPrompt = DefaultPrompts.PersonalityPrompt;
     }
+
+    /// <summary>判断提示词是否为旧版“人格 + 系统规范”合并的默认文本。</summary>
+    private static bool IsLegacyCombinedPrompt(string? prompt) =>
+        !string.IsNullOrEmpty(prompt)
+        && prompt.Contains("【上下文纪律】")
+        && prompt.Contains("【不泄露内部过程】");
 
     public void Save(AiSettings settings)
     {
@@ -139,7 +149,7 @@ public class SettingsService
             Model = AiSettings.DefaultModel,
             MaxTokens = AiSettings.DefaultMaxTokens,
             Temperature = AiSettings.DefaultTemperature,
-            SystemPrompt = DefaultPrompts.SystemPrompt,
+            SystemPrompt = DefaultPrompts.PersonalityPrompt,
             Nickname = AiSettings.DefaultNickname,
             UserName = AiSettings.DefaultUserName,
             TavilyApiKey = Environment.GetEnvironmentVariable("LUNA_TAVILY_API_KEY") ?? "",

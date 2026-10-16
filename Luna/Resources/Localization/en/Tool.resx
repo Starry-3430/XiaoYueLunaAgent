@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 分组 -->
+  <data name="Tool_Category_Info" xml:space="preserve"><value>Info</value></data>
+  <data name="Tool_Category_System" xml:space="preserve"><value>System</value></data>
+  <data name="Tool_Category_Memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="Tool_Category_Organize" xml:space="preserve"><value>Organize</value></data>
+  <data name="Tool_Category_Input" xml:space="preserve"><value>Input</value></data>
+  <data name="Tool_Category_Dev" xml:space="preserve"><value>Dev</value></data>
+  <data name="Tool_Category_Communication" xml:space="preserve"><value>Communication</value></data>
+
+  <!-- 状态 -->
+  <data name="Tool_Status_NotImplemented" xml:space="preserve"><value>Not implemented</value></data>
+  <data name="Tool_Status_NoApiKey" xml:space="preserve"><value>API Key not configured</value></data>
+
+  <!-- 风险等级 -->
+  <data name="Tool_Risk_Medium" xml:space="preserve"><value>Risky</value></data>
+  <data name="Tool_Risk_High" xml:space="preserve"><value>High risk</value></data>
+
+  <!-- 信息 -->
+  <data name="Tool_WebSearch_DisplayName" xml:space="preserve"><value>Web Search</value></data>
+  <data name="Tool_WebSearch_Description" xml:space="preserve"><value>Search the web via Tavily; returns titles, URLs and snippets.</value></data>
+  <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>Read Web Page</value></data>
+  <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>Fetch the main text of a given URL; use together with search.</value></data>
+  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>Current Time</value></data>
+  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>Get the current date and time.</value></data>
+  <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>Read Clipboard</value></data>
+  <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
+  <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>News / Calendar</value></data>
+  <data name="Tool_NewsCalendar_Description" xml:space="preserve"><value>Get news summaries or calendar information.</value></data>
+
+  <!-- 系统 -->
+  <data name="Tool_Powershell_DisplayName" xml:space="preserve"><value>PowerShell</value></data>
+  <data name="Tool_Powershell_Description" xml:space="preserve"><value>Run PowerShell commands.</value></data>
+  <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>File Search</value></data>
+  <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>Search files by name, preferring the Windows Search index.</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read the contents of a specified file.</value></data>
+  <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>Write File</value></data>
+  <data name="Tool_WriteFile_Description" xml:space="preserve"><value>Write file contents or create new files.</value></data>
+  <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>Open File / App</value></data>
+  <data name="Tool_FileOpen_Description" xml:space="preserve"><value>Open a specified file or launch an application.</value></data>
+  <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>Screenshot</value></data>
+  <data name="Tool_Screenshot_Description" xml:space="preserve"><value>Capture a screenshot.</value></data>
+  <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>Window Manager</value></data>
+  <data name="Tool_WindowManager_Description" xml:space="preserve"><value>Manage window position, size and state.</value></data>
+  <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>Volume / Brightness</value></data>
+  <data name="Tool_VolumeBrightness_Description" xml:space="preserve"><value>Adjust system volume and screen brightness.</value></data>
+
+  <!-- 记忆 -->
+  <data name="Tool_DiarySearch_DisplayName" xml:space="preserve"><value>Search Diary</value></data>
+  <data name="Tool_DiarySearch_Description" xml:space="preserve"><value>Search for related content in the diary.</value></data>
+  <data name="Tool_TurnSearch_DisplayName" xml:space="preserve"><value>Search Turns</value></data>
+  <data name="Tool_TurnSearch_Description" xml:space="preserve"><value>Search historical conversation turns.</value></data>
+  <data name="Tool_LongTermFacts_DisplayName" xml:space="preserve"><value>Long-term Facts</value></data>
+  <data name="Tool_LongTermFacts_Description" xml:space="preserve"><value>Retrieve and store long-term fact memories.</value></data>
+
+  <!-- 组织 -->
+  <data name="Tool_Todo_DisplayName" xml:space="preserve"><value>Tasks</value></data>
+  <data name="Tool_Todo_Description" xml:space="preserve"><value>Create/manage tasks; set due times and reminders.</value></data>
+  <data name="Tool_ClipboardHistory_DisplayName" xml:space="preserve"><value>Clipboard History</value></data>
+  <data name="Tool_ClipboardHistory_Description" xml:space="preserve"><value>View and manage clipboard history.</value></data>
+
+  <!-- 输入 -->
+  <data name="Tool_Vision_DisplayName" xml:space="preserve"><value>Vision</value></data>
+  <data name="Tool_Vision_Description" xml:space="preserve"><value>Analyze image content.</value></data>
+  <data name="Tool_Ocr_DisplayName" xml:space="preserve"><value>OCR</value></data>
+  <data name="Tool_Ocr_Description" xml:space="preserve"><value>Recognize text in images.</value></data>
+  <data name="Tool_Speech_DisplayName" xml:space="preserve"><value>Speech</value></data>
+  <data name="Tool_Speech_Description" xml:space="preserve"><value>Speech recognition and synthesis.</value></data>
+
+  <!-- 开发 -->
+  <data name="Tool_CodeExecute_DisplayName" xml:space="preserve"><value>Code Execution (Sandbox)</value></data>
+  <data name="Tool_CodeExecute_Description" xml:space="preserve"><value>Execute code in a sandboxed environment.</value></data>
+  <data name="Tool_Git_DisplayName" xml:space="preserve"><value>Git</value></data>
+  <data name="Tool_Git_Description" xml:space="preserve"><value>Perform Git operations.</value></data>
+  <data name="Tool_FileTree_DisplayName" xml:space="preserve"><value>File Tree</value></data>
+  <data name="Tool_FileTree_Description" xml:space="preserve"><value>Get the file tree of a directory.</value></data>
+
+  <!-- 通信 -->
+  <data name="Tool_SendNotification_DisplayName" xml:space="preserve"><value>System Notification</value></data>
+  <data name="Tool_SendNotification_Description" xml:space="preserve"><value>Send system notifications (foundation for scheduled reminders).</value></data>
+  <data name="Tool_Email_DisplayName" xml:space="preserve"><value>Email</value></data>
+  <data name="Tool_Email_Description" xml:space="preserve"><value>Send email.</value></data>
+
+  <!-- 单个工具的显示名（工具卡 / 权限确认框） -->
+  <data name="Tool_AddTask_DisplayName" xml:space="preserve"><value>Add Task</value></data>
+  <data name="Tool_ListTasks_DisplayName" xml:space="preserve"><value>List Tasks</value></data>
+  <data name="Tool_CompleteTask_DisplayName" xml:space="preserve"><value>Complete Task</value></data>
+  <data name="Tool_DeleteTask_DisplayName" xml:space="preserve"><value>Delete Task</value></data>
+  <data name="Tool_RememberFact_DisplayName" xml:space="preserve"><value>Remember Fact</value></data>
+  <data name="Tool_ForgetFact_DisplayName" xml:space="preserve"><value>Forget Fact</value></data>
+  <data name="Tool_ListFacts_DisplayName" xml:space="preserve"><value>List Facts</value></data>
+
+  <!-- 发送给 AI 的工具说明 -->
+  <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>Search the internet and return the titles, URLs and content snippets of relevant web pages.</value></data>
+  <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
+  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>Get the current date and time, returning both local and UTC time.</value></data>
+  <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
+  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
+  <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read the contents of a text file (restricted by allowed directories, extensions and size).</value></data>
+  <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
+  <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
+  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
+  <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
+  <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
+  <data name="Tool_DiarySearch_AiDescription" xml:space="preserve"><value>Keyword search across past diary entries. Use when the user asks "what did I do before", "what did we talk about last week", or "that day". Returns matching dates and content excerpts for recalling past conversations.</value></data>
+  <data name="Tool_TurnSearch_AiDescription" xml:space="preserve"><value>Keyword search across past conversation-turn summaries. Use when the user mentions a specific event, file or decision but isn't sure which day. Returns matching turn summaries and their dates, finer-grained than the diary.</value></data>
+  <data name="Tool_SendNotification_AiDescription" xml:space="preserve"><value>Send a Windows system notification.</value></data>
+  <data name="Tool_AddTask_AiDescription" xml:space="preserve"><value>Create a task, optionally with a due time and reminder time (local time).</value></data>
+  <data name="Tool_ListTasks_AiDescription" xml:space="preserve"><value>List tasks, optionally filtered by status (pending/done/cancelled/all).</value></data>
+  <data name="Tool_CompleteTask_AiDescription" xml:space="preserve"><value>Mark the specified task as completed.</value></data>
+  <data name="Tool_DeleteTask_AiDescription" xml:space="preserve"><value>Delete the specified task.</value></data>
+  <data name="Tool_RememberFact_AiDescription" xml:space="preserve"><value>Remember a long-term fact about the user for later recall. The key must be an English phrase with underscores (e.g. preferred_language, editor_theme); the value is a natural-language description. Do not record secrets such as passwords or API keys.</value></data>
+  <data name="Tool_ForgetFact_AiDescription" xml:space="preserve"><value>Forget (delete) a previously remembered long-term fact; the fact's key is required.</value></data>
+  <data name="Tool_ListFacts_AiDescription" xml:space="preserve"><value>List remembered long-term facts, optionally filtered by keyword. Use to see what is currently remembered about the user.</value></data>
+
+  <!-- 工具通用消息 -->
+  <data name="Tool_Msg_MissingParam" xml:space="preserve"><value>Missing parameter {0}.</value></data>
+  <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>Execution cancelled.</value></data>
+  <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>User denied execution.</value></data>
+  <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>, </value></data>
+
+  <!-- 文件沙箱 -->
+  <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>Path is empty.</value></data>
+  <data name="Tool_Fs_InvalidPath" xml:space="preserve"><value>Invalid path: {0}</value></data>
+  <data name="Tool_Fs_NoExtension" xml:space="preserve"><value>The file has no extension and was rejected by the safety policy.</value></data>
+  <data name="Tool_Fs_BlockedType" xml:space="preserve"><value>File type not allowed: {0}</value></data>
+  <data name="Tool_Fs_NotFound" xml:space="preserve"><value>File does not exist: {0}</value></data>
+  <data name="Tool_Fs_AccessDenied" xml:space="preserve"><value>Cannot access the file: {0}</value></data>
+  <data name="Tool_Fs_TooLarge" xml:space="preserve"><value>File too large ({0} KB); the limit is {1} KB.</value></data>
+  <data name="Tool_Fs_DirNotFound" xml:space="preserve"><value>Directory does not exist: {0}</value></data>
+
+  <!-- 待办状态 -->
+  <data name="Tool_TaskStatus_Done" xml:space="preserve"><value>completed</value></data>
+  <data name="Tool_TaskStatus_Cancelled" xml:space="preserve"><value>cancelled</value></data>
+  <data name="Tool_TaskStatus_All" xml:space="preserve"><value>all</value></data>
+  <data name="Tool_TaskStatus_Pending" xml:space="preserve"><value>pending</value></data>
+
+  <!-- add_task -->
+  <data name="Tool_AddTask_Param_Title" xml:space="preserve"><value>Task title</value></data>
+  <data name="Tool_AddTask_Param_DueAt" xml:space="preserve"><value>Due time (ISO 8601 or yyyy-MM-dd HH:mm, local time); optional</value></data>
+  <data name="Tool_AddTask_Param_RemindAt" xml:space="preserve"><value>Reminder time (same format); optional</value></data>
+  <data name="Tool_AddTask_Param_Notes" xml:space="preserve"><value>Notes; optional</value></data>
+  <data name="Tool_AddTask_Msg_BadDue" xml:space="preserve"><value>Cannot parse the due time: {0}</value></data>
+  <data name="Tool_AddTask_Msg_BadRemind" xml:space="preserve"><value>Cannot parse the reminder time: {0}</value></data>
+  <data name="Tool_AddTask_Msg_CreateFailed" xml:space="preserve"><value>Failed to create the task: {0}</value></data>
+  <data name="Tool_AddTask_Msg_Created" xml:space="preserve"><value>Created task: "{0}"</value></data>
+  <data name="Tool_AddTask_Msg_Id" xml:space="preserve"><value>ID: {0}</value></data>
+  <data name="Tool_AddTask_Msg_Due" xml:space="preserve"><value>Due: {0}</value></data>
+  <data name="Tool_AddTask_Msg_Remind" xml:space="preserve"><value>Reminder: {0}</value></data>
+  <data name="Tool_AddTask_Msg_LocalNote" xml:space="preserve"><value>(All times are local)</value></data>
+
+  <!-- read_clipboard -->
+  <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>Failed to read the clipboard: {0}</value></data>
+
+  <!-- code_execute -->
+  <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>Python code to run (Python only). Best-effort sandbox: networking and file-system access are blocked (regex blocklist for import socket/urllib/requests, open(), os./shutil/pathlib/subprocess, etc.).</value></data>
+  <data name="Tool_CodeExecute_Msg_Forbidden" xml:space="preserve"><value>The code uses a forbidden construct ({0}). The sandbox blocks networking and file-system access.
+Note: this sandbox is best-effort, not fully secure.</value></data>
+  <data name="Tool_CodeExecute_Msg_StartFailed" xml:space="preserve"><value>Cannot start python.exe; make sure Python is installed and on PATH: {0}</value></data>
+  <data name="Tool_CodeExecute_Msg_Failed" xml:space="preserve"><value>Execution failed: {0}</value></data>
+  <data name="Tool_CodeExecute_Msg_ExitCode" xml:space="preserve"><value>Exit code: </value></data>
+  <data name="Tool_CodeExecute_Msg_TimedOut" xml:space="preserve"><value> (timeout)</value></data>
+  <data name="Tool_CodeExecute_Msg_Elapsed" xml:space="preserve"><value>Elapsed: </value></data>
+  <data name="Tool_CodeExecute_Msg_Empty" xml:space="preserve"><value>(empty)</value></data>
+  <data name="Tool_CodeExecute_Msg_Truncated" xml:space="preserve"><value>… (output exceeded 100 KB and was truncated)</value></data>
+
+  <!-- complete_task -->
+  <data name="Tool_CompleteTask_Param_TaskId" xml:space="preserve"><value>Task ID</value></data>
+  <data name="Tool_CompleteTask_Msg_NotFound" xml:space="preserve"><value>Task not found: {0}</value></data>
+  <data name="Tool_CompleteTask_Msg_Done" xml:space="preserve"><value>Marked task {0} as completed.</value></data>
+  <data name="Tool_CompleteTask_Msg_Failed" xml:space="preserve"><value>Failed to complete the task: {0}</value></data>
+
+  <!-- delete_task -->
+  <data name="Tool_DeleteTask_Param_TaskId" xml:space="preserve"><value>Task ID</value></data>
+  <data name="Tool_DeleteTask_Msg_NotFound" xml:space="preserve"><value>Task not found: {0}</value></data>
+  <data name="Tool_DeleteTask_Msg_Deleted" xml:space="preserve"><value>Deleted task {0}.</value></data>
+  <data name="Tool_DeleteTask_Msg_Failed" xml:space="preserve"><value>Failed to delete the task: {0}</value></data>
+
+  <!-- diary_search -->
+  <data name="Tool_DiarySearch_Param_Keyword" xml:space="preserve"><value>Search keyword</value></data>
+  <data name="Tool_DiarySearch_Param_Limit" xml:space="preserve"><value>Max results; default 5, max 20</value></data>
+  <data name="Tool_DiarySearch_Msg_None" xml:space="preserve"><value>No diary entries related to "{0}".</value></data>
+  <data name="Tool_DiarySearch_Msg_Failed" xml:space="preserve"><value>Failed to search the diary: {0}</value></data>
+
+  <!-- fetch_url -->
+  <data name="Tool_FetchUrl_Param_Url" xml:space="preserve"><value>Full URL of the page to read (must start with http:// or https://)</value></data>
+  <data name="Tool_FetchUrl_Msg_BadUrl" xml:space="preserve"><value>Invalid URL: {0}</value></data>
+  <data name="Tool_FetchUrl_Msg_Http" xml:space="preserve"><value>Fetch failed: HTTP {0}</value></data>
+  <data name="Tool_FetchUrl_Msg_NoContent" xml:space="preserve"><value>No main content extracted from {0}.</value></data>
+  <data name="Tool_FetchUrl_Msg_Timeout" xml:space="preserve"><value>Fetch timed out or was cancelled.</value></data>
+  <data name="Tool_FetchUrl_Msg_Failed" xml:space="preserve"><value>Fetch failed: {0}</value></data>
+  <data name="Tool_FetchUrl_Msg_Title" xml:space="preserve"><value>Title: </value></data>
+  <data name="Tool_FetchUrl_Msg_Truncated" xml:space="preserve"><value>… (content too long, truncated)</value></data>
+
+  <!-- file_open -->
+  <data name="Tool_FileOpen_Param_Path" xml:space="preserve"><value>Path to a file, folder or application. Supports aliases like desktop/documents/downloads/pictures/music/videos/home</value></data>
+  <data name="Tool_FileOpen_Msg_Cancelled" xml:space="preserve"><value>Open cancelled.</value></data>
+  <data name="Tool_FileOpen_Msg_Opened" xml:space="preserve"><value>Opened: {0}</value></data>
+  <data name="Tool_FileOpen_Msg_Failed" xml:space="preserve"><value>Open failed: {0}</value></data>
+  <data name="Tool_FileOpen_Msg_BadPath" xml:space="preserve"><value>Invalid path: {0}</value></data>
+  <data name="Tool_FileOpen_Msg_NotFound" xml:space="preserve"><value>File, folder or application does not exist: {0}</value></data>
+
+  <!-- file_tree -->
+  <data name="Tool_FileTree_Param_Path" xml:space="preserve"><value>Directory to list. Supports aliases like desktop/documents/downloads/pictures/home or an absolute path; relative paths are based on the working directory; empty uses the working directory</value></data>
+  <data name="Tool_FileTree_Param_Depth" xml:space="preserve"><value>Recursion depth; default 2, max 6</value></data>
+  <data name="Tool_FileTree_Param_MaxEntries" xml:space="preserve"><value>Max entries; default 500, max 2000</value></data>
+  <data name="Tool_FileTree_Msg_Dir" xml:space="preserve"><value>Directory: </value></data>
+  <data name="Tool_FileTree_Msg_Truncated" xml:space="preserve"><value>… (reached the entry limit of {0}; results truncated)</value></data>
+
+  <!-- forget_fact -->
+  <data name="Tool_ForgetFact_Param_Key" xml:space="preserve"><value>Key of the fact to forget</value></data>
+  <data name="Tool_ForgetFact_Msg_Done" xml:space="preserve"><value>Forgotten: {0}</value></data>
+  <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>No fact with key "{0}" was found.</value></data>
+  <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>Failed to forget the fact: {0}</value></data>
+
+  <!-- get_current_time -->
+  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>Current time: {0} ({1})
+UTC time: {2}
+Unix timestamp: {3}</value></data>
+
+  <!-- git -->
+  <data name="Tool_Git_Param_Action" xml:space="preserve"><value>Git subcommand</value></data>
+  <data name="Tool_Git_Param_Args" xml:space="preserve"><value>Extra arguments passed to the subcommand, e.g. ["--stat"], ["HEAD~3"], ["newfile.txt"]</value></data>
+  <data name="Tool_Git_Param_Message" xml:space="preserve"><value>Commit message; required when action=commit</value></data>
+  <data name="Tool_Git_Param_Path" xml:space="preserve"><value>Repository path; must be inside an authorized directory; empty uses the working directory</value></data>
+  <data name="Tool_Git_Msg_BadAction" xml:space="preserve"><value>Unsupported git subcommand: {0}. Only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
+  <data name="Tool_Git_Msg_NeedMessage" xml:space="preserve"><value>commit requires the "message" parameter.</value></data>
+  <data name="Tool_Git_Msg_ConfirmWrite" xml:space="preserve"><value>$ git {0}
+This will modify the repository. Continue?</value></data>
+  <data name="Tool_Git_Msg_StartFailed" xml:space="preserve"><value>Cannot start git; make sure it is installed and on PATH: {0}</value></data>
+  <data name="Tool_Git_Msg_Timeout" xml:space="preserve"><value>git timed out ({0} s) and was terminated.</value></data>
+  <data name="Tool_Git_Msg_ResultHeader" xml:space="preserve"><value>Result: </value></data>
+  <data name="Tool_Git_Msg_ExitCode" xml:space="preserve"><value>(git exit code {0})</value></data>
+  <data name="Tool_Git_Msg_Truncated" xml:space="preserve"><value>… (output truncated)</value></data>
+  <data name="Tool_Git_Msg_ArgForbidden" xml:space="preserve"><value>Argument blocked by the safety policy: {0}</value></data>
+  <data name="Tool_Git_Msg_ArgsNotArray" xml:space="preserve"><value>The "args" parameter must be an array of strings.</value></data>
+
+  <!-- list_facts -->
+  <data name="Tool_ListFacts_Param_Keyword" xml:space="preserve"><value>Optional; filter by keyword in key or value</value></data>
+  <data name="Tool_ListFacts_Msg_Empty" xml:space="preserve"><value>No facts remembered yet.</value></data>
+  <data name="Tool_ListFacts_Msg_None" xml:space="preserve"><value>No facts related to "{0}".</value></data>
+  <data name="Tool_ListFacts_Msg_Failed" xml:space="preserve"><value>Failed to list facts: {0}</value></data>
+
+  <!-- list_tasks -->
+  <data name="Tool_ListTasks_Param_Status" xml:space="preserve"><value>Filter status: pending / done / cancelled / all; default pending</value></data>
+  <data name="Tool_ListTasks_Msg_None" xml:space="preserve"><value>No {0} tasks.</value></data>
+  <data name="Tool_ListTasks_Msg_Header" xml:space="preserve"><value>{0} tasks ({1}):</value></data>
+  <data name="Tool_ListTasks_Msg_Line" xml:space="preserve"><value>   ID: {0}  Status: {1}</value></data>
+  <data name="Tool_ListTasks_Msg_Due" xml:space="preserve"><value>   Due: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Remind" xml:space="preserve"><value>   Reminder: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Notes" xml:space="preserve"><value>   Notes: {0}</value></data>
+  <data name="Tool_ListTasks_Msg_Failed" xml:space="preserve"><value>Failed to list tasks: {0}</value></data>
+
+  <!-- powershell -->
+  <data name="Tool_Powershell_Param_Command" xml:space="preserve"><value>Read-only PowerShell command to run. Pipes are allowed, but each segment must start with Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out-, and must not contain write verbs such as Remove/Set/New/Invoke/Start/Stop/Restart/Install/Uninstall/Enable/Disable/Clear/Add/Out-File/Set-Content/Remove-Item.</value></data>
+  <data name="Tool_Powershell_Msg_MissingCommand" xml:space="preserve"><value>Missing parameter command.</value></data>
+  <data name="Tool_Powershell_Msg_EmptyPipe" xml:space="preserve"><value>The command contains an empty pipe segment.</value></data>
+  <data name="Tool_Powershell_Msg_BadVerb" xml:space="preserve"><value>Command not allowed: every pipe segment must start with a read-only verb (Get/Test/Select/Where/Measure/Format/Group/Sort/Compare/ConvertTo/ConvertFrom/Out-).
+Offending segment: {0}</value></data>
+  <data name="Tool_Powershell_Msg_ForbiddenVerb" xml:space="preserve"><value>Command not allowed: it contains a forbidden write verb.
+Offending segment: {0}</value></data>
+  <data name="Tool_Powershell_Msg_StartFailed" xml:space="preserve"><value>Cannot start powershell.exe: {0}</value></data>
+  <data name="Tool_Powershell_Msg_Timeout" xml:space="preserve"><value>PowerShell timed out ({0} s); the process tree was terminated.</value></data>
+  <data name="Tool_Powershell_Msg_ResultHeader" xml:space="preserve"><value>Result: </value></data>
+  <data name="Tool_Powershell_Msg_ExitCode" xml:space="preserve"><value>(exit code {0})</value></data>
+  <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>… (output truncated)</value></data>
+
+  <!-- read_file -->
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; common text/code extensions are supported.</value></data>
+  <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
+  <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
+
+  <!-- remember_fact -->
+  <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>
+  <data name="Tool_RememberFact_Param_Value" xml:space="preserve"><value>Fact content described in natural language</value></data>
+  <data name="Tool_RememberFact_Msg_Sensitive" xml:space="preserve"><value>Possible sensitive information detected (password, key, etc.); refused to record.</value></data>
+  <data name="Tool_RememberFact_Msg_Remembered" xml:space="preserve"><value>Remembered: {0} = {1}</value></data>
+  <data name="Tool_RememberFact_Msg_Failed" xml:space="preserve"><value>Failed to remember the fact: {0}</value></data>
+
+  <!-- search_files -->
+  <data name="Tool_SearchFiles_Param_Query" xml:space="preserve"><value>File-name keyword; supports * and ? wildcards</value></data>
+  <data name="Tool_SearchFiles_Param_Path" xml:space="preserve"><value>Optional. Restrict the search directory. Supports aliases desktop/documents/downloads/pictures/music/videos/home, or an absolute path; empty searches common folders then all local drives.</value></data>
+  <data name="Tool_SearchFiles_Param_MaxResults" xml:space="preserve"><value>Max results; default 30, max 100</value></data>
+  <data name="Tool_SearchFiles_Msg_NoDir" xml:space="preserve"><value>Search directory does not exist: {0}</value></data>
+  <data name="Tool_SearchFiles_Msg_BadPattern" xml:space="preserve"><value>Invalid search expression: {0}</value></data>
+  <data name="Tool_SearchFiles_Msg_None" xml:space="preserve"><value>No matching files found.</value></data>
+  <data name="Tool_SearchFiles_Msg_NoneTimeout" xml:space="preserve"><value>No matching files found (search timed out; results may be incomplete).</value></data>
+  <data name="Tool_SearchFiles_Msg_Source" xml:space="preserve"><value>Source: </value></data>
+  <data name="Tool_SearchFiles_Msg_SourceIndex" xml:space="preserve"><value>Windows Search index</value></data>
+  <data name="Tool_SearchFiles_Msg_Truncated" xml:space="preserve"><value>… (results truncated; narrow your search)</value></data>
+
+  <!-- send_notification -->
+  <data name="Tool_SendNotification_Param_Title" xml:space="preserve"><value>Notification title</value></data>
+  <data name="Tool_SendNotification_Param_Message" xml:space="preserve"><value>Notification body</value></data>
+  <data name="Tool_SendNotification_Param_TimeoutMs" xml:space="preserve"><value>Display duration in milliseconds; default 5000</value></data>
+  <data name="Tool_SendNotification_Msg_Sent" xml:space="preserve"><value>Notification sent.</value></data>
+  <data name="Tool_SendNotification_Msg_Failed" xml:space="preserve"><value>Failed to send the notification: {0}</value></data>
+
+  <!-- turn_search -->
+  <data name="Tool_TurnSearch_Param_Keyword" xml:space="preserve"><value>Search keyword</value></data>
+  <data name="Tool_TurnSearch_Param_Limit" xml:space="preserve"><value>Max results; default 5, max 20</value></data>
+  <data name="Tool_TurnSearch_Msg_None" xml:space="preserve"><value>No conversation turns related to "{0}".</value></data>
+  <data name="Tool_TurnSearch_Msg_SessionPrefix" xml:space="preserve"><value>] Session </value></data>
+  <data name="Tool_TurnSearch_Msg_Failed" xml:space="preserve"><value>Failed to search turn summaries: {0}</value></data>
+  <data name="Tool_TurnSearch_Msg_NoSummary" xml:space="preserve"><value>(no summary content)</value></data>
+  <data name="Tool_TurnSearch_Msg_Files" xml:space="preserve"><value>Files: </value></data>
+  <data name="Tool_TurnSearch_Msg_Topics" xml:space="preserve"><value>Topics: </value></data>
+
+  <!-- web_search -->
+  <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>Search keywords or question</value></data>
+  <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>Tavily API Key is not configured. Enter it under "Web Search" on the Tools page and try again.</value></data>
+  <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>No related results found.</value></data>
+  <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>Search failed: {0}</value></data>
+
+  <!-- write_file -->
+  <data name="Tool_WriteFile_Param_Path" xml:space="preserve"><value>Path relative to the output directory (an absolute path under the output directory also works)</value></data>
+  <data name="Tool_WriteFile_Param_Content" xml:space="preserve"><value>File content to write</value></data>
+  <data name="Tool_WriteFile_Param_Mode" xml:space="preserve"><value>Write mode; default create. create fails if the file exists; overwrite asks for confirmation; append appends.</value></data>
+  <data name="Tool_WriteFile_Msg_BadMode" xml:space="preserve"><value>Unsupported mode: {0} (use: create / overwrite / append).</value></data>
+  <data name="Tool_WriteFile_Msg_Binary" xml:space="preserve"><value>The content contains binary data (NUL byte) and was rejected by the safety policy.</value></data>
+  <data name="Tool_WriteFile_Msg_Exists" xml:space="preserve"><value>File already exists: {0}. Use overwrite mode to replace it.</value></data>
+  <data name="Tool_WriteFile_Msg_ConfirmOverwrite" xml:space="preserve"><value>Overwrite file {0}?
+Its content will be lost.</value></data>
+  <data name="Tool_WriteFile_Msg_DeniedOverwrite" xml:space="preserve"><value>User declined the overwrite.</value></data>
+  <data name="Tool_WriteFile_Msg_Written" xml:space="preserve"><value>Written file: {0} ({1} chars)</value></data>
+  <data name="Tool_WriteFile_Msg_Appended" xml:space="preserve"><value>Appended to file: {0} ({1} chars)</value></data>
+  <data name="Tool_WriteFile_Msg_Cancelled" xml:space="preserve"><value>File write cancelled.</value></data>
+  <data name="Tool_WriteFile_Msg_Failed" xml:space="preserve"><value>Failed to write the file: {0}</value></data>
+  <data name="Tool_WriteFile_Msg_NoOutputDir" xml:space="preserve"><value>Output directory is not configured. Set it under "Settings - General" before writing.</value></data>
+  <data name="Tool_WriteFile_Msg_BadOutputDir" xml:space="preserve"><value>Invalid output directory: {0}</value></data>
+  <data name="Tool_WriteFile_Msg_NoOutputDirExists" xml:space="preserve"><value>Output directory does not exist: {0}</value></data>
+  <data name="Tool_WriteFile_Msg_BadPath" xml:space="preserve"><value>Invalid path: {0}</value></data>
+  <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>Path is not inside the output directory.</value></data>
+  <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>File has no extension and was rejected by the safety policy.</value></data>
+  <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>File type not allowed for writing: {0}</value></data>
+</root>

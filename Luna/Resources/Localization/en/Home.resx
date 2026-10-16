@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Home_NewChat" xml:space="preserve"><value>New Chat</value></data>
+  <data name="Home_Nav_Diary" xml:space="preserve"><value>Diary</value></data>
+  <data name="Home_Nav_Tools" xml:space="preserve"><value>Tools</value></data>
+  <data name="Home_Nav_Settings" xml:space="preserve"><value>Settings</value></data>
+
+  <data name="Home_Status_LoadFailed" xml:space="preserve"><value>Load failed</value></data>
+  <data name="Home_Status_RenameFailed" xml:space="preserve"><value>Rename failed: {0}</value></data>
+  <data name="Home_Status_DeleteFailed" xml:space="preserve"><value>Delete failed: {0}</value></data>
+
+  <data name="Home_Session_RenameTitle" xml:space="preserve"><value>Rename Session</value></data>
+  <data name="Home_Session_DeleteTitle" xml:space="preserve"><value>Delete Session</value></data>
+  <data name="Home_Session_DeleteBody" xml:space="preserve"><value>Delete conversation "{0}"?
+All its messages, attachment references and summary memories will be removed, and this cannot be undone. Generated diaries are unaffected.</value></data>
+  <data name="Home_Session_DeleteButton" xml:space="preserve"><value>Delete</value></data>
+</root>

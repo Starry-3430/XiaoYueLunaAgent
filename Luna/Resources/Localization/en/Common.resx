@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 聊天通用 -->
+  <data name="Common_Status_Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Common_Thinking" xml:space="preserve"><value>Thinking</value></data>
+  <data name="Common_ReasoningProcess" xml:space="preserve"><value>Reasoning</value></data>
+  <data name="Common_Params" xml:space="preserve"><value>Arguments</value></data>
+  <data name="Common_Result" xml:space="preserve"><value>Result</value></data>
+  <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Common_Cut" xml:space="preserve"><value>Cut</value></data>
+  <data name="Common_Paste" xml:space="preserve"><value>Paste</value></data>
+  <data name="Common_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Common_Rewrite" xml:space="preserve"><value>Rewrite</value></data>
+  <data name="Common_ScrollToBottom" xml:space="preserve"><value>Scroll to bottom</value></data>
+  <data name="Common_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common_AddAttachment" xml:space="preserve"><value>Add Attachment</value></data>
+  <data name="Common_DragToAttach" xml:space="preserve"><value>Drag files here to attach</value></data>
+  <data name="Common_AttachmentLimit" xml:space="preserve"><value>Up to 10 attachments, max 100 MB each</value></data>
+
+  <!-- 附件导入状态 -->
+  <data name="Common_NoAttachments" xml:space="preserve"><value>No attachments to add (up to {0}, max {1} each)</value></data>
+  <data name="Common_ReadingAttachments" xml:space="preserve"><value>Reading attachments…</value></data>
+  <data name="Common_SkippedAttachments" xml:space="preserve"><value>Skipped {0} attachment(s) (up to {1}, max {2} each)</value></data>
+  <data name="Common_ReadAttachmentsPrompt" xml:space="preserve"><value>Please read the attachment(s) I sent.</value></data>
+  <data name="Common_SendFailed" xml:space="preserve"><value>Send failed: {0}</value></data>
+
+  <!-- 生成状态 -->
+  <data name="Common_Status_Thinking" xml:space="preserve"><value>Thinking…</value></data>
+  <data name="Common_Status_RunningTools" xml:space="preserve"><value>Running tools ({0})…</value></data>
+  <data name="Common_Status_ReadyCanceled" xml:space="preserve"><value>Ready (canceled)</value></data>
+  <data name="Common_Status_Error" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="Common_OutputTruncated" xml:space="preserve"><value>This reply reached the output length limit and may be incomplete. Reply "continue" and Luna will keep going.</value></data>
+  <data name="Common_Canceled" xml:space="preserve"><value>Canceled</value></data>
+  <data name="Common_Tool_NotEnabled" xml:space="preserve"><value>Tool not enabled</value></data>
+  <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>Execution failed: {0}</value></data>
+  <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (result truncated)</value></data>
+
+  <!-- 注入提示词的用户环境 -->
+  <data name="Common_UserEnv_Title" xml:space="preserve"><value>## Current User Environment</value></data>
+  <data name="Common_UserEnv_Home" xml:space="preserve"><value>- User / home directory: {0}</value></data>
+  <data name="Common_UserEnv_Desktop" xml:space="preserve"><value>Desktop</value></data>
+  <data name="Common_UserEnv_Documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="Common_UserEnv_Downloads" xml:space="preserve"><value>Downloads</value></data>
+  <data name="Common_UserEnv_Pictures" xml:space="preserve"><value>Pictures</value></data>
+  <data name="Common_UserEnv_Music" xml:space="preserve"><value>Music</value></data>
+  <data name="Common_UserEnv_Videos" xml:space="preserve"><value>Videos</value></data>
+  <data name="Common_UserEnv_Line" xml:space="preserve"><value>- {0}: {1}</value></data>
+  <data name="Common_UserEnv_Time" xml:space="preserve"><value>- Current time: {0} (local time, used to compute task due/reminder times)</value></data>
+  <data name="Common_UserEnv_Aliases" xml:space="preserve"><value>When searching or reading files, use the absolute paths above, or the aliases desktop/documents/downloads/pictures/music/videos/home.</value></data>
+
+  <!-- 附件选择 / 图片读取 -->
+  <data name="Common_Attachment_AllFiles" xml:space="preserve"><value>All supported attachments</value></data>
+  <data name="Common_Attachment_Images" xml:space="preserve"><value>Images</value></data>
+  <data name="Common_Attachment_Documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="Common_Attachment_AnyFile" xml:space="preserve"><value>All files</value></data>
+  <data name="Common_Attachment_ImageMissing" xml:space="preserve"><value>Image file does not exist.</value></data>
+  <data name="Common_Attachment_ImageTooLarge" xml:space="preserve"><value>Image too large ({0}); the limit is {1}.</value></data>
+</root>

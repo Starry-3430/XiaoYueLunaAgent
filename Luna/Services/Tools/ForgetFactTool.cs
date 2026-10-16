@@ -2,22 +2,23 @@
 using System.Text.Json;
 using Luna.Services.Data;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
 /// <summary>删除一条长期事实。归“长期事实”开关（long_term_facts）。</summary>
 public class ForgetFactTool : ITool
 {
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"key":{"type":"string","description":"要忘记的事实标识（key）"}},"required":["key"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"key":{"type":"string","description":"$key$"}},"required":["key"]}""";
 
     private readonly FactRepository _repo;
     private readonly ILogger<ForgetFactTool> _logger;
 
     public string Name => "forget_fact";
-    public string DisplayName => "忘记事实";
-    public string Description => "忘记（删除）一条已记录的长期事实，需要提供该事实的 key。";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$key$", Param("Tool_ForgetFact_Param_Key")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
     public string SettingsKey => "long_term_facts";
 
@@ -31,7 +32,7 @@ public class ForgetFactTool : ITool
     {
         var key = GetString(args, "key");
         if (string.IsNullOrWhiteSpace(key))
-            return ToolResult.Error("缺少参数 key。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "key"));
 
         key = key.Trim();
 
@@ -41,15 +42,15 @@ public class ForgetFactTool : ITool
             if (removed)
             {
                 _logger.LogInformation("已忘记事实：{Key}", key);
-                return ToolResult.Ok($"已忘记：{key}");
+                return ToolResult.Ok(Text("Tool_ForgetFact_Msg_Done", key));
             }
 
-            return ToolResult.Ok($"没有找到 key 为「{key}」的事实。");
+            return ToolResult.Ok(Text("Tool_ForgetFact_Msg_NotFound", key));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "忘记事实失败：{Key}", key);
-            return ToolResult.Error($"忘记事实失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_ForgetFact_Msg_Failed", ex.Message));
         }
     }
 

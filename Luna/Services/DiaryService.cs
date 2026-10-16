@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Threading;
 using Dapper;
+using Luna.Localization;
 using Luna.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -188,7 +189,8 @@ public class DiaryService
             .Replace("{nickname}", nickname)
             .Replace("{user}", userName)
             .Replace("{date}", date)
-            .Replace("{summary}", aggregated);
+            .Replace("{summary}", aggregated)
+            + DefaultPrompts.ResponseLanguageDirective(_settings.ResponseLanguage);
 
         string content;
         try
@@ -216,7 +218,7 @@ public class DiaryService
         content = content.Trim();
         if (string.IsNullOrWhiteSpace(content))
         {
-            await SetStatusAsync(date, StatusFailed, "模型返回空内容");
+            await SetStatusAsync(date, StatusFailed, LocalizationService.Instance["Diary_Service_EmptyResponse"]);
             return;
         }
 
@@ -280,7 +282,8 @@ public class DiaryService
         {
             var prompt = DefaultPrompts.DiaryShortenPrompt
                 .Replace("{nickname}", nickname)
-                .Replace("{content}", content);
+                .Replace("{content}", content)
+                + DefaultPrompts.ResponseLanguageDirective(_settings.ResponseLanguage);
 
             var shortened = await _aiService.ChatAsync(
                 new[] { new ChatMessage { Role = "user", Content = prompt } },

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 搜索 -->
+  <data name="Diary_Search_Placeholder" xml:space="preserve">
+    <value>搜索日记内容…（回车）</value>
+  </data>
+
+  <!-- 翻页 -->
+  <data name="Diary_Nav_Prev" xml:space="preserve">
+    <value>上一页</value>
+  </data>
+  <data name="Diary_Nav_Today" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="Diary_Nav_Next" xml:space="preserve">
+    <value>下一页</value>
+  </data>
+
+  <!-- 日记本开关 -->
+  <data name="Diary_Enable_Title" xml:space="preserve">
+    <value>日记本</value>
+  </data>
+  <data name="Diary_Enable_Desc" xml:space="preserve">
+    <value>你的聊天记录将发送至AI用于总结</value>
+  </data>
+  <data name="Diary_Enable_Warning" xml:space="preserve">
+    <value>⚠可能消耗更多Token</value>
+  </data>
+
+  <!-- 卡片状态 -->
+  <data name="Diary_Status_Failed_Title" xml:space="preserve">
+    <value>生成失败！</value>
+  </data>
+  <data name="Diary_Status_UnknownError" xml:space="preserve">
+    <value>未知错误</value>
+  </data>
+  <data name="Diary_Status_Retry" xml:space="preserve">
+    <value>重试</value>
+  </data>
+  <data name="Diary_Status_NotGenerated" xml:space="preserve">
+    <value>这一天的日记还没写哦！</value>
+  </data>
+  <data name="Diary_Status_Fill" xml:space="preserve">
+    <value>补写</value>
+  </data>
+  <data name="Diary_Status_Pending" xml:space="preserve">
+    <value>{0}还在记录
+稍后再来看看吧！</value>
+  </data>
+  <data name="Diary_Status_NoData" xml:space="preserve">
+    <value>这一天没有和
+{0}互动过哦！</value>
+  </data>
+
+  <!-- 关闭确认 -->
+  <data name="Diary_Disable_Title" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Diary_Disable_Body" xml:space="preserve">
+    <value>关闭日记本，{0}将不再整理日记，重新启用日记本后，将会补写最近7天的日记</value>
+  </data>
+  <data name="Diary_Disable_Confirm" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+
+  <!-- 服务状态 -->
+  <data name="Diary_Service_EmptyResponse" xml:space="preserve">
+    <value>模型返回空内容</value>
+  </data>
+</root>

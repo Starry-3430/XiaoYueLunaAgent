@@ -116,44 +116,52 @@ public partial class LunaDialog : Window
     {
         Dispatcher.InvokeAsync(() =>
         {
-            ButtonsPanel.Children.Clear();
-
             var buttons = Buttons;
             if (buttons is null || buttons.Count == 0)
+            {
+                ButtonsPanel.Content = null;
                 return;
+            }
 
             ButtonsPanel.Margin = new Thickness(0, 0, 0, 10);
 
             if (buttons.Count == 1)
             {
-                ButtonsPanel.Orientation = Orientation.Horizontal;
+                // 单个按钮铺满弹窗，长度与多按钮时一致，保证英文完整显示
                 var btn = MakeButton(buttons[0]);
-                btn.Width = 160;
-                btn.HorizontalAlignment = HorizontalAlignment.Center;
-                ButtonsPanel.Children.Add(btn);
+                btn.HorizontalAlignment = HorizontalAlignment.Stretch;
+                ButtonsPanel.Content = btn;
             }
             else if (buttons.Count == 2)
             {
-                ButtonsPanel.Orientation = Orientation.Horizontal;
+                // 两个按钮等宽铺满弹窗，保证英文等较长文案能完整显示
+                var grid = new Grid();
+                for (var i = 0; i < 2; i++)
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
                 for (var i = 0; i < 2; i++)
                 {
                     var btn = MakeButton(buttons[i]);
-                    btn.Width = 75;
                     btn.Margin = i == 0 ? new Thickness(0, 0, 5, 0) : new Thickness(5, 0, 0, 0);
-                    ButtonsPanel.Children.Add(btn);
+                    Grid.SetColumn(btn, i);
+                    grid.Children.Add(btn);
                 }
+
+                ButtonsPanel.Content = grid;
             }
             else
             {
-                ButtonsPanel.Orientation = Orientation.Vertical;
+                // 三个及以上按钮纵向铺满弹窗，避免较长英文文案被截断
+                var panel = new StackPanel { Orientation = Orientation.Vertical };
                 foreach (var button in buttons)
                 {
                     var btn = MakeButton(button);
-                    btn.Width = 160;
-                    btn.HorizontalAlignment = HorizontalAlignment.Center;
+                    btn.HorizontalAlignment = HorizontalAlignment.Stretch;
                     btn.Margin = new Thickness(0, 0, 0, 8);
-                    ButtonsPanel.Children.Add(btn);
+                    panel.Children.Add(btn);
                 }
+
+                ButtonsPanel.Content = panel;
             }
         });
     }

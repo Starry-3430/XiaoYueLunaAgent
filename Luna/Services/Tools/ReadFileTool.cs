@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using Luna.Services;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -12,15 +13,15 @@ namespace Luna.Services.Tools;
 /// </summary>
 public class ReadFileTool : ITool
 {
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"path":{"type":"string","description":"要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名"}},"required":["path"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"}},"required":["path"]}""";
 
     private readonly ILogger<ReadFileTool> _logger;
 
     public string Name => "read_file";
-    public string DisplayName => "读取文件";
-    public string Description => "读取指定文本文件的内容（仅限允许的目录、扩展名与大小）";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$path$", Param("Tool_ReadFile_Param_Path")));
     public ToolRiskLevel Risk => ToolRiskLevel.Medium;
 
     public ReadFileTool(ILogger<ReadFileTool> logger)
@@ -32,7 +33,7 @@ public class ReadFileTool : ITool
     {
         var path = ExtractPath(args);
         if (string.IsNullOrWhiteSpace(path))
-            return ToolResult.Error("缺少参数 path。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "path"));
 
         if (!FileSandbox.TryResolveExisting(path, out var fullPath, out var error))
             return ToolResult.Error(error);
@@ -45,12 +46,12 @@ public class ReadFileTool : ITool
         }
         catch (OperationCanceledException)
         {
-            return ToolResult.Error("读取文件被取消。");
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_Cancelled"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "读取文件失败：{Path}", fullPath);
-            return ToolResult.Error($"读取文件失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_Failed", ex.Message));
         }
     }
 

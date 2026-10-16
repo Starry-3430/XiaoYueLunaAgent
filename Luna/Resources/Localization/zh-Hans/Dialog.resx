@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 通用按钮 -->
+  <data name="Dialog_Button_OK" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="Dialog_Button_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Dialog_Button_Continue" xml:space="preserve">
+    <value>继续</value>
+  </data>
+  <data name="Dialog_Button_Yes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="Dialog_Button_No" xml:space="preserve">
+    <value>否</value>
+  </data>
+
+  <!-- 授权提权 -->
+  <data name="Dialog_Elevation_Title" xml:space="preserve">
+    <value>需要授权</value>
+  </data>
+  <data name="Dialog_Elevation_Body" xml:space="preserve">
+    <value>需要管理员权限才能设置带管理员权限的开机自启动，是否继续？</value>
+  </data>
+
+  <!-- 自启动失败 -->
+  <data name="Dialog_StartupFailed_Title" xml:space="preserve">
+    <value>设置失败</value>
+  </data>
+  <data name="Dialog_StartupFailed_Body" xml:space="preserve">
+    <value>无法应用开机自启动设置：
+{0}</value>
+  </data>
+
+  <!-- 字体提示 -->
+  <data name="Dialog_FontReminder_Title" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Dialog_FontReminder_Body" xml:space="preserve">
+    <value>修改字体后，部分界面需要保存设置配置并重启后才能生效</value>
+  </data>
+
+  <!-- Copilot 快捷键提示 -->
+  <data name="Dialog_CopilotWarning_Title" xml:space="preserve">
+    <value>注意</value>
+  </data>
+  <data name="Dialog_CopilotWarning_Body" xml:space="preserve">
+    <value>如果你是中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开搜索框。
+如果你是非中国大陆用户，将快捷键绑定到Copilot后，按下Copilot将不再打开Windows Copilot功能
+是否继续？</value>
+  </data>
+
+  <!-- 编辑配置文件 -->
+  <data name="Dialog_EditConfig_Title" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="Dialog_EditConfig_Body" xml:space="preserve">
+    <value>错误地修改配置文件可能导致配置加载出错，确定要打开配置文件吗？</value>
+  </data>
+
+  <!-- 配置文件损坏重置 -->
+  <data name="Dialog_SettingsReset_Title" xml:space="preserve">
+    <value>配置文件已损坏</value>
+  </data>
+  <data name="Dialog_SettingsReset_Body" xml:space="preserve">
+    <value>由于settings.json配置文件丢失或结构被破坏，已重置工具和设置的相关配置</value>
+  </data>
+
+  <!-- 选择文件夹 -->
+  <data name="Dialog_ChooseFolder_Title" xml:space="preserve">
+    <value>选择输出目录</value>
+  </data>
+
+  <!-- 文档过长 -->
+  <data name="Dialog_Truncation_Title" xml:space="preserve">
+    <value>文档过长</value>
+  </data>
+  <data name="Dialog_Truncation_Body" xml:space="preserve">
+    <value>文档内容过大，是否采用智能截断策略？这有助于节省Tokens，你也可以选择继续导入整个文件。</value>
+  </data>
+  <data name="Dialog_Truncation_Smart" xml:space="preserve">
+    <value>智能截断</value>
+  </data>
+  <data name="Dialog_Truncation_Continue" xml:space="preserve">
+    <value>继续导入</value>
+  </data>
+
+  <!-- 工具授权确认 -->
+  <data name="Dialog_ToolPermission_Title" xml:space="preserve">
+    <value>需要授权</value>
+  </data>
+  <data name="Dialog_ToolPermission_Body" xml:space="preserve">
+    <value>即将进行敏感操作，需要用户确认：</value>
+  </data>
+  <data name="Dialog_ToolPermission_AllowOnce" xml:space="preserve">
+    <value>允许本次</value>
+  </data>
+  <data name="Dialog_ToolPermission_AllowAlways" xml:space="preserve">
+    <value>本轮对话始终允许</value>
+  </data>
+  <data name="Dialog_ToolPermission_Deny" xml:space="preserve">
+    <value>拒绝</value>
+  </data>
+  <data name="Dialog_ToolPermission_NoArgs" xml:space="preserve">
+    <value>（无参数）</value>
+  </data>
+</root>

@@ -38,9 +38,10 @@
                               Grid.Row="1"
                               Style="{StaticResource DialogBody}"/>
 
-            <StackPanel x:Name="ButtonsPanel"
-                        Grid.Row="2"
-                        HorizontalAlignment="Center"/>
+            <ContentControl x:Name="ButtonsPanel"
+                            Grid.Row="2"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"/>
         </Grid>
     </Border>
 </Window>

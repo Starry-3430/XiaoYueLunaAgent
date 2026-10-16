@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -22,18 +23,18 @@ public class DiarySearchTool : ITool
     private const int DefaultLimit = 5;
     private const int HardMaxLimit = 20;
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"keyword":{"type":"string","description":"检索关键词"},"limit":{"type":"integer","description":"返回条数上限，默认 5，最大 20"}},"required":["keyword"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"keyword":{"type":"string","description":"$keyword$"},"limit":{"type":"integer","description":"$limit$"}},"required":["keyword"]}""";
 
     private readonly DatabaseInitializer _db;
     private readonly ILogger<DiarySearchTool> _logger;
 
     public string Name => "diary_search";
-    public string DisplayName => "检索日记";
-    public string Description =>
-        "在历史日记中按关键词搜索。当用户问“我之前做过什么”、“上周聊过什么”、“那天的事”时调用。" +
-        "返回匹配的日期和内容片段，用于回忆过去的对话。";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$keyword$", Param("Tool_DiarySearch_Param_Keyword"))
+        .Replace("$limit$", Param("Tool_DiarySearch_Param_Limit")));
     public ToolRiskLevel Risk => ToolRiskLevel.None;
 
     public DiarySearchTool(DatabaseInitializer db, ILogger<DiarySearchTool> logger)
@@ -46,7 +47,7 @@ public class DiarySearchTool : ITool
     {
         var keyword = GetString(args, "keyword");
         if (string.IsNullOrWhiteSpace(keyword))
-            return ToolResult.Error("缺少参数 keyword。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "keyword"));
 
         var limit = DefaultLimit;
         if (args.ValueKind == JsonValueKind.Object &&
@@ -57,7 +58,7 @@ public class DiarySearchTool : ITool
         {
             var rows = await SearchAsync(keyword, limit);
             if (rows.Count == 0)
-                return ToolResult.Ok($"没有找到与「{keyword}」相关的日记。");
+                return ToolResult.Ok(Text("Tool_DiarySearch_Msg_None", keyword));
 
             var sb = new StringBuilder();
             for (var i = 0; i < rows.Count; i++)
@@ -71,7 +72,7 @@ public class DiarySearchTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "检索日记失败：{Keyword}", keyword);
-            return ToolResult.Error($"检索日记失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_DiarySearch_Msg_Failed", ex.Message));
         }
     }
 

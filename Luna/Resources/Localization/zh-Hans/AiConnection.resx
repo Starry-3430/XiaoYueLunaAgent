@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- 昵称 -->
+  <data name="AiConnection_Nickname_Title" xml:space="preserve">
+    <value>昵称</value>
+  </data>
+  <data name="AiConnection_Nickname_Desc" xml:space="preserve">
+    <value>AI 的名字</value>
+  </data>
+
+  <!-- 用户称呼 -->
+  <data name="AiConnection_UserName_Title" xml:space="preserve">
+    <value>用户称呼</value>
+  </data>
+  <data name="AiConnection_UserName_Desc" xml:space="preserve">
+    <value>AI 对你的称呼</value>
+  </data>
+
+  <!-- 提示词 -->
+  <data name="AiConnection_SystemPrompt_Title" xml:space="preserve">
+    <value>人格提示词</value>
+  </data>
+  <data name="AiConnection_SystemPrompt_Desc" xml:space="preserve">
+    <value>可用占位符：{nickname}（AI 昵称）、{user}（用户称呼）</value>
+  </data>
+
+  <!-- 提供商 -->
+  <data name="AiConnection_Provider_Title" xml:space="preserve">
+    <value>提供商</value>
+  </data>
+  <data name="AiConnection_Provider_Desc" xml:space="preserve">
+    <value>选择模型服务提供商，自动填充 Base URL 与模型</value>
+  </data>
+  <data name="AiConnection_Provider_Zhipu" xml:space="preserve">
+    <value>智谱</value>
+  </data>
+  <data name="AiConnection_Provider_Qwen" xml:space="preserve">
+    <value>通义</value>
+  </data>
+  <data name="AiConnection_Provider_Custom" xml:space="preserve">
+    <value>自定义（OpenAI 兼容）</value>
+  </data>
+
+  <!-- 模型 -->
+  <data name="AiConnection_Model_Title" xml:space="preserve">
+    <value>模型</value>
+  </data>
+  <data name="AiConnection_Model_Desc" xml:space="preserve">
+    <value>从预设选择，或选「自定义」手动填写模型名</value>
+  </data>
+  <data name="AiConnection_Model_Custom" xml:space="preserve">
+    <value>自定义…</value>
+  </data>
+
+  <!-- Base URL -->
+  <data name="AiConnection_BaseUrl_Title" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="AiConnection_BaseUrl_Desc" xml:space="preserve">
+    <value>提供商指定的 AI 接入 API 地址</value>
+  </data>
+
+  <!-- API Key -->
+  <data name="AiConnection_ApiKey_Title" xml:space="preserve">
+    <value>API Key</value>
+  </data>
+  <data name="AiConnection_ApiKey_Desc" xml:space="preserve">
+    <value>密钥加密后保存在本地</value>
+  </data>
+
+  <!-- Max Tokens -->
+  <data name="AiConnection_MaxTokens_Title" xml:space="preserve">
+    <value>Max Tokens</value>
+  </data>
+  <data name="AiConnection_MaxTokens_Desc" xml:space="preserve">
+    <value>单次回复允许的最大 token 数</value>
+  </data>
+
+  <!-- 温度 -->
+  <data name="AiConnection_Temperature_Title" xml:space="preserve">
+    <value>温度</value>
+  </data>
+  <data name="AiConnection_Temperature_Desc" xml:space="preserve">
+    <value>采样温度，越高越发散（0 ~ 2.0）</value>
+  </data>
+
+  <!-- top_p -->
+  <data name="AiConnection_TopP_Title" xml:space="preserve">
+    <value>top_p</value>
+  </data>
+  <data name="AiConnection_TopP_Desc" xml:space="preserve">
+    <value>核采样阈值（0 ~ 1.0），越低输出越保守</value>
+  </data>
+
+  <!-- frequency_penalty -->
+  <data name="AiConnection_FrequencyPenalty_Title" xml:space="preserve">
+    <value>frequency_penalty</value>
+  </data>
+  <data name="AiConnection_FrequencyPenalty_Desc" xml:space="preserve">
+    <value>频率惩罚（-2.0 ~ 2.0），越高越不重复用词</value>
+  </data>
+
+  <!-- presence_penalty -->
+  <data name="AiConnection_PresencePenalty_Title" xml:space="preserve">
+    <value>presence_penalty</value>
+  </data>
+  <data name="AiConnection_PresencePenalty_Desc" xml:space="preserve">
+    <value>主题惩罚（-2.0 ~ 2.0），越高越发散新话题</value>
+  </data>
+
+  <!-- 深度思考 -->
+  <data name="AiConnection_DeepThinking_Title" xml:space="preserve">
+    <value>深度思考</value>
+  </data>
+  <data name="AiConnection_DeepThinking_Desc" xml:space="preserve">
+    <value>开启后优先请求模型的推理能力</value>
+  </data>
+
+  <!-- 回复语言 -->
+  <data name="AiConnection_ResponseLanguage_Title" xml:space="preserve">
+    <value>回复语言</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_Desc" xml:space="preserve">
+    <value>希望 AI 主要使用的回复语言</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_Auto" xml:space="preserve">
+    <value>跟随用户</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_SimplifiedChinese" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="AiConnection_ResponseLanguage_English" xml:space="preserve">
+    <value>English</value>
+  </data>
+
+  <!-- 操作区 -->
+  <data name="AiConnection_TestConnection_Button" xml:space="preserve">
+    <value>连接测试</value>
+  </data>
+  <data name="AiConnection_Save_Button" xml:space="preserve">
+    <value>保存</value>
+  </data>
+
+  <!-- 状态提示 -->
+  <data name="AiConnection_Save_Saved" xml:space="preserve">
+    <value>已保存</value>
+  </data>
+  <data name="AiConnection_Save_Failed" xml:space="preserve">
+    <value>保存失败：{0}</value>
+  </data>
+  <data name="AiConnection_Test_NoBaseUrl" xml:space="preserve">
+    <value>未填写 Base URL</value>
+  </data>
+  <data name="AiConnection_Test_Testing" xml:space="preserve">
+    <value>连接测试中…</value>
+  </data>
+  <data name="AiConnection_Test_Success" xml:space="preserve">
+    <value>连接成功 ✓</value>
+  </data>
+  <data name="AiConnection_Test_FailedHttp" xml:space="preserve">
+    <value>连接失败：HTTP {0} {1}</value>
+  </data>
+  <data name="AiConnection_Test_Timeout" xml:space="preserve">
+    <value>连接超时（15 秒）</value>
+  </data>
+  <data name="AiConnection_Test_Failed" xml:space="preserve">
+    <value>连接失败：{0}</value>
+  </data>
+</root>

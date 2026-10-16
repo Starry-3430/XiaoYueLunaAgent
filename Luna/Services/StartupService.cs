@@ -4,6 +4,8 @@ using System.Globalization;
 using System.IO;
 using System.Security.Principal;
 using System.Text;
+using Luna.Localization;
+using Luna.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32;
@@ -35,7 +37,7 @@ public sealed class StartupService
 
     /// <summary>当前进程可执行文件路径。</summary>
     private static string ExecutablePath =>
-        Environment.ProcessPath ?? throw new InvalidOperationException("无法确定可执行文件路径。");
+        Environment.ProcessPath ?? throw new InvalidOperationException(LocalizationService.Instance["Settings_StartupMsg_NoExe"]);
 
     /// <summary>应用指定的自启动模式，返回是否成功以及失败原因。</summary>
     public StartupApplyResult Apply(string mode)
@@ -88,7 +90,7 @@ public sealed class StartupService
         {
             using var process = Process.Start(psi);
             if (process is null)
-                return StartupApplyResult.Fail("无法启动提权进程。");
+                return StartupApplyResult.Fail(LocalizationService.Instance["Settings_StartupMsg_AdminProcFailed"]);
 
             process.WaitForExit();
 
@@ -101,7 +103,7 @@ public sealed class StartupService
 
             _logger.LogWarning("提权进程执行失败，退出码：{Code}，原因：{Detail}", process.ExitCode, detail);
             return StartupApplyResult.Fail(string.IsNullOrWhiteSpace(detail)
-                ? "提权进程未能完成设置。"
+                ? LocalizationService.Instance["Settings_StartupMsg_AdminIncomplete"]
                 : detail);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
@@ -120,6 +122,8 @@ public sealed class StartupService
     /// <summary>提权辅助进程入口：执行“管理员自启动”设置，写入结果文件并返回退出码。</summary>
     public static int RunAdminHelper()
     {
+        // 辅助进程独立运行、尚未加载用户设置，先用默认语言初始化，避免写入原始 Key 作为提示。
+        LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
         var result = new StartupService(NullLogger<StartupService>.Instance).Apply("admin");
         try
         {
@@ -163,7 +167,7 @@ public sealed class StartupService
     private void EnableRegistry()
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true)
-                        ?? throw new InvalidOperationException("无法写入注册表 Run 项。");
+                        ?? throw new InvalidOperationException(LocalizationService.Instance["Settings_StartupMsg_RegistryFailed"]);
         key.SetValue(ValueName, $"\"{ExecutablePath}\" {StartupArgument}");
         _logger.LogInformation("已开启当前用户开机自启动：{Path}", ExecutablePath);
     }
@@ -218,7 +222,7 @@ public sealed class StartupService
         foreach (var arg in args) psi.ArgumentList.Add(arg);
 
         using var process = Process.Start(psi);
-        if (process is null) return new SchtasksResult(-1, string.Empty, "无法启动 schtasks。");
+        if (process is null) return new SchtasksResult(-1, string.Empty, LocalizationService.Instance["Settings_StartupMsg_SchtasksFailed"]);
 
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();
@@ -249,7 +253,7 @@ public readonly record struct StartupApplyResult(bool Success, string Message, b
     public static StartupApplyResult Ok() => new(true, string.Empty);
 
     public static StartupApplyResult Fail(string message) =>
-        new(false, string.IsNullOrWhiteSpace(message) ? "未知错误。" : message);
+        new(false, string.IsNullOrWhiteSpace(message) ? LocalizationService.Instance["Settings_StartupMsg_Unknown"] : message);
 
-    public static StartupApplyResult Cancelled() => new(false, "已取消授权。", true);
+    public static StartupApplyResult Cancelled() => new(false, LocalizationService.Instance["Settings_StartupMsg_Canceled"], true);
 }

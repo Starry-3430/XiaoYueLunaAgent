@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Luna.Models;
@@ -75,10 +76,12 @@ public partial class NumberSetting : SettingsItem
     }
 }
 
-public class SelectOption : ObservableObject
+public partial class SelectOption : ObservableObject
 {
     public string Value { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    private string _label = string.Empty;
 }
 
 public partial class SelectSetting : SettingsItem
@@ -94,10 +97,18 @@ public partial class SelectSetting : SettingsItem
 
     public string SelectedLabel => SelectedOption?.Label ?? "";
 
-    partial void OnSelectedOptionChanged(SelectOption? value)
+    partial void OnSelectedOptionChanged(SelectOption? oldValue, SelectOption? newValue)
     {
+        if (oldValue is not null) oldValue.PropertyChanged -= OnSelectedOptionPropertyChanged;
+        if (newValue is not null) newValue.PropertyChanged += OnSelectedOptionPropertyChanged;
         OnPropertyChanged(nameof(SelectedLabel));
         IsOpen = false;
+    }
+
+    private void OnSelectedOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Luna.Models.SelectOption.Label))
+            OnPropertyChanged(nameof(SelectedLabel));
     }
 
     [RelayCommand]
@@ -116,6 +127,13 @@ public partial class SelectSetting : SettingsItem
     private void ToggleOpen()
     {
         IsOpen = !IsOpen;
+    }
+
+    /// <summary>按 Value 更新某个选项的本地化标签。</summary>
+    public void SetOptionLabel(string value, string label)
+    {
+        var option = Options.FirstOrDefault(o => o.Value == value);
+        if (option is not null) option.Label = label;
     }
 }
 

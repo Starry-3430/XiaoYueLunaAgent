@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Luna.Localization;
 using Luna.Services;
 
 namespace Luna.Controls;
@@ -22,9 +23,9 @@ public class EditorContextMenu
     {
         _target = target;
 
-        _cutButton = CreateMenuItem("剪切", (_, _) => { Cut(); CloseMenu(); });
-        _copyButton = CreateMenuItem("复制", (_, _) => { Copy(); CloseMenu(); });
-        _pasteButton = CreateMenuItem("粘贴", (_, _) => { Paste(); CloseMenu(); });
+        _cutButton = CreateMenuItem(LocalizationService.Instance["Common_Cut"], (_, _) => { Cut(); CloseMenu(); });
+        _copyButton = CreateMenuItem(LocalizationService.Instance["Common_Copy"], (_, _) => { Copy(); CloseMenu(); });
+        _pasteButton = CreateMenuItem(LocalizationService.Instance["Common_Paste"], (_, _) => { Paste(); CloseMenu(); });
         
         target.Loaded += (_, _) =>
         {

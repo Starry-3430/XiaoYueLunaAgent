@@ -38,20 +38,15 @@ public class SystemPromptBuilder
         if (!options.IncludeSystemPrompt)
             return string.Empty;
 
-        var useOverride = options.SystemPrompt is not null;
-        var prompt = options.SystemPrompt ?? _settings.SystemPrompt;
-        if (string.IsNullOrWhiteSpace(prompt))
-            return string.Empty;
+        // 覆盖提示词（如轮次摘要）自带完整指令，不追加系统规范、用户目录、长期事实与语言偏好
+        if (options.SystemPrompt is not null)
+            return ReplacePlaceholders(options.SystemPrompt);
 
-        prompt = prompt
-            .Replace("{nickname}", _settings.Nickname)
-            .Replace("{Nickname}", _settings.Nickname)
-            .Replace("{user}", _settings.UserName)
-            .Replace("{User}", _settings.UserName);
+        var personality = ReplacePlaceholders(_settings.SystemPrompt ?? string.Empty);
 
-        // 覆盖提示词（如轮次摘要）自带完整指令，不追加用户目录、长期事实与语言偏好
-        if (useOverride)
-            return prompt;
+        // 系统规范：始终在人格提示词之后强制注入
+        var rules = ReplacePlaceholders(DefaultPrompts.SystemRules);
+        var prompt = string.IsNullOrWhiteSpace(personality) ? rules : personality + "\n\n" + rules;
 
         // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
         if (options.IncludeUserEnvironment)
@@ -61,15 +56,16 @@ public class SystemPromptBuilder
         if (!string.IsNullOrEmpty(factsSection))
             prompt += "\n\n" + factsSection;
 
-        prompt += _settings.ResponseLanguage switch
-        {
-            "zh" => "\n\n请始终使用简体中文回复。",
-            "en" => "\n\nAlways reply in English.",
-            _ => string.Empty,
-        };
+        prompt += DefaultPrompts.ResponseLanguageDirective(_settings.ResponseLanguage);
 
         return prompt;
     }
+
+    private string ReplacePlaceholders(string text) => text
+        .Replace("{nickname}", _settings.Nickname)
+        .Replace("{Nickname}", _settings.Nickname)
+        .Replace("{user}", _settings.UserName)
+        .Replace("{User}", _settings.UserName);
 
     /// <summary>把长期事实拼成【关于用户】段落；没有事实或读取失败时返回空字符串。</summary>
     private async Task<string> BuildFactsSectionAsync(CancellationToken ct)

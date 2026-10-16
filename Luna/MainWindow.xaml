@@ -3,6 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:Luna.Models"
+        xmlns:loc="clr-namespace:Luna.Localization"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         xmlns:converters="clr-namespace:Luna.Converters"
         Title="Luna"
@@ -238,7 +239,7 @@
                          TextChanged="CompactInputBox_TextChanged"
                          PreviewKeyDown="CompactInputBox_KeyDown"/>
                 <TextBlock x:Name="Placeholder"
-                           Text="在此处键入内容"
+                           Text="{loc:Loc Main_Placeholder}"
                            Foreground="#66FFFFFF"
                            FontSize="13"
                            IsHitTestVisible="False"
@@ -265,14 +266,14 @@
                             VerticalAlignment="Center"
                             Margin="0,4,0,0">
                     <Button x:Name="CapsuleAttachButton"
-                            Content="添加附件"
+                            Content="{loc:Loc Common_AddAttachment}"
                             Height="28" Padding="12,0"
                             FontSize="12"
                             Style="{StaticResource PillButton}"
                             Foreground="White" Background="#4A4A4A"
                             Click="AttachFile_Click"/>
                     <Button x:Name="CapsuleClearButton"
-                            Content="全部删除"
+                            Content="{loc:Loc Main_ClearAttachments}"
                             Height="28" Padding="12,0" Margin="6,0,0,0"
                             FontSize="12"
                             Visibility="Collapsed"
@@ -389,7 +390,7 @@
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </StackPanel.Style>
-                                                        <TextBlock Text="正在思考" Foreground="#88FFFFFF" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{loc:Loc Common_Thinking}" Foreground="#88FFFFFF" FontSize="15" FontStyle="Italic" VerticalAlignment="Center"/>
                                                         <TextBlock Text="." Foreground="#88FFFFFF" FontSize="15" VerticalAlignment="Center" Margin="1,0,0,0">
                                                             <TextBlock.Triggers>
                                                                 <EventTrigger RoutedEvent="Loaded">
@@ -449,7 +450,7 @@
                                                                 </ControlTemplate>
                                                             </ToggleButton.Template>
                                                             <StackPanel Orientation="Horizontal">
-                                                                <TextBlock Text="思考过程" Foreground="#88FFFFFF" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="{loc:Loc Common_ReasoningProcess}" Foreground="#88FFFFFF" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
                                                                 <TextBlock Text="▸" Foreground="#88FFFFFF" FontSize="10" VerticalAlignment="Center" Margin="4,0,0,0">
                                                                     <TextBlock.Style>
                                                                         <Style TargetType="TextBlock">
@@ -494,7 +495,7 @@
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </StackPanel.Style>
-                                                            <TextBlock Text="正在思考" Foreground="#88FFFFFF" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{loc:Loc Common_Thinking}" Foreground="#88FFFFFF" FontSize="13" FontStyle="Italic" VerticalAlignment="Center"/>
                                                             <TextBlock Text="." Foreground="#88FFFFFF" FontSize="13" VerticalAlignment="Center" Margin="1,0,0,0">
                                                                 <TextBlock.Triggers>
                                                                     <EventTrigger RoutedEvent="Loaded">
@@ -611,12 +612,12 @@
                                                                 </ToggleButton>
                                                                 <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                             Margin="0,4,0,0">
-                                                                    <TextBlock Text="参数" Foreground="#88FFFFFF" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                                                    <TextBlock Text="{loc:Loc Common_Params}" Foreground="#88FFFFFF" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
                                                                     <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,4">
                                                                         <TextBlock Text="{Binding ArgumentsJson}" Foreground="#88FFFFFF" FontSize="11"
                                                                                    FontFamily="Consolas" TextWrapping="Wrap" Margin="8,0,0,0"/>
                                                                     </ScrollViewer>
-                                                                    <TextBlock Text="结果" Foreground="#88FFFFFF" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
+                                                                    <TextBlock Text="{loc:Loc Common_Result}" Foreground="#88FFFFFF" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
                                                                     <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
                                                                         <TextBlock Text="{Binding ResultJson}" Foreground="#CCE4E0CA" FontSize="13"
                                                                                    TextWrapping="Wrap" Margin="8,0,0,0"/>
@@ -673,7 +674,7 @@
                                                     </Style>
                                                 </StackPanel.Style>
                                                 <Button Style="{StaticResource ChatActionButton}"
-                                                        Margin="0,0,6,0" ToolTip="复制"
+                                                        Margin="0,0,6,0" ToolTip="{loc:Loc Common_Copy}"
                                                         Click="CopyMessage_Click">
                                                     <Viewbox Width="15" Height="15">
                                                         <Canvas Width="24" Height="24">
@@ -682,7 +683,7 @@
                                                     </Viewbox>
                                                 </Button>
                                                 <Button Style="{StaticResource ChatActionButton}"
-                                                        ToolTip="重写"
+                                                        ToolTip="{loc:Loc Common_Rewrite}"
                                                         Click="RewriteMessage_Click">
                                                     <Viewbox Width="15" Height="15">
                                                         <Canvas Width="24" Height="24">
@@ -719,7 +720,7 @@
                         Width="34" Height="34"
                         Visibility="Collapsed"
                         Cursor="Hand"
-                        ToolTip="滚动到底部"
+                        ToolTip="{loc:Loc Common_ScrollToBottom}"
                         Click="ScrollToBottom_Click"
                         PreviewMouseWheel="ScrollToBottomButton_PreviewMouseWheel">
                     <Button.Template>
@@ -816,7 +817,7 @@
                              PreviewKeyDown="InputBox_KeyDown"/>
 
                     <Button Grid.Column="1"
-                            Content="发送"
+                            Content="{loc:Loc Common_Send}"
                             Command="{Binding SendCommand}"
                             VerticalAlignment="Bottom"
                             Margin="6,0,0,0">
@@ -832,7 +833,7 @@
                     </Button>
 
                     <Button Grid.Column="1"
-                            Content="取消"
+                            Content="{loc:Loc Common_Cancel}"
                             Style="{StaticResource CancelButton}"
                             Command="{Binding CancelCommand}"
                             VerticalAlignment="Bottom"
@@ -858,13 +859,13 @@
                                 Visibility="{Binding IsLoadingAttachments, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ProgressBar IsIndeterminate="True" Width="80" Height="5" VerticalAlignment="Center"
                                      Foreground="#88FFFFFF" Background="#33FFFFFF" BorderThickness="0"/>
-                        <Button Content="取消" Margin="6,0,0,0" Height="26" Padding="12,0"
+                        <Button Content="{loc:Loc Common_Cancel}" Margin="6,0,0,0" Height="26" Padding="12,0"
                                 FontSize="12" Style="{StaticResource PillButton}"
                                 Foreground="#88FFFFFF" Background="#33FFFFFF"
                                 Command="{Binding CancelAttachmentLoadCommand}"/>
                     </StackPanel>
                     <Button Grid.Column="2"
-                            Content="添加附件"
+                            Content="{loc:Loc Common_AddAttachment}"
                             Height="26" Padding="12,0"
                             FontSize="12"
                             Style="{StaticResource PillButton}"
@@ -879,7 +880,7 @@
                 <StackPanel Margin="14,12,14,10">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                         <TextBlock Text="⏰" FontSize="15" VerticalAlignment="Center"/>
-                        <TextBlock Text="提醒" Foreground="#FEFAE1" FontSize="14" FontWeight="SemiBold"
+                        <TextBlock Text="{loc:Loc Main_Reminder}" Foreground="#FEFAE1" FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center" Margin="6,0,0,0"/>
                     </StackPanel>
                     <TextBlock x:Name="ReminderTitle" Foreground="White" FontSize="15"
@@ -887,9 +888,9 @@
                     <TextBlock x:Name="ReminderNotes" Foreground="#B0A090" FontSize="12"
                                TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                        <Button Content="稍后" Click="ReminderSnooze_Click" Margin="0,0,8,0"
+                        <Button Content="{loc:Loc Main_Snooze}" Click="ReminderSnooze_Click" Margin="0,0,8,0"
                                 Style="{StaticResource RoundedButton}"/>
-                        <Button Content="完成" Click="ReminderDone_Click"
+                        <Button Content="{loc:Loc Main_Done}" Click="ReminderDone_Click"
                                 Style="{StaticResource CancelButton}"/>
                     </StackPanel>
                 </StackPanel>
@@ -903,10 +904,10 @@
                     Visibility="Collapsed"
                     IsHitTestVisible="False">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="拖动到此处上传附件"
+                    <TextBlock Text="{loc:Loc Common_DragToAttach}"
                                Foreground="White" FontSize="18" FontWeight="SemiBold"
                                HorizontalAlignment="Center"/>
-                    <TextBlock Text="最多10个附件，每个最多100MB"
+                    <TextBlock Text="{loc:Loc Common_AttachmentLimit}"
                                Foreground="#CCFFFFFF" FontSize="12" Margin="0,10,0,0"
                                HorizontalAlignment="Center"/>
                 </StackPanel>

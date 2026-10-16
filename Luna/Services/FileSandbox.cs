@@ -1,4 +1,5 @@
 using System.IO;
+using Luna.Localization;
 
 namespace Luna.Services;
 
@@ -17,7 +18,7 @@ public static class FileSandbox
     public static HashSet<string> AllowedExtensions { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt", ".md", ".markdown", ".rst", ".json", ".xml", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf",
-        ".csv", ".tsv", ".log",
+        ".csv", ".tsv", ".log", ".ips", ".lrc", ".srt", ".vtt", ".ass", ".ssa", ".plist", ".properties", ".po", ".pot", ".mo",
         ".cs", ".vb", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".java", ".kt", ".kts",
         ".c", ".cpp", ".cc", ".h", ".hpp", ".go", ".rs", ".rb", ".php", ".lua", ".r", ".swift", ".scala",
         ".html", ".htm", ".css", ".scss", ".less", ".sql",
@@ -47,7 +48,7 @@ public static class FileSandbox
 
         if (string.IsNullOrWhiteSpace(input))
         {
-            error = "路径为空。";
+            error = LocalizationService.Instance["Tool_Fs_PathEmpty"];
             return false;
         }
 
@@ -58,7 +59,7 @@ public static class FileSandbox
         }
         catch (Exception ex)
         {
-            error = $"无效路径：{ex.Message}";
+            error = LocalizationService.Instance.Format("Tool_Fs_InvalidPath", ex.Message);
             return false;
         }
 
@@ -66,14 +67,14 @@ public static class FileSandbox
         if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
         {
             error = string.IsNullOrEmpty(extension)
-                ? "文件没有扩展名，已被安全策略拒绝。"
-                : $"不允许的文件类型：{extension}";
+                ? LocalizationService.Instance["Tool_Fs_NoExtension"]
+                : LocalizationService.Instance.Format("Tool_Fs_BlockedType", extension);
             return false;
         }
 
         if (!File.Exists(fullPath))
         {
-            error = $"文件不存在：{fullPath}";
+            error = LocalizationService.Instance.Format("Tool_Fs_NotFound", fullPath);
             return false;
         }
 
@@ -84,13 +85,13 @@ public static class FileSandbox
         }
         catch (Exception ex)
         {
-            error = $"无法访问文件：{ex.Message}";
+            error = LocalizationService.Instance.Format("Tool_Fs_AccessDenied", ex.Message);
             return false;
         }
 
         if (length > MaxBytes)
         {
-            error = $"文件过大（{length / 1024} KB），超过上限 {MaxBytes / 1024} KB。";
+            error = LocalizationService.Instance.Format("Tool_Fs_TooLarge", length / 1024, MaxBytes / 1024);
             return false;
         }
 
@@ -118,13 +119,13 @@ public static class FileSandbox
         }
         catch (Exception ex)
         {
-            error = $"无效路径：{ex.Message}";
+            error = LocalizationService.Instance.Format("Tool_Fs_InvalidPath", ex.Message);
             return false;
         }
 
         if (!Directory.Exists(fullPath))
         {
-            error = $"目录不存在：{fullPath}";
+            error = LocalizationService.Instance.Format("Tool_Fs_DirNotFound", fullPath);
             return false;
         }
 

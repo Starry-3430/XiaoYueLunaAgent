@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -13,16 +14,16 @@ public class FetchUrlTool : ITool
 {
     private const int MaxChars = 5000;
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"url":{"type":"string","description":"要读取的网页完整 URL（需以 http:// 或 https:// 开头）"}},"required":["url"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"url":{"type":"string","description":"$url$"}},"required":["url"]}""";
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<FetchUrlTool> _logger;
 
     public string Name => "fetch_url";
-    public string DisplayName => "网页阅读";
-    public string Description => "抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$url$", Param("Tool_FetchUrl_Param_Url")));
 
     public FetchUrlTool(HttpClient httpClient, ILogger<FetchUrlTool> logger)
     {
@@ -34,11 +35,11 @@ public class FetchUrlTool : ITool
     {
         var url = ExtractUrl(args);
         if (string.IsNullOrWhiteSpace(url))
-            return ToolResult.Error("缺少参数 url。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "url"));
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            return ToolResult.Error($"无效的 URL：{url}");
+            return ToolResult.Error(Text("Tool_FetchUrl_Msg_BadUrl", url));
 
         try
         {
@@ -48,25 +49,25 @@ public class FetchUrlTool : ITool
 
             using var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
-                return ToolResult.Error($"抓取失败：HTTP {(int)response.StatusCode}");
+                return ToolResult.Error(Text("Tool_FetchUrl_Msg_Http", (int)response.StatusCode));
 
             var html = await response.Content.ReadAsStringAsync(ct);
             var text = ExtractText(html);
 
             if (string.IsNullOrWhiteSpace(text))
-                return ToolResult.Error($"网页 {uri} 未提取到正文内容。");
+                return ToolResult.Error(Text("Tool_FetchUrl_Msg_NoContent", uri));
 
             _logger.LogInformation("网页抓取成功: {Url}, 正文长度: {Length}", uri, text.Length);
             return ToolResult.Ok(text);
         }
         catch (OperationCanceledException)
         {
-            return ToolResult.Error("抓取超时或被取消。");
+            return ToolResult.Error(Text("Tool_FetchUrl_Msg_Timeout"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "网页抓取失败: {Url}", url);
-            return ToolResult.Error($"抓取失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_FetchUrl_Msg_Failed", ex.Message));
         }
     }
 
@@ -108,12 +109,12 @@ public class FetchUrlTool : ITool
 
         var sb = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(title))
-            sb.Append("标题：").Append(WebUtility.HtmlDecode(title).Trim()).Append("\n\n");
+            sb.Append(Text("Tool_FetchUrl_Msg_Title")).Append(WebUtility.HtmlDecode(title).Trim()).Append("\n\n");
         sb.Append(body);
 
         var result = sb.ToString().Trim();
         if (result.Length > MaxChars)
-            result = result[..MaxChars] + "\n…（内容过长已截断）";
+            result = result[..MaxChars] + "\n" + Text("Tool_FetchUrl_Msg_Truncated");
         return result;
     }
 }

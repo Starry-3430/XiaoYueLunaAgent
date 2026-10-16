@@ -1,4 +1,5 @@
 using System.IO;
+using Luna.Localization;
 using Luna.Models;
 using Microsoft.Win32;
 
@@ -7,10 +8,17 @@ namespace Luna.Services;
 /// <summary>附件选择辅助：弹出文件对话框 / 接收拖拽路径，并按规则生成待发送附件。</summary>
 public static class AttachmentHelper
 {
-    public const string DialogFilter =
-        "所有支持的附件|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html" +
-        "|图片|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp" +
-        "|文档文件|*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html|所有文件|*.*";
+    /// <summary>文件对话框筛选器（按当前语言构建）。</summary>
+    public static string BuildDialogFilter()
+    {
+        var loc = LocalizationService.Instance;
+        const string images = "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp";
+        const string docs = "*.docx;*.pdf;*.xlsx;*.pptx;*.txt;*.md;*.html";
+        return $"{loc["Common_Attachment_AllFiles"]}|{images};{docs}" +
+               $"|{loc["Common_Attachment_Images"]}|{images}" +
+               $"|{loc["Common_Attachment_Documents"]}|{docs}" +
+               $"|{loc["Common_Attachment_AnyFile"]}|*.*";
+    }
 
     /// <summary>单条消息可附带的最大附件数量。</summary>
     public const int MaxCount = 10;
@@ -47,7 +55,7 @@ public static class AttachmentHelper
         var path = !string.IsNullOrEmpty(a.StoredPath) ? a.StoredPath : a.SourcePath;
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
         {
-            error = "图片文件不存在。";
+            error = LocalizationService.Instance["Common_Attachment_ImageMissing"];
             return false;
         }
 
@@ -56,7 +64,7 @@ public static class AttachmentHelper
             var info = new FileInfo(path);
             if (info.Length > MaxImageBytes)
             {
-                error = $"图片过大（{FormatSize(info.Length)}），超过上限 {FormatSize(MaxImageBytes)}。";
+                error = LocalizationService.Instance.Format("Common_Attachment_ImageTooLarge", FormatSize(info.Length), FormatSize(MaxImageBytes));
                 return false;
             }
 
@@ -90,7 +98,7 @@ public static class AttachmentHelper
         var dialog = new OpenFileDialog
         {
             Multiselect = true,
-            Filter = DialogFilter,
+            Filter = BuildDialogFilter(),
         };
 
         if (dialog.ShowDialog() != true) return new List<Attachment>();

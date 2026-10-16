@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -69,6 +70,15 @@ public partial class DiaryView : UserControl
 
         // 页面被切到可见时才播放入场动画（预加载时内容在后台已就绪，隐藏期间尺寸为 0 不会构建卡片）。
         IsVisibleChanged += (_, _) => { if (IsVisible) Layout(); };
+
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+            {
+                ClearVisuals();
+                Layout();
+            }
+        };
     }
 
     private DiaryViewModel? Vm => DataContext as DiaryViewModel;
@@ -335,6 +345,8 @@ public partial class DiaryView : UserControl
     /// <summary>状态文本：从下半区顶部起按固定上边距向下排布，横向居中。</summary>
     private FrameworkElement BuildPlaceholderText(DiaryDayView day)
     {
+        var loc = LocalizationService.Instance;
+
         if (day.IsFailed)
         {
             var panel = new StackPanel
@@ -345,7 +357,7 @@ public partial class DiaryView : UserControl
             };
             panel.Children.Add(new TextBlock
             {
-                Text = "生成失败！",
+                Text = loc["Diary_Status_Failed_Title"],
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = ErrorBrush,
@@ -354,7 +366,7 @@ public partial class DiaryView : UserControl
             });
             panel.Children.Add(new TextBlock
             {
-                Text = string.IsNullOrWhiteSpace(day.LastError) ? "未知错误" : day.LastError,
+                Text = string.IsNullOrWhiteSpace(day.LastError) ? loc["Diary_Status_UnknownError"] : day.LastError,
                 FontSize = 12,
                 Foreground = SubtleBrush,
                 TextWrapping = TextWrapping.Wrap,
@@ -365,7 +377,7 @@ public partial class DiaryView : UserControl
 
             var retry = new Button
             {
-                Content = "重试",
+                Content = loc["Diary_Status_Retry"],
                 Tag = day,
                 Background = BeigeBrush,
                 Foreground = TitleBrush,
@@ -392,7 +404,7 @@ public partial class DiaryView : UserControl
             };
             panel.Children.Add(new TextBlock
             {
-                Text = "这一天的日记还没写哦！",
+                Text = loc["Diary_Status_NotGenerated"],
                 FontSize = 13,
                 LineHeight = 22,
                 Foreground = SubtleBrush,
@@ -405,7 +417,7 @@ public partial class DiaryView : UserControl
 
             var fill = new Button
             {
-                Content = "补写",
+                Content = loc["Diary_Status_Fill"],
                 Tag = day,
                 Background = BeigeBrush,
                 Foreground = TitleBrush,
@@ -423,8 +435,8 @@ public partial class DiaryView : UserControl
 
         var nickname = Vm?.Nickname ?? "Luna";
         var message = day.IsPending
-            ? $"{nickname}还在记录\n稍后再来看看吧！"
-            : $"这一天没有和\n{nickname}互动过哦！";
+            ? loc.Format("Diary_Status_Pending", nickname)
+            : loc.Format("Diary_Status_NoData", nickname);
 
         return new TextBlock
         {
@@ -499,14 +511,15 @@ public partial class DiaryView : UserControl
     {
         var confirmed = false;
         var nickname = Vm?.Nickname ?? "Luna";
+        var loc = LocalizationService.Instance;
 
         var dialog = new LunaDialog
         {
             Owner = Window.GetWindow(this),
-            DialogTitle = "提示",
+            DialogTitle = loc["Diary_Disable_Title"],
             DialogContent = new TextBlock
             {
-                Text = $"关闭日记本，{nickname}将不再整理日记，重新启用日记本后，将会补写最近7天的日记",
+                Text = loc.Format("Diary_Disable_Body", nickname),
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -517,7 +530,7 @@ public partial class DiaryView : UserControl
         {
             new()
             {
-                Text = "关闭",
+                Text = loc["Diary_Disable_Confirm"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
@@ -527,7 +540,7 @@ public partial class DiaryView : UserControl
             },
             new()
             {
-                Text = "取消",
+                Text = loc["Dialog_Button_Cancel"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },

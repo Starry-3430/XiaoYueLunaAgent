@@ -1,8 +1,9 @@
-﻿// 工具：写入文本文件（限定输出目录 + 扩展名黑名单）。
+// 工具：写入文本文件（限定输出目录 + 扩展名黑名单）。
 using System.IO;
 using System.Text.Json;
 using Luna.Models;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -17,17 +18,20 @@ public class WriteFileTool : ITool
     private const string ModeOverwrite = "overwrite";
     private const string ModeAppend = "append";
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"path":{"type":"string","description":"相对输出目录的路径（也可用输出目录下的绝对路径）"},"content":{"type":"string","description":"要写入的文件内容"},"mode":{"type":"string","enum":["create","overwrite","append"],"description":"写入模式，默认 create；create 遇已存在文件会失败，overwrite 覆盖前需确认，append 追加"}},"required":["path","content"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"},"content":{"type":"string","description":"$content$"},"mode":{"type":"string","enum":["create","overwrite","append"],"description":"$mode$"}},"required":["path","content"]}""";
 
     private readonly AiSettings _settings;
     private readonly ToolPermissionService _permission;
     private readonly ILogger<WriteFileTool> _logger;
 
     public string Name => "write_file";
-    public string DisplayName => "写入文件";
-    public string Description => "在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$path$", Param("Tool_WriteFile_Param_Path"))
+        .Replace("$content$", Param("Tool_WriteFile_Param_Content"))
+        .Replace("$mode$", Param("Tool_WriteFile_Param_Mode")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
 
     public WriteFileTool(AiSettings settings, ToolPermissionService permission, ILogger<WriteFileTool> logger)
@@ -41,38 +45,38 @@ public class WriteFileTool : ITool
     {
         var path = GetString(args, "path");
         if (string.IsNullOrWhiteSpace(path))
-            return ToolResult.Error("缺少参数 path。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "path"));
 
         var mode = GetString(args, "mode").ToLowerInvariant();
         if (string.IsNullOrEmpty(mode)) mode = ModeCreate;
         if (mode is not (ModeCreate or ModeOverwrite or ModeAppend))
-            return ToolResult.Error($"不支持的 mode：{mode}（可用：create / overwrite / append）。");
+            return ToolResult.Error(Text("Tool_WriteFile_Msg_BadMode", mode));
 
         if (args.ValueKind != JsonValueKind.Object ||
             !args.TryGetProperty("content", out var contentElement) ||
             contentElement.ValueKind != JsonValueKind.String)
-            return ToolResult.Error("缺少参数 content。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "content"));
         var content = contentElement.GetString() ?? string.Empty;
 
         if (!TryResolveTarget(path, out var fullPath, out var error))
             return ToolResult.Error(error);
 
         if (content.Contains('\0'))
-            return ToolResult.Error("内容包含二进制数据（NUL 字节），已被安全策略拒绝。");
+            return ToolResult.Error(Text("Tool_WriteFile_Msg_Binary"));
 
         var exists = File.Exists(fullPath);
 
         if (mode == ModeCreate && exists)
-            return ToolResult.Error($"文件已存在：{Path.GetFileName(fullPath)}。如需覆盖请使用 overwrite 模式。");
+            return ToolResult.Error(Text("Tool_WriteFile_Msg_Exists", Path.GetFileName(fullPath)));
 
         if (mode == ModeOverwrite && exists)
         {
             var decision = _permission.RequestConfirmation(
-                this, $"覆盖文件 {Path.GetFileName(fullPath)}？\n内容将丢失。");
+                this, Text("Tool_WriteFile_Msg_ConfirmOverwrite", Path.GetFileName(fullPath)));
             if (decision == ToolPermissionDecision.Deny)
             {
                 _logger.LogInformation("用户拒绝覆盖文件：{Path}", fullPath);
-                return ToolResult.Error("用户拒绝覆盖。");
+                return ToolResult.Error(Text("Tool_WriteFile_Msg_DeniedOverwrite"));
             }
         }
 
@@ -88,16 +92,18 @@ public class WriteFileTool : ITool
                 await File.WriteAllTextAsync(fullPath, content, ct);
 
             _logger.LogInformation("写入文件成功：{Path}（mode={Mode}，{Length} 字符）", fullPath, mode, content.Length);
-            return ToolResult.Ok($"已{(mode == ModeAppend ? "追加" : "写入")}文件：{fullPath}（{content.Length} 字符）");
+            return ToolResult.Ok(mode == ModeAppend
+                ? Text("Tool_WriteFile_Msg_Appended", fullPath, content.Length)
+                : Text("Tool_WriteFile_Msg_Written", fullPath, content.Length));
         }
         catch (OperationCanceledException)
         {
-            return ToolResult.Error("写入文件被取消。");
+            return ToolResult.Error(Text("Tool_WriteFile_Msg_Cancelled"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "写入文件失败：{Path}", fullPath);
-            return ToolResult.Error($"写入文件失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_WriteFile_Msg_Failed", ex.Message));
         }
     }
 
@@ -110,7 +116,7 @@ public class WriteFileTool : ITool
         var outputDirectory = _settings.OutputDirectory;
         if (string.IsNullOrWhiteSpace(outputDirectory))
         {
-            error = "未配置输出目录，请先在“设置 - 通用”中指定输出目录后再写入。";
+            error = Text("Tool_WriteFile_Msg_NoOutputDir");
             return false;
         }
 
@@ -121,13 +127,13 @@ public class WriteFileTool : ITool
         }
         catch (Exception ex)
         {
-            error = $"输出目录无效：{ex.Message}";
+            error = Text("Tool_WriteFile_Msg_BadOutputDir", ex.Message);
             return false;
         }
 
         if (!Directory.Exists(root))
         {
-            error = $"输出目录不存在：{root}";
+            error = Text("Tool_WriteFile_Msg_NoOutputDirExists", root);
             return false;
         }
 
@@ -138,26 +144,26 @@ public class WriteFileTool : ITool
         }
         catch (Exception ex)
         {
-            error = $"无效路径：{ex.Message}";
+            error = Text("Tool_WriteFile_Msg_BadPath", ex.Message);
             return false;
         }
 
         if (!FileSandbox.IsInsideDirectory(fullPath, root))
         {
-            error = "路径不在输出目录内。";
+            error = Text("Tool_WriteFile_Msg_Outside");
             return false;
         }
 
         var extension = Path.GetExtension(fullPath);
         if (string.IsNullOrEmpty(extension))
         {
-            error = "文件没有扩展名，已被安全策略拒绝。";
+            error = Text("Tool_WriteFile_Msg_NoExtension");
             return false;
         }
 
         if (FileSandbox.BlockedExtensions.Contains(extension))
         {
-            error = $"不允许写入的文件类型：{extension}";
+            error = Text("Tool_WriteFile_Msg_BlockedType", extension);
             return false;
         }
 

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using CommunityToolkit.Mvvm.Input;
+using Luna.Localization;
 using Luna.Models;
 
 namespace Luna.Controls;
@@ -28,10 +29,10 @@ public static class AttachmentTruncationDialog
 
         var dialog = new LunaDialog
         {
-            DialogTitle = "文档过长",
+            DialogTitle = LocalizationService.Instance["Dialog_Truncation_Title"],
             DialogContent = new TextBlock
             {
-                Text = "文档内容过大，是否采用智能截断策略？这有助于节省Tokens，你也可以选择继续导入整个文件。",
+                Text = LocalizationService.Instance["Dialog_Truncation_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -42,7 +43,7 @@ public static class AttachmentTruncationDialog
         {
             new()
             {
-                Text = "智能截断",
+                Text = LocalizationService.Instance["Dialog_Truncation_Smart"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
@@ -52,7 +53,7 @@ public static class AttachmentTruncationDialog
             },
             new()
             {
-                Text = "继续导入",
+                Text = LocalizationService.Instance["Dialog_Truncation_Continue"],
                 StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {

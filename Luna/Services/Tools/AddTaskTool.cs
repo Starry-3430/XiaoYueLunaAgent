@@ -3,22 +3,27 @@ using System.Text;
 using System.Text.Json;
 using Luna.Models;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
 /// <summary>创建待办事项（可选截止/提醒时间）。归属“待办事项”开关（todo）。</summary>
 public class AddTaskTool : ITool
 {
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"title":{"type":"string","description":"待办标题"},"dueAt":{"type":"string","description":"截止时间，ISO 8601 或 yyyy-MM-dd HH:mm（本地时间），可空"},"remindAt":{"type":"string","description":"提醒时间，同上，可空"},"notes":{"type":"string","description":"备注，可空"}},"required":["title"]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"title":{"type":"string","description":"$title$"},"dueAt":{"type":"string","description":"$dueAt$"},"remindAt":{"type":"string","description":"$remindAt$"},"notes":{"type":"string","description":"$notes$"}},"required":["title"]}""";
 
     private readonly TaskRepository _repo;
     private readonly ILogger<AddTaskTool> _logger;
 
     public string Name => "add_task";
-    public string DisplayName => "添加待办";
-    public string Description => "创建一个待办事项，可选截止时间与提醒时间（时间用本地时间）";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$title$", Param("Tool_AddTask_Param_Title"))
+        .Replace("$dueAt$", Param("Tool_AddTask_Param_DueAt"))
+        .Replace("$remindAt$", Param("Tool_AddTask_Param_RemindAt"))
+        .Replace("$notes$", Param("Tool_AddTask_Param_Notes")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
     public string SettingsKey => "todo";
 
@@ -32,7 +37,7 @@ public class AddTaskTool : ITool
     {
         var title = GetString(args, "title");
         if (string.IsNullOrWhiteSpace(title))
-            return ToolResult.Error("缺少参数 title。");
+            return ToolResult.Error(Text("Tool_Msg_MissingParam", "title"));
 
         var notes = GetString(args, "notes");
         var dueRaw = GetString(args, "dueAt");
@@ -42,7 +47,7 @@ public class AddTaskTool : ITool
         if (!string.IsNullOrWhiteSpace(dueRaw))
         {
             if (!ToolTime.TryParseUtc(dueRaw, out var d))
-                return ToolResult.Error($"无法解析截止时间：{dueRaw}");
+                return ToolResult.Error(Text("Tool_AddTask_Msg_BadDue", dueRaw));
             dueUtc = d;
         }
 
@@ -50,7 +55,7 @@ public class AddTaskTool : ITool
         if (!string.IsNullOrWhiteSpace(remindRaw))
         {
             if (!ToolTime.TryParseUtc(remindRaw, out var r))
-                return ToolResult.Error($"无法解析提醒时间：{remindRaw}");
+                return ToolResult.Error(Text("Tool_AddTask_Msg_BadRemind", remindRaw));
             remindUtc = r;
         }
 
@@ -68,19 +73,19 @@ public class AddTaskTool : ITool
             _logger.LogInformation("已创建待办：{Id} {Title}", task.Id, task.Title);
 
             var sb = new StringBuilder();
-            sb.Append($"已创建待办：「{task.Title}」");
-            sb.Append($"\nID：{task.Id}");
+            sb.Append(Text("Tool_AddTask_Msg_Created", task.Title));
+            sb.Append("\n").Append(Text("Tool_AddTask_Msg_Id", task.Id));
             if (task.DueAtUtc is not null)
-                sb.Append($"\n截止：{ToolTime.ToLocalString(task.DueAtUtc)}");
+                sb.Append("\n").Append(Text("Tool_AddTask_Msg_Due", ToolTime.ToLocalString(task.DueAtUtc)));
             if (task.RemindAtUtc is not null)
-                sb.Append($"\n提醒：{ToolTime.ToLocalString(task.RemindAtUtc)}");
-            sb.Append("\n（时间均为本地时间）");
+                sb.Append("\n").Append(Text("Tool_AddTask_Msg_Remind", ToolTime.ToLocalString(task.RemindAtUtc)));
+            sb.Append("\n").Append(Text("Tool_AddTask_Msg_LocalNote"));
             return ToolResult.Ok(sb.ToString());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "创建待办失败");
-            return ToolResult.Error($"创建待办失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_AddTask_Msg_CreateFailed", ex.Message));
         }
     }
 

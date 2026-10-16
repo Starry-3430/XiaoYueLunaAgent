@@ -7,9 +7,9 @@ namespace Luna.Models;
 /// </summary>
 public class AiSettings
 {
-    public const string DefaultProvider = "deepseek";
-    public const string DefaultBaseUrl = "https://api.deepseek.com/v1";
-    public const string DefaultModel = "deepseek-chat";
+    public const string DefaultProvider = "";
+    public const string DefaultBaseUrl = "";
+    public const string DefaultModel = "";
     public const int DefaultMaxTokens = 8192;
 
     /// <summary>旧版本的默认输出上限；加载配置时若仍为该值，自动迁移到新的默认值。</summary>
@@ -46,7 +46,7 @@ public class AiSettings
     public double PresencePenalty { get; set; } = DefaultPresencePenalty;
     public bool DeepThinking { get; set; } = false;
     public string ResponseLanguage { get; set; } = DefaultResponseLanguage;
-    public string SystemPrompt { get; set; } = DefaultPrompts.SystemPrompt;
+    public string SystemPrompt { get; set; } = DefaultPrompts.PersonalityPrompt;
     public string Nickname { get; set; } = DefaultNickname;
     public string UserName { get; set; } = DefaultUserName;
 

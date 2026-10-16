@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Luna.Services.Data;
 using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -11,16 +12,16 @@ public class ListFactsTool : ITool
 {
     private const int MaxResults = 30;
 
-    private static readonly JsonElement Schema = ToolSchema.Parse(
-        """{"type":"object","properties":{"keyword":{"type":"string","description":"可选，按关键词过滤 key 或 value"}},"required":[]}""");
+    private const string SchemaTemplate =
+        """{"type":"object","properties":{"keyword":{"type":"string","description":"$keyword$"}},"required":[]}""";
 
     private readonly FactRepository _repo;
     private readonly ILogger<ListFactsTool> _logger;
 
     public string Name => "list_facts";
-    public string DisplayName => "列出事实";
-    public string Description => "列出已记录的长期事实，可按关键词过滤。用于查看当前记住了关于用户的哪些信息。";
-    public JsonElement ParametersSchema => Schema;
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$keyword$", Param("Tool_ListFacts_Param_Keyword")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
     public string SettingsKey => "long_term_facts";
 
@@ -42,8 +43,8 @@ public class ListFactsTool : ITool
 
             if (facts.Count == 0)
                 return ToolResult.Ok(string.IsNullOrWhiteSpace(keyword)
-                    ? "还没有记住任何事实。"
-                    : $"没有找到与「{keyword.Trim()}」相关的事实。");
+                    ? Text("Tool_ListFacts_Msg_Empty")
+                    : Text("Tool_ListFacts_Msg_None", keyword.Trim()));
 
             var sb = new StringBuilder();
             foreach (var fact in facts.Take(MaxResults))
@@ -54,7 +55,7 @@ public class ListFactsTool : ITool
         catch (Exception ex)
         {
             _logger.LogError(ex, "列出事实失败：{Keyword}", keyword);
-            return ToolResult.Error($"列出事实失败：{ex.Message}");
+            return ToolResult.Error(Text("Tool_ListFacts_Msg_Failed", ex.Message));
         }
     }
 

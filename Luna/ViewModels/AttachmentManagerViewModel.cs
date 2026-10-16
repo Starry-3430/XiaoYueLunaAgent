@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 using Luna.Services.Data;
@@ -20,8 +21,10 @@ public partial class AttachmentManagerViewModel : ObservableObject
 
     public ObservableCollection<AttachmentItem> Items { get; } = new();
 
+    private bool _loaded;
+
     [ObservableProperty]
-    private string _summary = "尚未加载";
+    private string _summary = string.Empty;
 
     [ObservableProperty]
     private bool _isBusy;
@@ -32,6 +35,24 @@ public partial class AttachmentManagerViewModel : ObservableObject
         _repository = repository;
         _storage = storage;
         _logger = logger;
+
+        Summary = LocalizationService.Instance["Attachment_Summary_NotLoaded"];
+        LocalizationService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+                RefreshSummaryText();
+        };
+    }
+
+    private void RefreshSummaryText()
+    {
+        if (!_loaded)
+        {
+            Summary = LocalizationService.Instance["Attachment_Summary_NotLoaded"];
+            return;
+        }
+
+        UpdateSummary();
     }
 
     /// <summary>重新加载附件列表与总大小。</summary>
@@ -50,14 +71,15 @@ public partial class AttachmentManagerViewModel : ObservableObject
                 Items.Add(new AttachmentItem(a));
                 total += a.FileSize;
             }
+            _loaded = true;
             Summary = Items.Count == 0
-                ? "暂无附件"
-                : $"{Items.Count} 个附件，共 {AttachmentHelper.FormatSize(total)}";
+                ? LocalizationService.Instance["Attachment_Summary_Empty"]
+                : LocalizationService.Instance.Format("Attachment_Summary_Count", Items.Count, AttachmentHelper.FormatSize(total));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "加载附件列表失败");
-            Summary = "加载失败：" + ex.Message;
+            Summary = LocalizationService.Instance.Format("Attachment_Load_Failed", ex.Message);
         }
         finally
         {
@@ -81,7 +103,7 @@ public partial class AttachmentManagerViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "删除附件失败");
-            Summary = "删除失败：" + ex.Message;
+            Summary = LocalizationService.Instance.Format("Attachment_Delete_Failed", ex.Message);
         }
     }
 
@@ -97,7 +119,7 @@ public partial class AttachmentManagerViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "打开附件目录失败");
-            Summary = "无法打开目录：" + ex.Message;
+            Summary = LocalizationService.Instance.Format("Attachment_Open_Failed", ex.Message);
         }
     }
 
@@ -105,12 +127,12 @@ public partial class AttachmentManagerViewModel : ObservableObject
     {
         if (Items.Count == 0)
         {
-            Summary = "暂无附件";
+            Summary = LocalizationService.Instance["Attachment_Summary_Empty"];
             return;
         }
 
         long total = Items.Sum(i => i.FileSize);
-        Summary = $"{Items.Count} 个附件，共 {AttachmentHelper.FormatSize(total)}";
+        Summary = LocalizationService.Instance.Format("Attachment_Summary_Count", Items.Count, AttachmentHelper.FormatSize(total));
     }
 }
 
@@ -121,7 +143,7 @@ public sealed class AttachmentItem
 
     public Attachment Attachment { get; }
 
-    public string FileName => string.IsNullOrEmpty(Attachment.FileName) ? "(未命名)" : Attachment.FileName;
+    public string FileName => string.IsNullOrEmpty(Attachment.FileName) ? LocalizationService.Instance["Attachment_Unnamed"] : Attachment.FileName;
 
     public long FileSize => Attachment.FileSize;
 

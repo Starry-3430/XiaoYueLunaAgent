@@ -1,12 +1,15 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Markup;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownViewer;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +39,8 @@ public partial class App : Application
     private EventWaitHandle? _showWindowEvent;          // 显示窗口事件
     private Win32Icon? _trayIconImage;                  // 托盘图标图像
     private TrayIconHost? _trayIcon;                    // 托盘图标宿主
+    private TrayMenuItem? _trayOpenItem;                // 托盘菜单：主界面
+    private TrayMenuItem? _trayCloseItem;               // 托盘菜单：关闭
     private HomeWindow? _homeWindow;                    // 主窗口实例
     private bool _restarting;                           // 是否正在重启进程
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
@@ -53,6 +58,9 @@ public partial class App : Application
         _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
             string.Equals(arg, StartupService.AdminHelperArgument, StringComparison.OrdinalIgnoreCase));
         if (_isStartupHelper) return;
+
+        // 托盘菜单等早期 UI 在设置加载前即创建，先用默认语言初始化；启动时会按用户设置重新应用。
+        LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
 
         // ===== 日志配置 =====
         var logDir = Path.Combine(
@@ -100,6 +108,14 @@ public partial class App : Application
             ThemeMode = TrayThemeMode.System // 跟随系统
         };
 
+        _trayOpenItem = new TrayMenuItem
+        {
+            Command = new TrayCommand(_ => Dispatcher.Invoke(ShowHomeWindow))
+        };
+        _trayCloseItem = new TrayMenuItem
+        {
+            Command = new TrayCommand(_ => Dispatcher.Invoke(Shutdown))
+        };
         _trayIcon = new TrayIconHost
         {
             IconSource = _trayIconImage,
@@ -107,18 +123,11 @@ public partial class App : Application
             // 右击托盘图标显示菜单
             Menu = new TrayMenu
             {
-                new TrayMenuItem
-                {
-                    Header = "主界面",
-                    Command = new TrayCommand(_ => Dispatcher.Invoke(ShowHomeWindow))
-                },
-                new TrayMenuItem
-                {
-                    Header = "关闭",
-                    Command = new TrayCommand(_ => Dispatcher.Invoke(Shutdown))
-}
+                _trayOpenItem,
+                _trayCloseItem
             }
         };
+        RefreshTrayText();
         // 订阅托盘单击事件
         _trayIcon.Click += (sender, e) => Dispatcher.Invoke(OnTrayClick);
         
@@ -366,6 +375,9 @@ public partial class App : Application
 
         // 5. 应用字体设置
         var settings = _host.Services.GetRequiredService<AiSettings>();
+        ApplyCulture(settings.UiLanguage);
+        RefreshTrayText();
+        LocalizationService.Instance.PropertyChanged += (_, _) => RefreshTrayText();
         ThemeService.ApplyFont(settings.FontFamily);
 
         // 6. 初始化主窗口（MainWindow：紧凑悬浮输入窗）；开机自启动时不显示
@@ -403,16 +415,39 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    /// <summary>应用界面语言：切换本地化服务、UI Culture 与 WPF 的 XmlLanguage（影响 XAML 内的格式化）。</summary>
+    private static void ApplyCulture(string? uiLanguage)
+    {
+        var culture = LocalizationService.ResolveCulture(uiLanguage);
+        LocalizationService.Instance.SetLanguage(culture);
+
+        Thread.CurrentThread.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+
+        FrameworkElement.LanguageProperty.OverrideMetadata(
+            typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
+    }
+
+    /// <summary>刷新托盘菜单的本地化文本。</summary>
+    private void RefreshTrayText()
+    {
+        var loc = LocalizationService.Instance;
+        if (_trayOpenItem is not null) _trayOpenItem.Header = loc["App_Tray_OpenMain"];
+        if (_trayCloseItem is not null) _trayCloseItem.Header = loc["App_Tray_Close"];
+    }
+
     /// <summary>配置文件丢失或结构损坏并已重置时弹出的提示。</summary>
     private static void ShowSettingsResetDialog(Window owner)
     {
+        var loc = LocalizationService.Instance;
         var dialog = new LunaDialog
         {
             Owner = owner,
-            DialogTitle = "配置文件已损坏",
+            DialogTitle = loc["Dialog_SettingsReset_Title"],
             DialogContent = new TextBlock
             {
-                Text = "由于settings.json配置文件丢失或结构被破坏，已重置工具和设置的相关配置",
+                Text = loc["Dialog_SettingsReset_Body"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -423,7 +458,7 @@ public partial class App : Application
         {
             new()
             {
-                Text = "确定",
+                Text = loc["Dialog_Button_OK"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },

@@ -14,6 +14,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
@@ -128,21 +129,21 @@ public partial class HomeWindow : Window
 // 左侧底部按钮：切换右侧内容区
         SettingsButton.Click += (_, _) =>
         {
-            ShowSideContent(SettingsContent, "设置");
+            ShowSideContent(SettingsContent, LocalizationService.Instance["Home_Nav_Settings"]);
             SetActiveSideButton(SettingsButton);
             _ = _attachmentManagerViewModel.RefreshCommand.ExecuteAsync(null);
         };
         DiaryButton.Click += (_, _) =>
         {
-            ShowSideContent(DiaryContent, "日记本");
+            ShowSideContent(DiaryContent, LocalizationService.Instance["Home_Nav_Diary"]);
             SetActiveSideButton(DiaryButton);
             _diaryService.Trigger();          // 打开日记视图时触发一次检查
             _ = _diaryViewModel.LoadAsync();  // 加载日记列表
         };
-        ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, "工具"); SetActiveSideButton(ToolsButton); };
+        ToolsButton.Click += (_, _) => { ShowSideContent(ToolsContent, LocalizationService.Instance["Home_Nav_Tools"]); SetActiveSideButton(ToolsButton); };
         
         // "新对话"按钮：回到聊天模式并重置标题
-        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = "新对话"; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
+        NewChatButton.Click += (_, _) => { BindSelectedSession(null); SwitchToChat(); ChatTitle.Text = LocalizationService.Instance["Home_NewChat"]; HistoryList.SelectedIndex = -1; SetActiveSideButton(null); };
 
         // 左侧历史记录右键菜单：重命名 / 删除
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
@@ -654,8 +655,10 @@ public partial class HomeWindow : Window
     // ===== AI 操作按钮 =====
     private void CopyMessage_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is ChatMessage msg)
-            Clipboard.SetText(msg.Content);
+        if (sender is not FrameworkElement fe || fe.DataContext is not ChatMessage msg) return;
+        var text = string.IsNullOrWhiteSpace(msg.Content) ? msg.ErrorMessage : msg.Content;
+        if (!string.IsNullOrEmpty(text))
+            Clipboard.SetText(text);
     }
 
     private void RewriteMessage_Click(object sender, RoutedEventArgs e)
@@ -990,22 +993,22 @@ public partial class HomeWindow : Window
                 "Luna", "logs");
             Directory.CreateDirectory(dir);
             Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
-            ShowToast("已打开日志文件夹：" + dir, ToastType.Success);
+            ShowToast(LocalizationService.Instance.Format("Settings_OpenLogs_Opened", dir), ToastType.Success);
         }
         catch (Exception ex)
         {
-            ShowToast("无法打开日志文件夹：" + ex.Message, ToastType.Error);
+            ShowToast(LocalizationService.Instance.Format("Settings_OpenLogs_Failed", ex.Message), ToastType.Error);
         }
     }
 
     /// <summary>清空数据库（三次确认）。</summary>
     private void ClearDatabaseButton_Click(object sender, RoutedEventArgs e)
     {
-        const string body = "这将会完全删除数据库中的所有内容，包括聊天记录、日记记录等，确定要继续吗？";
+        var loc = LocalizationService.Instance;
 
-        if (!ShowConfirm("警告", body + "1/3")) return;
-        if (!ShowConfirm("警告", body + "2/3")) return;
-        if (!ShowConfirm("警告", body + "\n这是最后一次提醒 3/3")) return;
+        if (!ShowConfirm(loc["Settings_ClearDb_Title"], loc["Settings_ClearDb_Confirm1"])) return;
+        if (!ShowConfirm(loc["Settings_ClearDb_Title"], loc["Settings_ClearDb_Confirm2"])) return;
+        if (!ShowConfirm(loc["Settings_ClearDb_Title"], loc["Settings_ClearDb_Confirm3"])) return;
 
         try
         {
@@ -1013,7 +1016,7 @@ public partial class HomeWindow : Window
         }
         catch (Exception ex)
         {
-            ShowToast("清空数据库失败：" + ex.Message, ToastType.Error);
+            ShowToast(loc.Format("Settings_ClearDb_Failed", ex.Message), ToastType.Error);
             return;
         }
 
@@ -1041,13 +1044,13 @@ public partial class HomeWindow : Window
         {
             new()
             {
-                Text = "取消",
+                Text = LocalizationService.Instance["Dialog_Button_Cancel"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(dialog.Close),
             },
             new()
             {
-                Text = "继续",
+                Text = LocalizationService.Instance["Dialog_Button_Continue"],
                 StyleKey = "StyleDangerSoft",
                 Command = new RelayCommand(() =>
                 {
@@ -1066,10 +1069,10 @@ public partial class HomeWindow : Window
         var dialog = new LunaDialog
         {
             Owner = this,
-            DialogTitle = "已清除数据",
+            DialogTitle = LocalizationService.Instance["Settings_ClearDb_DoneTitle"],
             DialogContent = new TextBlock
             {
-                Text = "重新启动程序以应用",
+                Text = LocalizationService.Instance["Settings_ClearDb_DoneBody"],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -1080,7 +1083,7 @@ public partial class HomeWindow : Window
         {
             new()
             {
-                Text = "重新启动",
+                Text = LocalizationService.Instance["Settings_ClearDb_RestartButton"],
                 StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
@@ -1115,13 +1118,13 @@ public partial class HomeWindow : Window
         var dialog = new LunaDialog
         {
             Owner = this,
-            DialogTitle = "重命名会话",
+            DialogTitle = LocalizationService.Instance["Home_Session_RenameTitle"],
             DialogContent = box,
         };
         dialog.Buttons = new ObservableCollection<DialogButton>
         {
-            new() { Text = "取消", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
-            new() { Text = "确定", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = LocalizationService.Instance["Dialog_Button_Cancel"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = LocalizationService.Instance["Dialog_Button_OK"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
         };
         dialog.ShowDialog();
 
@@ -1141,7 +1144,7 @@ public partial class HomeWindow : Window
         if (HistoryList.SelectedItem is null)
         {
             BindSelectedSession(null);
-            ChatTitle.Text = "新对话";
+            ChatTitle.Text = LocalizationService.Instance["Home_NewChat"];
             SwitchToChat();
         }
     }
@@ -1153,10 +1156,10 @@ public partial class HomeWindow : Window
         var dialog = new LunaDialog
         {
             Owner = this,
-            DialogTitle = "删除会话",
+            DialogTitle = LocalizationService.Instance["Home_Session_DeleteTitle"],
             DialogContent = new TextBlock
             {
-                Text = $"确定删除会话「{session.Title}」吗？\n将删除其全部对话记录、附件引用与摘要记忆，且不可恢复。已生成的日记不受影响。",
+                Text = LocalizationService.Instance.Format("Home_Session_DeleteBody", session.Title),
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -1164,10 +1167,10 @@ public partial class HomeWindow : Window
         };
         dialog.Buttons = new ObservableCollection<DialogButton>
         {
-            new() { Text = "取消", StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = LocalizationService.Instance["Dialog_Button_Cancel"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
             new()
             {
-                Text = "删除",
+                Text = LocalizationService.Instance["Home_Session_DeleteButton"],
                 StyleKey = "StyleDangerSoft",
                 Command = new RelayCommand(() =>
                 {
