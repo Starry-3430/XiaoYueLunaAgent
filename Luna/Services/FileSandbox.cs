@@ -14,17 +14,6 @@ public static class FileSandbox
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Luna", "workspace");
 
-    /// <summary>允许读取的扩展名（文本 / 代码类型）。</summary>
-    public static HashSet<string> AllowedExtensions { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".txt", ".md", ".markdown", ".rst", ".json", ".xml", ".yml", ".yaml", ".toml", ".ini", ".cfg", ".conf",
-        ".csv", ".tsv", ".log", ".ips", ".lrc", ".srt", ".vtt", ".ass", ".ssa", ".plist", ".properties", ".po", ".pot", ".mo",
-        ".cs", ".vb", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".java", ".kt", ".kts",
-        ".c", ".cpp", ".cc", ".h", ".hpp", ".go", ".rs", ".rb", ".php", ".lua", ".r", ".swift", ".scala",
-        ".html", ".htm", ".css", ".scss", ".less", ".sql",
-        ".sh", ".bat", ".cmd", ".ps1", ".psm1", ".gradle", ".dockerfile",
-    };
-
     /// <summary>写入黑名单：可执行 / 脚本 / 安装包 / 二进制类型，一律禁止写入。</summary>
     public static HashSet<string> BlockedExtensions { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -38,7 +27,8 @@ public static class FileSandbox
     public const long MaxBytes = 1024 * 1024;
 
     /// <summary>
-    /// 解析并校验一个已存在的可读文件。可访问任意磁盘位置，仅限定扩展名与大小；
+    /// 解析并校验一个已存在的可读文件。可访问任意磁盘位置，只限制大小；
+    /// 是否为可读文本由读取工具在读取后按内容判断。
     /// 相对路径基于 <see cref="Root"/>。
     /// </summary>
     public static bool TryResolveExisting(string input, out string fullPath, out string error)
@@ -60,15 +50,6 @@ public static class FileSandbox
         catch (Exception ex)
         {
             error = LocalizationService.Instance.Format("Tool_Fs_InvalidPath", ex.Message);
-            return false;
-        }
-
-        var extension = Path.GetExtension(fullPath);
-        if (string.IsNullOrEmpty(extension) || !AllowedExtensions.Contains(extension))
-        {
-            error = string.IsNullOrEmpty(extension)
-                ? LocalizationService.Instance["Tool_Fs_NoExtension"]
-                : LocalizationService.Instance.Format("Tool_Fs_BlockedType", extension);
             return false;
         }
 

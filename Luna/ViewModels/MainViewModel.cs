@@ -280,6 +280,8 @@ public partial class MainViewModel : ObservableObject
         if (IsBusy) return;
         if (string.IsNullOrWhiteSpace(InputText) && !hasAttachments) return;
 
+        // 记录原始输入：发送失败（并发冲突、附件/数据库异常等）时原样还给用户。
+        var originalInput = InputText;
         var userText = InputText.Trim();
         InputText = string.Empty;
 
@@ -309,6 +311,10 @@ public partial class MainViewModel : ObservableObject
         {
             _logger.LogError(ex, "发送失败");
             Status = LocalizationService.Instance.Format("Common_SendFailed", ex.Message);
+
+            // 失败时若用户还没有输入新内容，就恢复刚才的草稿，避免心血蒸发。
+            if (string.IsNullOrEmpty(InputText))
+                InputText = originalInput;
         }
     }
 

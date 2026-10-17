@@ -28,5 +28,11 @@ public interface ITool
     /// </summary>
     bool RequiresUserConfirmation => false;
 
+    /// <summary>
+    /// 单次工具执行的兜底超时。工具自身可以更早返回（例如 PowerShell 的 30 秒），
+    /// 这里的值用于防止某个工具无视取消而永久卡住整个 AI 循环。
+    /// </summary>
+    TimeSpan ExecutionTimeout => TimeSpan.FromSeconds(60);
+
     Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default);
 }

@@ -35,8 +35,6 @@
   <data name="Tool_WebSearch_Description" xml:space="preserve"><value>Search the web via Tavily; returns titles, URLs and snippets.</value></data>
   <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>Read Web Page</value></data>
   <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>Fetch the main text of a given URL; use together with search.</value></data>
-  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>Current Time</value></data>
-  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>Get the current date and time.</value></data>
   <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>Read Clipboard</value></data>
   <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>News / Calendar</value></data>
@@ -108,7 +106,6 @@
   <!-- 发送给 AI 的工具说明 -->
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>Search the internet and return the titles, URLs and content snippets of relevant web pages.</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
-  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>Get the current date and time, returning both local and UTC time.</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
@@ -229,11 +226,6 @@ Note: this sandbox is best-effort, not fully secure.</value></data>
   <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>No fact with key "{0}" was found.</value></data>
   <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>Failed to forget the fact: {0}</value></data>
 
-  <!-- get_current_time -->
-  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>Current time: {0} ({1})
-UTC time: {2}
-Unix timestamp: {3}</value></data>
-
   <!-- git -->
   <data name="Tool_Git_Param_Action" xml:space="preserve"><value>Git subcommand</value></data>
   <data name="Tool_Git_Param_Args" xml:space="preserve"><value>Extra arguments passed to the subcommand, e.g. ["--stat"], ["HEAD~3"], ["newfile.txt"]</value></data>
@@ -285,6 +277,7 @@ Offending segment: {0}</value></data>
   <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; common text/code extensions are supported.</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
+  <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>The file is not readable text (it may be binary or encrypted), so it was not read.</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>
@@ -326,6 +319,7 @@ Offending segment: {0}</value></data>
   <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>Search keywords or question</value></data>
   <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>Tavily API Key is not configured. Enter it under "Web Search" on the Tools page and try again.</value></data>
   <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>No related results found.</value></data>
+  <data name="Tool_WebSearch_Msg_Timeout" xml:space="preserve"><value>Search timed out. Please try again later.</value></data>
   <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>Search failed: {0}</value></data>
 
   <!-- write_file -->
@@ -349,4 +343,35 @@ Its content will be lost.</value></data>
   <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>Path is not inside the output directory.</value></data>
   <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>File has no extension and was rejected by the safety policy.</value></data>
   <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>File type not allowed for writing: {0}</value></data>
+
+  <!-- Tool argument display -->
+  <data name="Tool_Arg_FilePath" xml:space="preserve"><value>File path</value></data>
+  <data name="Tool_Arg_FileName" xml:space="preserve"><value>File name</value></data>
+  <data name="Tool_Arg_FileSize" xml:space="preserve"><value>File size</value></data>
+  <data name="Tool_Arg_Query" xml:space="preserve"><value>Query</value></data>
+  <data name="Tool_Arg_MaxResults" xml:space="preserve"><value>Max results</value></data>
+  <data name="Tool_Arg_NoArgs" xml:space="preserve"><value>(no arguments)</value></data>
+  <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
+  <data name="Tool_Arg_Content" xml:space="preserve"><value>Content</value></data>
+  <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>Write mode</value></data>
+  <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>Overwrite</value></data>
+  <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>Append</value></data>
+  <data name="Tool_Arg_Depth" xml:space="preserve"><value>Depth</value></data>
+  <data name="Tool_Arg_MaxEntries" xml:space="preserve"><value>Max entries</value></data>
+  <data name="Tool_Arg_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Tool_Arg_Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Tool_Arg_TimeoutMs" xml:space="preserve"><value>Timeout (ms)</value></data>
+  <data name="Tool_Arg_DueAt" xml:space="preserve"><value>Due at</value></data>
+  <data name="Tool_Arg_RemindAt" xml:space="preserve"><value>Remind at</value></data>
+  <data name="Tool_Arg_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Tool_Arg_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Tool_Arg_TaskId" xml:space="preserve"><value>Task ID</value></data>
+  <data name="Tool_Arg_Keyword" xml:space="preserve"><value>Keyword</value></data>
+  <data name="Tool_Arg_Limit" xml:space="preserve"><value>Limit</value></data>
+  <data name="Tool_Arg_Key" xml:space="preserve"><value>Key</value></data>
+  <data name="Tool_Arg_Value" xml:space="preserve"><value>Value</value></data>
+  <data name="Tool_Arg_GitAction" xml:space="preserve"><value>Action</value></data>
+  <data name="Tool_Arg_Args" xml:space="preserve"><value>Arguments</value></data>
+  <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>Commit message</value></data>
 </root>

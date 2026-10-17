@@ -47,11 +47,15 @@ public class FetchUrlTool : ITool
             request.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Luna/1.0");
             request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
 
-            using var response = await _httpClient.SendAsync(request, ct);
+            // HttpClient 已关闭总超时，这里为网页抓取单独设置 30 秒上限。
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            using var response = await _httpClient.SendAsync(request, timeoutCts.Token);
             if (!response.IsSuccessStatusCode)
                 return ToolResult.Error(Text("Tool_FetchUrl_Msg_Http", (int)response.StatusCode));
 
-            var html = await response.Content.ReadAsStringAsync(ct);
+            var html = await response.Content.ReadAsStringAsync(timeoutCts.Token);
             var text = ExtractText(html);
 
             if (string.IsNullOrWhiteSpace(text))

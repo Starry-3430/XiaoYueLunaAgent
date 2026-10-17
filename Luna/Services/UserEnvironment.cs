@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using Luna.Localization;
 
 namespace Luna.Services;
@@ -65,13 +67,34 @@ public static class UserEnvironment
         return false;
     }
 
-    /// <summary>生成注入系统提示词的用户目录说明，让 AI 知道用户名与常用路径。</summary>
-    public static string BuildPromptSection()
+    /// <summary>生成注入系统提示词的运行环境与用户目录说明，让 AI 知道当前时间、系统与常用路径。</summary>
+    public static string BuildPromptSection(string? responseLanguage = null)
     {
         var loc = LocalizationService.Instance;
+        var now = DateTimeOffset.Now;
+        var culture = loc.Culture;
+
         var lines = new List<string>
         {
             loc["Common_UserEnv_Title"],
+            loc.Format("Common_UserEnv_Time",
+                now.ToString("yyyy-MM-dd HH:mm:ss dddd", culture),
+                now.ToString("zzz", CultureInfo.InvariantCulture),
+                TimeZoneInfo.Local.Id),
+            loc.Format("Common_UserEnv_LogicalDate", LogicalDate.Now()),
+            loc.Format("Common_UserEnv_Os",
+                RuntimeInformation.OSDescription,
+                RuntimeInformation.OSArchitecture),
+            loc.Format("Common_UserEnv_Runtime", RuntimeInformation.FrameworkDescription),
+            loc.Format("Common_UserEnv_SystemLanguage", CultureInfo.InstalledUICulture.DisplayName),
+            loc.Format("Common_UserEnv_SystemLocale", CultureInfo.CurrentCulture.DisplayName),
+            loc.Format("Common_UserEnv_UiLanguage", culture.DisplayName),
+            loc.Format("Common_UserEnv_ResponseLanguage", responseLanguage switch
+            {
+                "zh" => loc["Common_UserEnv_ResponseLanguageZh"],
+                "en" => loc["Common_UserEnv_ResponseLanguageEn"],
+                _ => loc["Common_UserEnv_ResponseLanguageAuto"],
+            }),
             loc.Format("Common_UserEnv_Home", Home),
         };
 
@@ -82,7 +105,6 @@ public static class UserEnvironment
         Add(lines, loc["Common_UserEnv_Music"], Music);
         Add(lines, loc["Common_UserEnv_Videos"], Videos);
 
-        lines.Add(loc.Format("Common_UserEnv_Time", DateTime.Now.ToString("yyyy-MM-dd HH:mm")));
         lines.Add(loc["Common_UserEnv_Aliases"]);
         return string.Join('\n', lines);
 

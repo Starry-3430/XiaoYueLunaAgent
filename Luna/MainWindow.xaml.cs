@@ -91,7 +91,7 @@ public partial class MainWindow : Window
         _logger = logger;
 
         _renderScheduler = new MessageRenderScheduler(
-            isActive: () => _isShown && ExpandedContent.Visibility == Visibility.Visible,
+            isActive: () => IsRenderActive,
             indexOf: message => _boundMessages?.IndexOf(message) ?? -1,
             afterEachRender: () =>
             {
@@ -222,8 +222,8 @@ public partial class MainWindow : Window
         void FlushPending()
         {
             if (!msg.StreamingState.Pending) return;
-            // 不可见时交给调度器，等视图可用时整体补齐，避免流式正文丢失
-            if (!viewer.IsVisible)
+            // 窗口隐藏/非展开态时交给调度器，等视图可用时整体补齐，避免流式正文丢失
+            if (!IsRenderActive)
             {
                 _renderScheduler.Request(msg);
                 return;
@@ -255,7 +255,7 @@ public partial class MainWindow : Window
             {
                 if (args.PropertyName == nameof(ChatMessage.Content))
                 {
-                    if (viewer.IsVisible)
+                    if (IsRenderActive)
                     {
                         // 可见：走增量刷新（16ms 节流）
                         msg.StreamingState.Pending = true;
@@ -271,7 +271,7 @@ public partial class MainWindow : Window
                 {
                     // 流式结束：可见则立即 flush 并收尾
                     flushTimer.Stop();
-                    if (viewer.IsVisible)
+                    if (IsRenderActive)
                     {
                         FlushPending();
                         viewer.Complete();
@@ -295,7 +295,7 @@ public partial class MainWindow : Window
 
         System.Windows.DependencyPropertyChangedEventHandler visibility = (_, _) =>
         {
-            if (!viewer.IsVisible) return;
+            if (!IsRenderActive) return;
             // 已与最新内容同步，无需重绘（避免每次切回都整体重渲染）
             if (!msg.StreamingState.Pending && msg.StreamingState.RenderedLength == msg.Content.Length) return;
             // 交给延迟调度器：避免一次可见性切换对所有消息同步重绘造成卡顿
@@ -806,6 +806,21 @@ public partial class MainWindow : Window
         CollapseCapsuleHover(immediate: true);
     }
     
+    /// <summary>当前窗口是否真正在显示并渲染消息（隐藏/紧凑态时为 false）。</summary>
+    private bool IsRenderActive =>
+        _isShown && Opacity > 0 && ExpandedContent.Visibility == Visibility.Visible;
+
+    /// <summary>
+    /// 主动收起胶囊，但不取消正在进行的生成。
+    /// 打开主界面时调用，保证生成过程仍可在 HomeWindow 中继续查看。
+    /// </summary>
+    public void HideCapsule()
+    {
+        if (_reminderActive)
+            CloseReminder();
+        HideInternal();
+    }
+
     // 隐藏时也调用
     
 private void HideInternal()
@@ -1345,9 +1360,7 @@ private void HideInternal()
             return;
         }
 
-        // 发送中不生效，直到 AI 回复结束或用户取消
-        if (_viewModel.IsBusy) return;
-
+        // 生成过程中也允许收起胶囊；生成会在后台继续，可到主界面查看。
         HideInternal();
         e.Handled = true;
     }

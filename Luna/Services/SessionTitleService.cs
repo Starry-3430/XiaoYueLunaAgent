@@ -19,6 +19,12 @@ public class SessionTitleService
     private const int MaxInputLength = 1000;
     private const int MaxTitleLength = 30;
 
+    /// <summary>
+    /// 标题请求的输出上限。推理型模型（如 deepseek-flash）会先输出 reasoning_content，
+    /// 64 token 会被思考过程全部吃掉，导致最终 content 为空、标题生成失败。
+    /// </summary>
+    private const int MaxTitleTokens = 512;
+
     private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
     public SessionTitleService(IAiService aiService, SessionRepository sessionRepo,
@@ -63,7 +69,7 @@ public class SessionTitleService
                 new AiRequestOptions
                 {
                     Temperature = 0,
-                    MaxTokens = 64,
+                    MaxTokens = MaxTitleTokens,
                     IncludeTools = false,
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
@@ -75,8 +81,17 @@ public class SessionTitleService
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            _logger.LogDebug("会话 {SessionId} 标题为空，跳过写入", sessionId);
-            return;
+            // 模型没给出标题（例如推理耗尽输出预算）时，用首条用户消息兜底，
+            // 至少不会让会话一直停留在“新对话”。
+            title = CleanTitle(string.IsNullOrWhiteSpace(userText) ? assistantText : userText);
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                _logger.LogDebug("会话 {SessionId} 标题为空，跳过写入", sessionId);
+                return;
+            }
+
+            _logger.LogInformation("会话 {SessionId} 标题生成结果为空，使用首条消息作为标题：{Title}",
+                sessionId, title);
         }
 
         await _sessionRepo.UpdateTitleAsync(sessionId, title);

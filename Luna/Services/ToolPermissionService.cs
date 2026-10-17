@@ -130,9 +130,9 @@ public class ToolPermissionService
 
     private static UIElement BuildContent(ITool tool, string argumentsJson)
     {
-        // PowerShell 特例：直接用 Markdown 代码块展示命令，不再显示工具名与 JSON。
-        if (ToolArgumentFormatter.IsPowerShell(tool.Name))
-            return BuildPowerShellContent(argumentsJson);
+        // PowerShell / code_execute 特例：直接用 Markdown 代码块展示代码，不再显示工具名与 JSON。
+        if (ToolArgumentFormatter.IsPowerShell(tool.Name) || ToolArgumentFormatter.IsCodeExecute(tool.Name))
+            return BuildCodeContent(tool, argumentsJson);
 
         var panel = new StackPanel();
 
@@ -155,10 +155,11 @@ public class ToolPermissionService
         });
         details.Children.Add(new TextBlock
         {
-            Text = string.IsNullOrWhiteSpace(argumentsJson) ? LocalizationService.Instance["Dialog_ToolPermission_NoArgs"] : argumentsJson,
+            Text = string.IsNullOrWhiteSpace(argumentsJson)
+                ? LocalizationService.Instance["Dialog_ToolPermission_NoArgs"]
+                : ToolArgumentFormatter.FormatArguments(tool.Name, argumentsJson),
             Foreground = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B)),
             FontSize = 12,
-            FontFamily = new FontFamily("Consolas"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 4, 0, 0),
         });
@@ -174,12 +175,13 @@ public class ToolPermissionService
         return panel;
     }
 
-    /// <summary>PowerShell 确认框：正文提示 + 透明背景的 Markdown 代码块（不显示工具名）。</summary>
-    private static UIElement BuildPowerShellContent(string argumentsJson)
+    /// <summary>代码类工具的确认框：正文提示 + 透明背景的 Markdown 代码块（不显示工具名）。</summary>
+    private static UIElement BuildCodeContent(ITool tool, string argumentsJson)
     {
-        var command = ToolArgumentFormatter.TryGetPowerShellCommand(argumentsJson)
-                      ?? argumentsJson?.Trim()
-                      ?? string.Empty;
+        var code = ToolArgumentFormatter.TryGetCode(tool.Name, argumentsJson)
+                   ?? argumentsJson?.Trim()
+                   ?? string.Empty;
+        var language = ToolArgumentFormatter.IsPowerShell(tool.Name) ? "powershell" : "python";
 
         var panel = new StackPanel();
         panel.Children.Add(new TextBlock
@@ -191,7 +193,7 @@ public class ToolPermissionService
             Margin = new Thickness(0, 0, 0, 8),
         });
 
-        var markdown = $"```powershell\n{command}\n```";
+        var markdown = $"```{language}\n{code}\n```";
         var viewer = new MarkdownDocumentView
         {
             Background = Brushes.Transparent,

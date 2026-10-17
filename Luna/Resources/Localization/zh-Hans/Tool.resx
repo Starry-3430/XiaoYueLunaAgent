@@ -35,8 +35,6 @@
   <data name="Tool_WebSearch_Description" xml:space="preserve"><value>通过 Tavily 在互联网上搜索信息，返回标题、URL 与摘要</value></data>
   <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>网页阅读</value></data>
   <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>抓取指定 URL 的网页正文，配合搜索使用</value></data>
-  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>当前时间</value></data>
-  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>获取当前日期与时间</value></data>
   <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>剪贴板读取</value></data>
   <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>新闻/日历</value></data>
@@ -108,7 +106,6 @@
   <!-- 发送给 AI 的工具说明 -->
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
-  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>获取当前日期和时间，返回本地时间与 UTC 时间</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
@@ -229,11 +226,6 @@
   <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>没有找到 key 为「{0}」的事实。</value></data>
   <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>忘记事实失败：{0}</value></data>
 
-  <!-- get_current_time -->
-  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>当前时间：{0}（{1}）
-UTC 时间：{2}
-Unix 时间戳：{3}</value></data>
-
   <!-- git -->
   <data name="Tool_Git_Param_Action" xml:space="preserve"><value>git 子命令</value></data>
   <data name="Tool_Git_Param_Args" xml:space="preserve"><value>传给子命令的额外参数，例如 ["--stat"]、["HEAD~3"]、["newfile.txt"]</value></data>
@@ -285,6 +277,7 @@ Unix 时间戳：{3}</value></data>
   <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>读取文件被取消。</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>读取文件失败：{0}</value></data>
+  <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>文件内容不是可读文本（可能是二进制或加密文件），已拒绝读取。</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>英文短语 + 下划线的事实标识，如 preferred_language、editor_theme</value></data>
@@ -326,6 +319,7 @@ Unix 时间戳：{3}</value></data>
   <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>搜索关键词或问题</value></data>
   <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。</value></data>
   <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>未找到相关结果。</value></data>
+  <data name="Tool_WebSearch_Msg_Timeout" xml:space="preserve"><value>搜索超时，请稍后重试。</value></data>
   <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>搜索失败: {0}</value></data>
 
   <!-- write_file -->
@@ -349,4 +343,35 @@ Unix 时间戳：{3}</value></data>
   <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>路径不在输出目录内。</value></data>
   <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>文件没有扩展名，已被安全策略拒绝。</value></data>
   <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>不允许写入的文件类型：{0}</value></data>
+
+  <!-- 工具参数展示 -->
+  <data name="Tool_Arg_FilePath" xml:space="preserve"><value>文件路径</value></data>
+  <data name="Tool_Arg_FileName" xml:space="preserve"><value>文件名</value></data>
+  <data name="Tool_Arg_FileSize" xml:space="preserve"><value>文件大小</value></data>
+  <data name="Tool_Arg_Query" xml:space="preserve"><value>搜索词</value></data>
+  <data name="Tool_Arg_MaxResults" xml:space="preserve"><value>最大结果数</value></data>
+  <data name="Tool_Arg_NoArgs" xml:space="preserve"><value>（无参数）</value></data>
+  <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
+  <data name="Tool_Arg_Content" xml:space="preserve"><value>内容</value></data>
+  <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>写入模式</value></data>
+  <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>创建</value></data>
+  <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>覆盖</value></data>
+  <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>追加</value></data>
+  <data name="Tool_Arg_Depth" xml:space="preserve"><value>深度</value></data>
+  <data name="Tool_Arg_MaxEntries" xml:space="preserve"><value>最大条目数</value></data>
+  <data name="Tool_Arg_Title" xml:space="preserve"><value>标题</value></data>
+  <data name="Tool_Arg_Message" xml:space="preserve"><value>消息</value></data>
+  <data name="Tool_Arg_TimeoutMs" xml:space="preserve"><value>超时（毫秒）</value></data>
+  <data name="Tool_Arg_DueAt" xml:space="preserve"><value>截止时间</value></data>
+  <data name="Tool_Arg_RemindAt" xml:space="preserve"><value>提醒时间</value></data>
+  <data name="Tool_Arg_Notes" xml:space="preserve"><value>备注</value></data>
+  <data name="Tool_Arg_Status" xml:space="preserve"><value>状态</value></data>
+  <data name="Tool_Arg_TaskId" xml:space="preserve"><value>任务 ID</value></data>
+  <data name="Tool_Arg_Keyword" xml:space="preserve"><value>关键词</value></data>
+  <data name="Tool_Arg_Limit" xml:space="preserve"><value>条数上限</value></data>
+  <data name="Tool_Arg_Key" xml:space="preserve"><value>键</value></data>
+  <data name="Tool_Arg_Value" xml:space="preserve"><value>值</value></data>
+  <data name="Tool_Arg_GitAction" xml:space="preserve"><value>操作</value></data>
+  <data name="Tool_Arg_Args" xml:space="preserve"><value>参数</value></data>
+  <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>提交信息</value></data>
 </root>

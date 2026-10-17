@@ -157,7 +157,12 @@ public partial class App : Application
                 {
                     UseProxy = true,
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
-                }));
+                })
+                {
+                    // 不使用 HttpClient 的总超时：它会把持续有数据进来的流式回答也整体掐断。
+                    // 具体超时由各调用方按“总超时 / 响应头超时 / 空闲超时”分别控制。
+                    Timeout = Timeout.InfiniteTimeSpan,
+                });
                 services.AddSingleton<HotkeyService>();
                 services.AddSingleton<StartupService>();
                 services.AddSingleton<SystemPromptBuilder>();
@@ -177,7 +182,6 @@ public partial class App : Application
                 services.AddSingleton<ITool, ClipboardReadTool>();
                 services.AddSingleton<ITool, WebSearchTool>();
                 services.AddSingleton<ITool, FetchUrlTool>();
-                services.AddSingleton<ITool, GetCurrentTimeTool>();
                 services.AddSingleton<ITool, ReadFileTool>();
                 services.AddSingleton<ITool, FileTreeTool>();
                 services.AddSingleton<ITool, WriteFileTool>();
@@ -276,6 +280,9 @@ public partial class App : Application
     /// </summary>
     private void ShowHomeWindow()
     {
+        // 打开主界面时收起胶囊，但不打断正在进行的生成。
+        _host.Services.GetRequiredService<MainWindow>().HideCapsule();
+
         // 如果已存在且已加载，则激活
         if (_homeWindow is { IsLoaded: true })
         {

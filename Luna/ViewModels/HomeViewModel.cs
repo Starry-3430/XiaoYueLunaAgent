@@ -175,7 +175,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             {
                 new ToolDefinition { Id = "web_search", NameKey = "Tool_WebSearch_DisplayName", DescriptionKey = "Tool_WebSearch_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "fetch_url", NameKey = "Tool_FetchUrl_DisplayName", DescriptionKey = "Tool_FetchUrl_Description", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "get_current_time", NameKey = "Tool_GetCurrentTime_DisplayName", DescriptionKey = "Tool_GetCurrentTime_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "read_clipboard", NameKey = "Tool_ReadClipboard_DisplayName", DescriptionKey = "Tool_ReadClipboard_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "news_calendar", NameKey = "Tool_NewsCalendar_DisplayName", DescriptionKey = "Tool_NewsCalendar_Description", IsEnabled = true, IsAvailable = false },
             }
@@ -441,6 +440,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         session ??= new ChatSessionItem { Id = result.SessionId, Title = result.SessionTitle };
         await SelectSessionCommand.ExecuteAsync(session);
     }
+
+    /// <summary>
+    /// 重新从数据库加载会话列表。打开主界面时调用，确保胶囊窗刚刚创建、
+    /// 甚至仍在生成中的会话能立即出现在历史记录里（运行期对象仍是同一个，点进去可继续看流式输出）。
+    /// </summary>
+    public Task RefreshSessionsAsync() => LoadSessionsAsync();
 
     private async Task LoadSessionsAsync()
     {
@@ -773,6 +778,8 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         if (IsBusy) return;
         if (string.IsNullOrWhiteSpace(InputText) && !hasAttachments) return;
 
+        // 记录原始输入：发送失败（并发冲突、附件/数据库异常等）时原样还给用户。
+        var originalInput = InputText;
         var userText = InputText.Trim();
         InputText = string.Empty;
 
@@ -816,6 +823,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         {
             _logger.LogError(ex, "发送消息失败");
             Status = LocalizationService.Instance.Format("Common_SendFailed", ex.Message);
+
+            // 失败时若用户还没有输入新内容，就恢复刚才的草稿，避免心血蒸发。
+            if (string.IsNullOrEmpty(InputText))
+                InputText = originalInput;
         }
     }
 

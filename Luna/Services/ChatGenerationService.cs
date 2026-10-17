@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Threading;
@@ -137,7 +138,10 @@ public sealed class ChatGenerationService
     public async Task SendAsync(string sessionId, string userText, IReadOnlyList<Attachment>? attachments)
     {
         var runtime = await GetOrLoadAsync(sessionId);
-        if (runtime.IsBusy) return;
+
+        // 并发发送时明确失败，避免上层误以为消息已发出而清空输入框。
+        if (runtime.IsBusy)
+            throw new InvalidOperationException(LocalizationService.Instance["Common_SendBusy"]);
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
@@ -203,7 +207,22 @@ public sealed class ChatGenerationService
             }
         }
 
-        await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+        // 用户消息与附件上下文已经入库：立即通知会话列表，
+        // 这样主界面在生成过程中打开/已打开时都能马上看到这次新对话。
+        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+
+        try
+        {
+            await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+        }
+        catch (Exception ex)
+        {
+            // 用户消息已经入库：此后的生成/持久化失败不能再抛给调用方，
+            // 否则界面会误以为“没发出去”而恢复草稿，导致重复发送。
+            _logger.LogError(ex, "消息已入库，但后续生成流程失败：Session={SessionId} Turn={TurnId}",
+                sessionId, turnId);
+            runtime.Status = LocalizationService.Instance.Format("Common_Status_Error", ex.Message);
+        }
     }
 
     /// <summary>把附件转换结果拼装成注入会话的 system 内容。</summary>
@@ -406,9 +425,11 @@ public sealed class ChatGenerationService
                         continue;
                     }
 
-                    // 中/高风险工具在执行前需要用户授权
+                    // 中/高风险工具在执行前需要用户授权；
+                    // 读取用户主动上传的附件时直接放行，不弹窗。
                     if (ToolPermissionService.NeedsConfirmation(tool) &&
-                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name))
+                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name) &&
+                        !IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson))
                     {
                         var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
                         if (decision == ToolPermissionDecision.Deny)
@@ -426,7 +447,7 @@ public sealed class ChatGenerationService
                     {
                         using var argsDoc = JsonDocument.Parse(
                             string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
-                        var result = await tool.ExecuteAsync(argsDoc.RootElement.Clone(), ct);
+                        var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
                         entry.ResultJson = TruncateResult(result.Content);
                         entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
                         if (result.IsError)
@@ -768,10 +789,117 @@ public sealed class ChatGenerationService
         return _toolRegistry.GetTool(toolName)?.DisplayName ?? toolName;
     }
 
+    /// <summary>
+    /// 在工具自身超时之外再加一层兜底：超过 <see cref="ITool.ExecutionTimeout"/> 仍未返回时，
+    /// 取消工具并把“超时”作为工具结果交还给模型，让对话继续，而不是卡死整个 AI 循环。
+    /// </summary>
+    private async Task<ToolResult> ExecuteToolWithTimeoutAsync(ITool tool, JsonElement args, CancellationToken ct)
+    {
+        var timeout = tool.ExecutionTimeout;
+        var toolCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        toolCts.CancelAfter(timeout);
+
+        var execution = tool.ExecuteAsync(args, toolCts.Token);
+        var delay = Task.Delay(Timeout.InfiniteTimeSpan, toolCts.Token);
+        var completed = await Task.WhenAny(execution, delay);
+
+        if (ReferenceEquals(completed, execution))
+        {
+            try
+            {
+                return await execution;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // 工具自己响应了超时取消，走下面的超时结果。
+            }
+            finally
+            {
+                toolCts.Dispose();
+            }
+        }
+        else
+        {
+            toolCts.Cancel();
+
+            // 工具可能不响应取消：不要等待它，但要在它最终结束时释放 CTS 并观察异常。
+            _ = execution.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    _logger.LogError(t.Exception, "工具 {Name} 在超时取消后仍抛出了异常", tool.Name);
+                toolCts.Dispose();
+            }, TaskScheduler.Default);
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        _logger.LogWarning("工具 {Name} 超过 {Seconds} 秒未完成，已中止", tool.Name, timeout.TotalSeconds);
+        return ToolResult.Error(LocalizationService.Instance.Format(
+            "Common_Tool_Timeout", tool.DisplayName, timeout.TotalSeconds));
+    }
+
     private static string TruncateResult(string result, int maxLen = 5000)
     {
         if (result.Length <= maxLen) return result;
         return result[..maxLen] + "\n\n" + LocalizationService.Instance["Common_Tool_ResultTruncated"];
+    }
+
+    /// <summary>
+    /// 若工具是 read_file，且目标路径对应用户在本会话中主动上传的附件，则返回 true（无需弹窗）。
+    /// </summary>
+    private static bool IsUploadedAttachmentRead(ITool tool, SessionRuntime runtime, string argumentsJson)
+    {
+        if (!ToolArgumentFormatter.IsReadFile(tool.Name)) return false;
+
+        var path = ToolArgumentFormatter.TryGetStringArgument(argumentsJson, "path");
+        return IsUploadedAttachmentPath(runtime, path);
+    }
+
+    /// <summary>
+    /// 判断路径是否是本会话中用户上传过的附件原始路径。
+    /// 附件上下文以 system 消息持久化，内容中包含“原始路径：...”行，重启后依然可用。
+    /// </summary>
+    private static bool IsUploadedAttachmentPath(SessionRuntime runtime, string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        string target;
+        try
+        {
+            target = Path.GetFullPath(path.Trim().Trim('"', '\''));
+        }
+        catch
+        {
+            return false;
+        }
+
+        const string prefix = "原始路径：";
+
+        foreach (var message in runtime.Messages)
+        {
+            if (message.Role != "system" || string.IsNullOrEmpty(message.Content)) continue;
+
+            foreach (var line in message.Content.Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (!trimmed.StartsWith(prefix, StringComparison.Ordinal)) continue;
+
+                var candidate = trimmed[prefix.Length..].Trim().Trim('"', '\'');
+                if (candidate.Length == 0) continue;
+
+                try
+                {
+                    if (string.Equals(Path.GetFullPath(candidate), target, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                catch
+                {
+                    // 忽略非法路径行
+                }
+            }
+        }
+
+        return false;
     }
 
     private sealed record ToolCallEntryDb(
