@@ -615,6 +615,16 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     public Task AddDroppedFilesAsync(IEnumerable<string> paths)
         => LoadAttachmentsAsync(AttachmentHelper.FromPaths(paths));
 
+    /// <summary>尝试把剪贴板中的图片/文件加入待发送列表；返回是否已处理（是则调用方应阻止默认文本粘贴）。</summary>
+    public bool TryPasteClipboardAttachments()
+    {
+        var attachments = AttachmentHelper.GetClipboardAttachments();
+        if (attachments.Count == 0) return false;
+
+        _ = LoadAttachmentsAsync(attachments);
+        return true;
+    }
+
     /// <summary>按数量/大小规则筛选后读取内容并加入待发送列表。</summary>
     private async Task LoadAttachmentsAsync(IReadOnlyList<Attachment> candidates)
     {

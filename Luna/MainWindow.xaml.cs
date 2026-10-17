@@ -125,9 +125,9 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) => Reposition();
         IsVisibleChanged += OnIsVisibleChanged;
         
-        // 为输入框挂载自定义右键菜单
-        _ = new EditorContextMenu(CompactInputBox);
-        _ = new EditorContextMenu(InputBox);
+        // 为输入框挂载自定义右键菜单；剪贴板中的图片/文件优先作为附件导入
+        EditorContextMenu.Attach(CompactInputBox, () => IsActive && _viewModel.TryPasteClipboardAttachments());
+        EditorContextMenu.Attach(InputBox, () => IsActive && _viewModel.TryPasteClipboardAttachments());
 
         // 胶囊悬停展开（添加附件）
         IslandBorder.MouseEnter += IslandBorder_MouseEnter;
@@ -732,6 +732,14 @@ public partial class MainWindow : Window
 
     private void CompactInputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
+        if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
+            && IsActive && _viewModel.TryPasteClipboardAttachments())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Shift+Enter 仍然换行，不触发发送
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0)
         {
@@ -1264,6 +1272,14 @@ private void HideInternal()
 
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
+        if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
+            && IsActive && _viewModel.TryPasteClipboardAttachments())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // Enter 发送，Shift+Enter 换行
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0)
         {
