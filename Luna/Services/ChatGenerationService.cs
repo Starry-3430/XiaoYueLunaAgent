@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Threading;
@@ -406,9 +407,11 @@ public sealed class ChatGenerationService
                         continue;
                     }
 
-                    // 中/高风险工具在执行前需要用户授权
+                    // 中/高风险工具在执行前需要用户授权；
+                    // 读取用户主动上传的附件时直接放行，不弹窗。
                     if (ToolPermissionService.NeedsConfirmation(tool) &&
-                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name))
+                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name) &&
+                        !IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson))
                     {
                         var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
                         if (decision == ToolPermissionDecision.Deny)
@@ -772,6 +775,64 @@ public sealed class ChatGenerationService
     {
         if (result.Length <= maxLen) return result;
         return result[..maxLen] + "\n\n" + LocalizationService.Instance["Common_Tool_ResultTruncated"];
+    }
+
+    /// <summary>
+    /// 若工具是 read_file，且目标路径对应用户在本会话中主动上传的附件，则返回 true（无需弹窗）。
+    /// </summary>
+    private static bool IsUploadedAttachmentRead(ITool tool, SessionRuntime runtime, string argumentsJson)
+    {
+        if (!ToolArgumentFormatter.IsReadFile(tool.Name)) return false;
+
+        var path = ToolArgumentFormatter.TryGetStringArgument(argumentsJson, "path");
+        return IsUploadedAttachmentPath(runtime, path);
+    }
+
+    /// <summary>
+    /// 判断路径是否是本会话中用户上传过的附件原始路径。
+    /// 附件上下文以 system 消息持久化，内容中包含“原始路径：...”行，重启后依然可用。
+    /// </summary>
+    private static bool IsUploadedAttachmentPath(SessionRuntime runtime, string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        string target;
+        try
+        {
+            target = Path.GetFullPath(path.Trim().Trim('"', '\''));
+        }
+        catch
+        {
+            return false;
+        }
+
+        const string prefix = "原始路径：";
+
+        foreach (var message in runtime.Messages)
+        {
+            if (message.Role != "system" || string.IsNullOrEmpty(message.Content)) continue;
+
+            foreach (var line in message.Content.Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (!trimmed.StartsWith(prefix, StringComparison.Ordinal)) continue;
+
+                var candidate = trimmed[prefix.Length..].Trim().Trim('"', '\'');
+                if (candidate.Length == 0) continue;
+
+                try
+                {
+                    if (string.Equals(Path.GetFullPath(candidate), target, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                catch
+                {
+                    // 忽略非法路径行
+                }
+            }
+        }
+
+        return false;
     }
 
     private sealed record ToolCallEntryDb(

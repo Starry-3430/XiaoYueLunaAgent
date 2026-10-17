@@ -277,6 +277,7 @@ Offending segment: {0}</value></data>
   <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; common text/code extensions are supported.</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
+  <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>The file is not readable text (it may be binary or encrypted), so it was not read.</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>
@@ -341,4 +342,35 @@ Its content will be lost.</value></data>
   <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>Path is not inside the output directory.</value></data>
   <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>File has no extension and was rejected by the safety policy.</value></data>
   <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>File type not allowed for writing: {0}</value></data>
+
+  <!-- Tool argument display -->
+  <data name="Tool_Arg_FilePath" xml:space="preserve"><value>File path</value></data>
+  <data name="Tool_Arg_FileName" xml:space="preserve"><value>File name</value></data>
+  <data name="Tool_Arg_FileSize" xml:space="preserve"><value>File size</value></data>
+  <data name="Tool_Arg_Query" xml:space="preserve"><value>Query</value></data>
+  <data name="Tool_Arg_MaxResults" xml:space="preserve"><value>Max results</value></data>
+  <data name="Tool_Arg_NoArgs" xml:space="preserve"><value>(no arguments)</value></data>
+  <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
+  <data name="Tool_Arg_Content" xml:space="preserve"><value>Content</value></data>
+  <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>Write mode</value></data>
+  <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>Overwrite</value></data>
+  <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>Append</value></data>
+  <data name="Tool_Arg_Depth" xml:space="preserve"><value>Depth</value></data>
+  <data name="Tool_Arg_MaxEntries" xml:space="preserve"><value>Max entries</value></data>
+  <data name="Tool_Arg_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Tool_Arg_Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Tool_Arg_TimeoutMs" xml:space="preserve"><value>Timeout (ms)</value></data>
+  <data name="Tool_Arg_DueAt" xml:space="preserve"><value>Due at</value></data>
+  <data name="Tool_Arg_RemindAt" xml:space="preserve"><value>Remind at</value></data>
+  <data name="Tool_Arg_Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Tool_Arg_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Tool_Arg_TaskId" xml:space="preserve"><value>Task ID</value></data>
+  <data name="Tool_Arg_Keyword" xml:space="preserve"><value>Keyword</value></data>
+  <data name="Tool_Arg_Limit" xml:space="preserve"><value>Limit</value></data>
+  <data name="Tool_Arg_Key" xml:space="preserve"><value>Key</value></data>
+  <data name="Tool_Arg_Value" xml:space="preserve"><value>Value</value></data>
+  <data name="Tool_Arg_GitAction" xml:space="preserve"><value>Action</value></data>
+  <data name="Tool_Arg_Args" xml:space="preserve"><value>Arguments</value></data>
+  <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>Commit message</value></data>
 </root>

@@ -277,6 +277,7 @@
   <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>读取文件被取消。</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>读取文件失败：{0}</value></data>
+  <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>文件内容不是可读文本（可能是二进制或加密文件），已拒绝读取。</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>英文短语 + 下划线的事实标识，如 preferred_language、editor_theme</value></data>
@@ -341,4 +342,35 @@
   <data name="Tool_WriteFile_Msg_Outside" xml:space="preserve"><value>路径不在输出目录内。</value></data>
   <data name="Tool_WriteFile_Msg_NoExtension" xml:space="preserve"><value>文件没有扩展名，已被安全策略拒绝。</value></data>
   <data name="Tool_WriteFile_Msg_BlockedType" xml:space="preserve"><value>不允许写入的文件类型：{0}</value></data>
+
+  <!-- 工具参数展示 -->
+  <data name="Tool_Arg_FilePath" xml:space="preserve"><value>文件路径</value></data>
+  <data name="Tool_Arg_FileName" xml:space="preserve"><value>文件名</value></data>
+  <data name="Tool_Arg_FileSize" xml:space="preserve"><value>文件大小</value></data>
+  <data name="Tool_Arg_Query" xml:space="preserve"><value>搜索词</value></data>
+  <data name="Tool_Arg_MaxResults" xml:space="preserve"><value>最大结果数</value></data>
+  <data name="Tool_Arg_NoArgs" xml:space="preserve"><value>（无参数）</value></data>
+  <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
+  <data name="Tool_Arg_Content" xml:space="preserve"><value>内容</value></data>
+  <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>写入模式</value></data>
+  <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>创建</value></data>
+  <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>覆盖</value></data>
+  <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>追加</value></data>
+  <data name="Tool_Arg_Depth" xml:space="preserve"><value>深度</value></data>
+  <data name="Tool_Arg_MaxEntries" xml:space="preserve"><value>最大条目数</value></data>
+  <data name="Tool_Arg_Title" xml:space="preserve"><value>标题</value></data>
+  <data name="Tool_Arg_Message" xml:space="preserve"><value>消息</value></data>
+  <data name="Tool_Arg_TimeoutMs" xml:space="preserve"><value>超时（毫秒）</value></data>
+  <data name="Tool_Arg_DueAt" xml:space="preserve"><value>截止时间</value></data>
+  <data name="Tool_Arg_RemindAt" xml:space="preserve"><value>提醒时间</value></data>
+  <data name="Tool_Arg_Notes" xml:space="preserve"><value>备注</value></data>
+  <data name="Tool_Arg_Status" xml:space="preserve"><value>状态</value></data>
+  <data name="Tool_Arg_TaskId" xml:space="preserve"><value>任务 ID</value></data>
+  <data name="Tool_Arg_Keyword" xml:space="preserve"><value>关键词</value></data>
+  <data name="Tool_Arg_Limit" xml:space="preserve"><value>条数上限</value></data>
+  <data name="Tool_Arg_Key" xml:space="preserve"><value>键</value></data>
+  <data name="Tool_Arg_Value" xml:space="preserve"><value>值</value></data>
+  <data name="Tool_Arg_GitAction" xml:space="preserve"><value>操作</value></data>
+  <data name="Tool_Arg_Args" xml:space="preserve"><value>参数</value></data>
+  <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>提交信息</value></data>
 </root>
