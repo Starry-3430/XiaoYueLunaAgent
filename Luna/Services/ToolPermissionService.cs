@@ -160,7 +160,6 @@ public class ToolPermissionService
                 : ToolArgumentFormatter.FormatArguments(tool.Name, argumentsJson),
             Foreground = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B)),
             FontSize = 12,
-            FontFamily = new FontFamily("Consolas"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 4, 0, 0),
         });
