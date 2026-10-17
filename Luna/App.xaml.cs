@@ -177,7 +177,6 @@ public partial class App : Application
                 services.AddSingleton<ITool, ClipboardReadTool>();
                 services.AddSingleton<ITool, WebSearchTool>();
                 services.AddSingleton<ITool, FetchUrlTool>();
-                services.AddSingleton<ITool, GetCurrentTimeTool>();
                 services.AddSingleton<ITool, ReadFileTool>();
                 services.AddSingleton<ITool, FileTreeTool>();
                 services.AddSingleton<ITool, WriteFileTool>();

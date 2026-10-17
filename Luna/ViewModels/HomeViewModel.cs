@@ -175,7 +175,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             {
                 new ToolDefinition { Id = "web_search", NameKey = "Tool_WebSearch_DisplayName", DescriptionKey = "Tool_WebSearch_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "fetch_url", NameKey = "Tool_FetchUrl_DisplayName", DescriptionKey = "Tool_FetchUrl_Description", IsEnabled = true, IsAvailable = false },
-                new ToolDefinition { Id = "get_current_time", NameKey = "Tool_GetCurrentTime_DisplayName", DescriptionKey = "Tool_GetCurrentTime_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "read_clipboard", NameKey = "Tool_ReadClipboard_DisplayName", DescriptionKey = "Tool_ReadClipboard_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "news_calendar", NameKey = "Tool_NewsCalendar_DisplayName", DescriptionKey = "Tool_NewsCalendar_Description", IsEnabled = true, IsAvailable = false },
             }

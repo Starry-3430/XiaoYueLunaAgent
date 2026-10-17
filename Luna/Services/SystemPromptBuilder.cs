@@ -50,7 +50,7 @@ public class SystemPromptBuilder
 
         // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
         if (options.IncludeUserEnvironment)
-            prompt += "\n\n" + UserEnvironment.BuildPromptSection();
+            prompt += "\n\n" + UserEnvironment.BuildPromptSection(_settings.ResponseLanguage);
 
         var factsSection = await BuildFactsSectionAsync(ct);
         if (!string.IsNullOrEmpty(factsSection))

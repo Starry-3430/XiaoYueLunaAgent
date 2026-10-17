@@ -35,8 +35,6 @@
   <data name="Tool_WebSearch_Description" xml:space="preserve"><value>Search the web via Tavily; returns titles, URLs and snippets.</value></data>
   <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>Read Web Page</value></data>
   <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>Fetch the main text of a given URL; use together with search.</value></data>
-  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>Current Time</value></data>
-  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>Get the current date and time.</value></data>
   <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>Read Clipboard</value></data>
   <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>News / Calendar</value></data>
@@ -108,7 +106,6 @@
   <!-- 发送给 AI 的工具说明 -->
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>Search the internet and return the titles, URLs and content snippets of relevant web pages.</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
-  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>Get the current date and time, returning both local and UTC time.</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
@@ -228,11 +225,6 @@ Note: this sandbox is best-effort, not fully secure.</value></data>
   <data name="Tool_ForgetFact_Msg_Done" xml:space="preserve"><value>Forgotten: {0}</value></data>
   <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>No fact with key "{0}" was found.</value></data>
   <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>Failed to forget the fact: {0}</value></data>
-
-  <!-- get_current_time -->
-  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>Current time: {0} ({1})
-UTC time: {2}
-Unix timestamp: {3}</value></data>
 
   <!-- git -->
   <data name="Tool_Git_Param_Action" xml:space="preserve"><value>Git subcommand</value></data>

@@ -50,8 +50,8 @@
   <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>执行失败: {0}</value></data>
   <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (结果已截断)</value></data>
 
-  <!-- 注入提示词的用户环境 -->
-  <data name="Common_UserEnv_Title" xml:space="preserve"><value>## 当前用户环境</value></data>
+  <!-- 注入提示词的运行环境 -->
+  <data name="Common_UserEnv_Title" xml:space="preserve"><value>## 当前运行环境与用户目录</value></data>
   <data name="Common_UserEnv_Home" xml:space="preserve"><value>- 用户名/主目录：{0}</value></data>
   <data name="Common_UserEnv_Desktop" xml:space="preserve"><value>桌面</value></data>
   <data name="Common_UserEnv_Documents" xml:space="preserve"><value>文档</value></data>
@@ -60,7 +60,17 @@
   <data name="Common_UserEnv_Music" xml:space="preserve"><value>音乐</value></data>
   <data name="Common_UserEnv_Videos" xml:space="preserve"><value>视频</value></data>
   <data name="Common_UserEnv_Line" xml:space="preserve"><value>- {0}：{1}</value></data>
-  <data name="Common_UserEnv_Time" xml:space="preserve"><value>- 当前时间：{0}（本地时间，用于计算待办的截止/提醒时间）</value></data>
+  <data name="Common_UserEnv_Time" xml:space="preserve"><value>- 当前时间：{0}（UTC{1}，时区 {2}；用于回答日期/时间问题及计算截止/提醒时间）</value></data>
+  <data name="Common_UserEnv_LogicalDate" xml:space="preserve"><value>- 逻辑日期：{0}（以凌晨 4 点为日界）</value></data>
+  <data name="Common_UserEnv_Os" xml:space="preserve"><value>- 操作系统：{0}（{1}）</value></data>
+  <data name="Common_UserEnv_Runtime" xml:space="preserve"><value>- 运行时：{0}</value></data>
+  <data name="Common_UserEnv_SystemLanguage" xml:space="preserve"><value>- 系统语言：{0}</value></data>
+  <data name="Common_UserEnv_SystemLocale" xml:space="preserve"><value>- 系统区域：{0}</value></data>
+  <data name="Common_UserEnv_UiLanguage" xml:space="preserve"><value>- 界面语言：{0}</value></data>
+  <data name="Common_UserEnv_ResponseLanguage" xml:space="preserve"><value>- 回复语言偏好：{0}</value></data>
+  <data name="Common_UserEnv_ResponseLanguageAuto" xml:space="preserve"><value>跟随用户</value></data>
+  <data name="Common_UserEnv_ResponseLanguageZh" xml:space="preserve"><value>简体中文</value></data>
+  <data name="Common_UserEnv_ResponseLanguageEn" xml:space="preserve"><value>English</value></data>
   <data name="Common_UserEnv_Aliases" xml:space="preserve"><value>搜索或读取文件时，可直接使用上述绝对路径，或使用别名 desktop/documents/downloads/pictures/music/videos/home。</value></data>
 
   <!-- 附件选择 / 图片读取 -->

@@ -35,8 +35,6 @@
   <data name="Tool_WebSearch_Description" xml:space="preserve"><value>通过 Tavily 在互联网上搜索信息，返回标题、URL 与摘要</value></data>
   <data name="Tool_FetchUrl_DisplayName" xml:space="preserve"><value>网页阅读</value></data>
   <data name="Tool_FetchUrl_Description" xml:space="preserve"><value>抓取指定 URL 的网页正文，配合搜索使用</value></data>
-  <data name="Tool_GetCurrentTime_DisplayName" xml:space="preserve"><value>当前时间</value></data>
-  <data name="Tool_GetCurrentTime_Description" xml:space="preserve"><value>获取当前日期与时间</value></data>
   <data name="Tool_ReadClipboard_DisplayName" xml:space="preserve"><value>剪贴板读取</value></data>
   <data name="Tool_ReadClipboard_Description" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_NewsCalendar_DisplayName" xml:space="preserve"><value>新闻/日历</value></data>
@@ -108,7 +106,6 @@
   <!-- 发送给 AI 的工具说明 -->
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
-  <data name="Tool_GetCurrentTime_AiDescription" xml:space="preserve"><value>获取当前日期和时间，返回本地时间与 UTC 时间</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
@@ -228,11 +225,6 @@
   <data name="Tool_ForgetFact_Msg_Done" xml:space="preserve"><value>已忘记：{0}</value></data>
   <data name="Tool_ForgetFact_Msg_NotFound" xml:space="preserve"><value>没有找到 key 为「{0}」的事实。</value></data>
   <data name="Tool_ForgetFact_Msg_Failed" xml:space="preserve"><value>忘记事实失败：{0}</value></data>
-
-  <!-- get_current_time -->
-  <data name="Tool_GetCurrentTime_Msg_Result" xml:space="preserve"><value>当前时间：{0}（{1}）
-UTC 时间：{2}
-Unix 时间戳：{3}</value></data>
 
   <!-- git -->
   <data name="Tool_Git_Param_Action" xml:space="preserve"><value>git 子命令</value></data>
