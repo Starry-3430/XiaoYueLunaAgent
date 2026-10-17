@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Luna.Services.Tools;
 
 namespace Luna.Models;
 
@@ -35,6 +36,13 @@ public partial class ToolCallEntry : ObservableObject
 
     [ObservableProperty]
     private bool _isExpanded;
+
+    /// <summary>面向用户展示的调用参数（PowerShell 直接显示命令，避免裸露 JSON）。</summary>
+    public string ArgumentsDisplay => ToolArgumentFormatter.FormatArguments(ToolName, ArgumentsJson);
+
+    partial void OnArgumentsJsonChanged(string value) => OnPropertyChanged(nameof(ArgumentsDisplay));
+
+    partial void OnToolNameChanged(string value) => OnPropertyChanged(nameof(ArgumentsDisplay));
 }
 
 public partial class ChatMessage : ObservableObject

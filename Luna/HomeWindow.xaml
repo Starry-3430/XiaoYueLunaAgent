@@ -541,7 +541,7 @@ Background="#E4E0CA"
                                         Margin="0,4,0,0">
                                 <TextBlock Text="{loc:Loc Common_Params}" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
                                 <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding ArgumentsJson}" Foreground="#8B7B6B" FontSize="11"
+                                    <TextBlock Text="{Binding ArgumentsDisplay}" Foreground="#8B7B6B" FontSize="11"
                                                FontFamily="Consolas" TextWrapping="Wrap" Margin="8,0,0,0"/>
                                 </ScrollViewer>
                                 <TextBlock Text="{loc:Loc Common_Result}" Foreground="#8B7B6B" FontSize="11" FontStyle="Italic" Margin="8,0,0,2"/>
