@@ -49,6 +49,7 @@
   <data name="Common_Canceled" xml:space="preserve"><value>已取消</value></data>
   <data name="Common_Tool_NotEnabled" xml:space="preserve"><value>工具未启用</value></data>
   <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>执行失败: {0}</value></data>
+  <data name="Common_Tool_Timeout" xml:space="preserve"><value>工具 {0} 执行超过 {1:0} 秒，已被中止；请缩小任务范围或重试。</value></data>
   <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (结果已截断)</value></data>
 
   <!-- 注入提示词的运行环境 -->

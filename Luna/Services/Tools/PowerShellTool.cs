@@ -113,7 +113,19 @@ public class PowerShellTool : ITool
             var stdOutTask = process.StandardOutput.ReadToEndAsync();
             var stdErrTask = process.StandardError.ReadToEndAsync();
 
-            if (!process.WaitForExit(TimeoutMs))
+            // 用户点“取消”时立即杀掉进程树，而不是继续等满 30 秒。
+            using var cancelRegistration = ct.Register(() => TryKill(process));
+
+            var exited = process.WaitForExit(TimeoutMs);
+            if (ct.IsCancellationRequested)
+            {
+                TryKill(process);
+                _logger.LogInformation("PowerShell 命令已取消：{Command}", command);
+                return ToolResult.Error(Format(command, SafeGet(stdOutTask), SafeGet(stdErrTask),
+                    Text("Tool_Msg_Cancelled"), -1));
+            }
+
+            if (!exited)
             {
                 TryKill(process);
                 _logger.LogWarning("PowerShell 命令超时，已终止：{Command}", command);

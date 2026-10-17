@@ -319,6 +319,7 @@ Offending segment: {0}</value></data>
   <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>Search keywords or question</value></data>
   <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>Tavily API Key is not configured. Enter it under "Web Search" on the Tools page and try again.</value></data>
   <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>No related results found.</value></data>
+  <data name="Tool_WebSearch_Msg_Timeout" xml:space="preserve"><value>Search timed out. Please try again later.</value></data>
   <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>Search failed: {0}</value></data>
 
   <!-- write_file -->

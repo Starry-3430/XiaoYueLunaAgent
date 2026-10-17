@@ -319,6 +319,7 @@
   <data name="Tool_WebSearch_Param_Query" xml:space="preserve"><value>搜索关键词或问题</value></data>
   <data name="Tool_WebSearch_Msg_NoApiKey" xml:space="preserve"><value>未配置 Tavily API Key，请在“工具”页面的“网页搜索”下方填写后再试。</value></data>
   <data name="Tool_WebSearch_Msg_NoResults" xml:space="preserve"><value>未找到相关结果。</value></data>
+  <data name="Tool_WebSearch_Msg_Timeout" xml:space="preserve"><value>搜索超时，请稍后重试。</value></data>
   <data name="Tool_WebSearch_Msg_Failed" xml:space="preserve"><value>搜索失败: {0}</value></data>
 
   <!-- write_file -->

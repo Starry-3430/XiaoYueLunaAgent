@@ -447,7 +447,7 @@ public sealed class ChatGenerationService
                     {
                         using var argsDoc = JsonDocument.Parse(
                             string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
-                        var result = await tool.ExecuteAsync(argsDoc.RootElement.Clone(), ct);
+                        var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
                         entry.ResultJson = TruncateResult(result.Content);
                         entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
                         if (result.IsError)
@@ -787,6 +787,55 @@ public sealed class ChatGenerationService
     {
         if (string.IsNullOrEmpty(toolName)) return "";
         return _toolRegistry.GetTool(toolName)?.DisplayName ?? toolName;
+    }
+
+    /// <summary>
+    /// 在工具自身超时之外再加一层兜底：超过 <see cref="ITool.ExecutionTimeout"/> 仍未返回时，
+    /// 取消工具并把“超时”作为工具结果交还给模型，让对话继续，而不是卡死整个 AI 循环。
+    /// </summary>
+    private async Task<ToolResult> ExecuteToolWithTimeoutAsync(ITool tool, JsonElement args, CancellationToken ct)
+    {
+        var timeout = tool.ExecutionTimeout;
+        var toolCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        toolCts.CancelAfter(timeout);
+
+        var execution = tool.ExecuteAsync(args, toolCts.Token);
+        var delay = Task.Delay(Timeout.InfiniteTimeSpan, toolCts.Token);
+        var completed = await Task.WhenAny(execution, delay);
+
+        if (ReferenceEquals(completed, execution))
+        {
+            try
+            {
+                return await execution;
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // 工具自己响应了超时取消，走下面的超时结果。
+            }
+            finally
+            {
+                toolCts.Dispose();
+            }
+        }
+        else
+        {
+            toolCts.Cancel();
+
+            // 工具可能不响应取消：不要等待它，但要在它最终结束时释放 CTS 并观察异常。
+            _ = execution.ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                    _logger.LogError(t.Exception, "工具 {Name} 在超时取消后仍抛出了异常", tool.Name);
+                toolCts.Dispose();
+            }, TaskScheduler.Default);
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        _logger.LogWarning("工具 {Name} 超过 {Seconds} 秒未完成，已中止", tool.Name, timeout.TotalSeconds);
+        return ToolResult.Error(LocalizationService.Instance.Format(
+            "Common_Tool_Timeout", tool.DisplayName, timeout.TotalSeconds));
     }
 
     private static string TruncateResult(string result, int maxLen = 5000)

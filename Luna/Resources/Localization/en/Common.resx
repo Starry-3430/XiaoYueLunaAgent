@@ -49,6 +49,7 @@
   <data name="Common_Canceled" xml:space="preserve"><value>Canceled</value></data>
   <data name="Common_Tool_NotEnabled" xml:space="preserve"><value>Tool not enabled</value></data>
   <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>Execution failed: {0}</value></data>
+  <data name="Common_Tool_Timeout" xml:space="preserve"><value>Tool {0} exceeded {1:0} seconds and was stopped. Narrow the task or try again.</value></data>
   <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (result truncated)</value></data>
 
   <!-- 注入提示词的运行环境 -->

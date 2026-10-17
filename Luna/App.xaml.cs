@@ -157,7 +157,12 @@ public partial class App : Application
                 {
                     UseProxy = true,
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
-                }));
+                })
+                {
+                    // 不使用 HttpClient 的总超时：它会把持续有数据进来的流式回答也整体掐断。
+                    // 具体超时由各调用方按“总超时 / 响应头超时 / 空闲超时”分别控制。
+                    Timeout = Timeout.InfiniteTimeSpan,
+                });
                 services.AddSingleton<HotkeyService>();
                 services.AddSingleton<StartupService>();
                 services.AddSingleton<SystemPromptBuilder>();

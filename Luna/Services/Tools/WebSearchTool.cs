@@ -52,6 +52,10 @@ public class WebSearchTool : ITool
             var results = await SearchAsync(query, 5, ct);
             return ToolResult.Ok(FormatResults(results));
         }
+        catch (OperationCanceledException)
+        {
+            return ToolResult.Error(Text("Tool_WebSearch_Msg_Timeout"));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Tavily 搜索失败: {Query}", query);
@@ -75,10 +79,14 @@ public class WebSearchTool : ITool
             MaxResults = maxResults,
         };
 
-        using var response = await _httpClient.PostAsJsonAsync(TavilyApiUrl, request, JsonOptions, ct);
+        // HttpClient 已关闭总超时，这里为搜索请求单独设置 30 秒上限。
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+
+        using var response = await _httpClient.PostAsJsonAsync(TavilyApiUrl, request, JsonOptions, timeoutCts.Token);
         response.EnsureSuccessStatusCode();
 
-        var body = await response.Content.ReadAsStringAsync(ct);
+        var body = await response.Content.ReadAsStringAsync(timeoutCts.Token);
         var result = JsonSerializer.Deserialize<TavilySearchResponse>(body, JsonOptions);
         return result?.Results ?? [];
     }

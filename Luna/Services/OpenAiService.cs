@@ -1,5 +1,7 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -23,6 +25,21 @@ public class OpenAiService : IAiService
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
 
+    /// <summary>一次请求最多尝试的次数（含首次）。</summary>
+    private const int MaxAttempts = 3;
+
+    /// <summary>重试等待的上限，避免服务端给出过长的 Retry-After 时卡住界面。</summary>
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
+
+    /// <summary>非流式请求的总超时（包含响应体读取）。</summary>
+    private static readonly TimeSpan NonStreamingTimeout = TimeSpan.FromSeconds(120);
+
+    /// <summary>流式请求等待响应头的超时；拿到响应头后不再限制总时长。</summary>
+    private static readonly TimeSpan StreamHeaderTimeout = TimeSpan.FromSeconds(120);
+
+    /// <summary>流式响应允许的最长“无新数据”间隔，持续有数据时不会触发。</summary>
+    private static readonly TimeSpan StreamIdleTimeout = TimeSpan.FromSeconds(120);
+
     public OpenAiService(HttpClient httpClient, AiSettings settings,
         ToolRegistry toolRegistry, SystemPromptBuilder systemPromptBuilder,
         ILogger<OpenAiService> logger)
@@ -45,35 +62,18 @@ public class OpenAiService : IAiService
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
+        using var response = await SendWithRetryAsync(
+            () => CreateHttpRequest(url, requestBody.ToJsonString()),
+            HttpCompletionOption.ResponseContentRead,
+            NonStreamingTimeout,
+            url,
+            cancellationToken);
 
-        HttpResponseMessage response;
-        try
-        {
-            response = await _httpClient.SendAsync(httpRequest, cancellationToken);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new HttpRequestException($"请求 {url} 失败：{ex.InnerException?.Message ?? ex.Message}", ex, ex.StatusCode);
-        }
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        _logger.LogDebug("Response: {Body}", body);
 
-        using (response)
-        {
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
-                throw new HttpRequestException($"HTTP {(int)response.StatusCode} @ {url}：{errorBody}");
-            }
-
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogDebug("Response: {Body}", body);
-
-            var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
-            return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
-        }
+        var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
+        return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
     public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
@@ -85,33 +85,41 @@ public class OpenAiService : IAiService
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
 
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        httpRequest.Content = new StringContent(requestBody.ToJsonString(), Encoding.UTF8, "application/json");
-
-        HttpResponseMessage response;
-        try
-        {
-            response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new HttpRequestException($"请求 {url} 失败：{ex.InnerException?.Message ?? ex.Message}", ex, ex.StatusCode);
-        }
-
-        using var responseScope = response;
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("HTTP {Status} 错误：{Body}", (int)response.StatusCode, errorBody);
-            throw new HttpRequestException($"HTTP {(int)response.StatusCode} @ {url}：{errorBody}");
-        }
+        // 只在这里重试“建立请求 + 拿到成功响应头”的阶段。
+        // 一旦开始 yield 流式事件，就不能安全重试（否则会重复输出已发送的内容）。
+        using var response = await SendWithRetryAsync(
+            () => CreateHttpRequest(url, requestBody.ToJsonString()),
+            HttpCompletionOption.ResponseHeadersRead,
+            StreamHeaderTimeout,
+            url,
+            cancellationToken);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
 
-        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        // 流式回答不限制总时长，只限制“多久没有新数据”。
+        // 每读到一行（包括 SSE 心跳/空行）都会重置空闲计时器，所以持续输出时不会超时。
+        using var streamCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        streamCts.CancelAfter(StreamIdleTimeout);
+
+        while (true)
         {
+            string? line;
+            try
+            {
+                line = await reader.ReadLineAsync(streamCts.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("流式响应超过 {Seconds} 秒没有新数据，中止读取",
+                    StreamIdleTimeout.TotalSeconds);
+                throw new TimeoutException(
+                    $"流式响应超过 {StreamIdleTimeout.TotalSeconds:0} 秒没有新数据。");
+            }
+
+            if (line is null) break;
+            streamCts.CancelAfter(StreamIdleTimeout);
+
             if (cancellationToken.IsCancellationRequested)
                 yield break;
 
@@ -202,6 +210,116 @@ public class OpenAiService : IAiService
             }
         }
     }
+
+    private HttpRequestMessage CreateHttpRequest(string url, string body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+        request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        return request;
+    }
+
+    /// <summary>429、408 与服务端 5xx 适合重试；4xx 参数/鉴权错误重试没有意义。</summary>
+    private static bool IsRetryableStatus(HttpStatusCode status) =>
+        status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests
+        || (int)status >= 500;
+
+    /// <summary>
+    /// 建立连接并拿到成功响应头；对 429/5xx、网络异常和超时做指数退避重试。
+    /// 注意：流式响应一旦开始 yield 就不再重试，避免重复输出已经展示给用户的内容。
+    /// </summary>
+    private async Task<HttpResponseMessage> SendWithRetryAsync(
+        Func<HttpRequestMessage> requestFactory,
+        HttpCompletionOption completionOption,
+        TimeSpan attemptTimeout,
+        string url,
+        CancellationToken ct)
+    {
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            HttpResponseMessage? response = null;
+            try
+            {
+                using var request = requestFactory();
+                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                attemptCts.CancelAfter(attemptTimeout);
+                response = await _httpClient.SendAsync(request, completionOption, attemptCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // 用户没取消，说明是本次尝试的超时。
+                lastError = new TimeoutException(
+                    $"请求 {url} 超时（{attemptTimeout.TotalSeconds:0} 秒，第 {attempt}/{MaxAttempts} 次）");
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex;
+            }
+
+            if (response is null)
+            {
+                if (attempt >= MaxAttempts)
+                    break;
+
+                var retryDelay = GetRetryDelay(attempt, null);
+                _logger.LogWarning(lastError, "请求 {Url} 失败（第 {Attempt}/{Max} 次），{Delay} 后重试",
+                    url, attempt, MaxAttempts, retryDelay);
+                await Task.Delay(retryDelay, ct);
+                continue;
+            }
+
+            if (response.IsSuccessStatusCode)
+                return response;
+
+            var status = response.StatusCode;
+            var retryAfter = response.Headers.RetryAfter;
+            string errorBody;
+            try
+            {
+                errorBody = await response.Content.ReadAsStringAsync(ct);
+            }
+            finally
+            {
+                response.Dispose();
+            }
+
+            if (!IsRetryableStatus(status) || attempt >= MaxAttempts)
+            {
+                _logger.LogError("HTTP {Status} 错误：{Body}", (int)status, TruncateForLog(errorBody));
+                throw new HttpRequestException($"HTTP {(int)status} @ {url}：{errorBody}", null, status);
+            }
+
+            var delay = GetRetryDelay(attempt, retryAfter);
+            _logger.LogWarning("HTTP {Status}，第 {Attempt}/{Max} 次请求失败，{Delay} 后重试。响应：{Body}",
+                (int)status, attempt, MaxAttempts, delay, TruncateForLog(errorBody));
+            await Task.Delay(delay, ct);
+        }
+
+        throw new HttpRequestException(
+            $"请求 {url} 失败（已尝试 {MaxAttempts} 次）：{lastError?.Message ?? "未知错误"}", lastError);
+    }
+
+    /// <summary>优先使用服务端的 Retry-After，否则按 1s / 2s / 4s 指数退避，并加入少量抖动。</summary>
+    private static TimeSpan GetRetryDelay(int attempt, RetryConditionHeaderValue? retryAfter)
+    {
+        var delay = retryAfter?.Delta
+                    ?? (retryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : TimeSpan.Zero);
+
+        if (delay <= TimeSpan.Zero)
+            delay = TimeSpan.FromSeconds(Math.Pow(2, attempt - 1));
+
+        if (delay > MaxRetryDelay)
+            delay = MaxRetryDelay;
+
+        return delay + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 250));
+    }
+
+    private static string TruncateForLog(string text, int max = 500)
+        => string.IsNullOrEmpty(text) ? string.Empty : text.Length <= max ? text : text[..max] + "…";
 
     /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
     private string ResolveModel(JsonObject root)
