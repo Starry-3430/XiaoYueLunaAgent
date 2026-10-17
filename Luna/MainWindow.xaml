@@ -6,6 +6,7 @@
         xmlns:loc="clr-namespace:Luna.Localization"
         xmlns:md="clr-namespace:WpfMarkdownViewer.Controls;assembly=WpfMarkdownViewer"
         xmlns:converters="clr-namespace:Luna.Converters"
+        xmlns:controls="clr-namespace:Luna.Controls"
         Title="Luna"
         SizeToContent="WidthAndHeight"
         WindowStyle="None"
@@ -348,6 +349,7 @@
                                                    BorderThickness="0"
                                                    Background="Transparent"
                                                    IsInactiveSelectionHighlightEnabled="True"
+                                                   controls:EditorContextMenu.IsExcluded="True"
                                                    Loaded="MessageText_Loaded">
                                             <TextBox.Style>
                                                 <Style TargetType="TextBox">

@@ -564,6 +564,7 @@ Background="#E4E0CA"
                          BorderThickness="0"
                          Background="Transparent"
                          IsInactiveSelectionHighlightEnabled="True"
+                         controls:EditorContextMenu.IsExcluded="True"
                          Loaded="MessageText_Loaded"/>
             </Border>
         </DataTemplate>

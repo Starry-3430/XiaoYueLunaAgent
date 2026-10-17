@@ -55,10 +55,20 @@ public class EditorContextMenu
     /// <summary>判断该控件是否支持自定义右键菜单。</summary>
     public static bool IsSupported(Control target) => target is TextBox or PasswordBox;
 
+    /// <summary>
+    /// 标记某个控件不参与全局自动挂载。消息气泡等需要专用右键菜单（<see cref="BubbleContextMenu"/>）的控件
+    /// 应在 XAML 中设置为 <c>True</c>，避免被编辑框菜单覆盖。
+    /// </summary>
+    public static readonly DependencyProperty IsExcludedProperty = DependencyProperty.RegisterAttached(
+        "IsExcluded", typeof(bool), typeof(EditorContextMenu), new PropertyMetadata(false));
+
+    public static bool GetIsExcluded(DependencyObject d) => (bool)d.GetValue(IsExcludedProperty);
+    public static void SetIsExcluded(DependencyObject d, bool value) => d.SetValue(IsExcludedProperty, value);
+
     /// <summary>为指定输入框挂载自定义右键菜单；重复调用同一输入框不会重复挂钩。</summary>
     public static void Attach(Control target)
     {
-        if (!IsSupported(target)) return;
+        if (!IsSupported(target) || GetIsExcluded(target)) return;
         if (Attached.TryGetValue(target, out _)) return;
         Attached.Add(target, new EditorContextMenu(target));
     }
