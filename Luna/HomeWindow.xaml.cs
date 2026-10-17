@@ -149,7 +149,7 @@ public partial class HomeWindow : Window
         _historyMenu = new HistoryContextMenu(HistoryList, RenameSession, DeleteSession);
 
         // 为输入框挂载自定义右键菜单（主输入框、会话搜索框，以及设置/日记页内的所有文本框）
-        EditorContextMenu.Attach(InputBox);
+        EditorContextMenu.Attach(InputBox, () => IsActive && _viewModel.TryPasteClipboardAttachments());
         EditorContextMenu.Attach(SearchBox);
         Loaded += (_, _) =>
         {
@@ -1328,6 +1328,14 @@ public partial class HomeWindow : Window
     /// </summary>
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
+        if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
+            && IsActive && _viewModel.TryPasteClipboardAttachments())
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Shift) == 0)
         {
             if (_viewModel.SendCommand.CanExecute(null))

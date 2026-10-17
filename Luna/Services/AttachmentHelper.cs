@@ -1,4 +1,6 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Media.Imaging;
 using Luna.Localization;
 using Luna.Models;
 using Microsoft.Win32;
@@ -126,6 +128,77 @@ public static class AttachmentHelper
             });
         }
         return result;
+    }
+
+    /// <summary>剪贴板中是否含有可直接导入的图片或文件。</summary>
+    public static bool ClipboardHasAttachments()
+    {
+        try
+        {
+            return Clipboard.ContainsFileDropList() || Clipboard.ContainsImage();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 读取剪贴板中的文件（优先）或图片并生成待发送附件。
+    /// 文件沿用原始文件名；剪贴板图片没有文件名，保存为 <c>clipboard_yyyyMMdd_HHmmss.png</c>。
+    /// </summary>
+    public static List<Attachment> GetClipboardAttachments()
+    {
+        try
+        {
+            if (Clipboard.ContainsFileDropList())
+            {
+                var paths = Clipboard.GetFileDropList().Cast<string>();
+                return FromPaths(paths);
+            }
+
+            if (Clipboard.ContainsImage())
+            {
+                var image = Clipboard.GetImage();
+                if (image is null) return new List<Attachment>();
+
+                var path = SaveClipboardImage(image);
+                return path is null ? new List<Attachment>() : FromPaths(new[] { path });
+            }
+        }
+        catch
+        {
+            // 剪贴板可能被其它进程占用：忽略，退回普通文本粘贴。
+        }
+
+        return new List<Attachment>();
+    }
+
+    private static string? SaveClipboardImage(BitmapSource image)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Luna", "cache", "clipboard");
+            Directory.CreateDirectory(dir);
+
+            var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var path = Path.Combine(dir, $"clipboard_{stamp}.png");
+            var index = 1;
+            while (File.Exists(path))
+                path = Path.Combine(dir, $"clipboard_{stamp}_{index++}.png");
+
+            using var stream = File.Create(path);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            encoder.Save(stream);
+            return path;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>把字节数格式化为人类可读的大小（B / KB / MB / GB）。</summary>

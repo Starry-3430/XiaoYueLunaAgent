@@ -27,6 +27,7 @@ public class EditorContextMenu
     private readonly Button _cutButton;
     private readonly Button _copyButton;
     private readonly Button _pasteButton;
+    private Func<bool>? _tryPasteAttachment;
     private bool _isOpen;
     private bool _windowEventsAttached;
     private Window? _window;
@@ -55,12 +56,35 @@ public class EditorContextMenu
     /// <summary>判断该控件是否支持自定义右键菜单。</summary>
     public static bool IsSupported(Control target) => target is TextBox or PasswordBox;
 
-    /// <summary>为指定输入框挂载自定义右键菜单；重复调用同一输入框不会重复挂钩。</summary>
-    public static void Attach(Control target)
+    /// <summary>
+    /// 标记某个控件不参与全局自动挂载。消息气泡等需要专用右键菜单（<see cref="BubbleContextMenu"/>）的控件
+    /// 应在 XAML 中设置为 <c>True</c>，避免被编辑框菜单覆盖。
+    /// </summary>
+    public static readonly DependencyProperty IsExcludedProperty = DependencyProperty.RegisterAttached(
+        "IsExcluded", typeof(bool), typeof(EditorContextMenu), new PropertyMetadata(false));
+
+    public static bool GetIsExcluded(DependencyObject d) => (bool)d.GetValue(IsExcludedProperty);
+    public static void SetIsExcluded(DependencyObject d, bool value) => d.SetValue(IsExcludedProperty, value);
+
+    /// <summary>
+    /// 为指定输入框挂载自定义右键菜单；重复调用同一输入框不会重复挂钩。
+    /// <paramref name="tryPasteAttachment"/> 非空时，剪贴板里是图片/文件会优先作为附件导入，
+    /// 并返回 true 以阻止默认文本粘贴。
+    /// </summary>
+    public static void Attach(Control target, Func<bool>? tryPasteAttachment = null)
     {
-        if (!IsSupported(target)) return;
-        if (Attached.TryGetValue(target, out _)) return;
-        Attached.Add(target, new EditorContextMenu(target));
+        if (!IsSupported(target) || GetIsExcluded(target)) return;
+
+        if (Attached.TryGetValue(target, out var existing))
+        {
+            if (tryPasteAttachment is not null)
+                existing._tryPasteAttachment = tryPasteAttachment;
+            return;
+        }
+
+        var menu = new EditorContextMenu(target);
+        menu._tryPasteAttachment = tryPasteAttachment;
+        Attached.Add(target, menu);
     }
 
     /// <summary>递归为子树内所有受支持的输入框挂载自定义右键菜单。</summary>
@@ -224,6 +248,9 @@ public class EditorContextMenu
 
     private void Paste()
     {
+        // 剪贴板中是图片/文件时，优先作为附件导入（仅主输入框配置了该回调）。
+        if (_tryPasteAttachment?.Invoke() == true) return;
+
         if (!Clipboard.ContainsText()) return;
 
         if (_textBox is not null)
@@ -236,12 +263,26 @@ public class EditorContextMenu
     {
         // 密码框不支持选中复制，此时剪切 / 复制隐藏，仅保留粘贴。
         var hasSelection = _textBox is { SelectionLength: > 0 };
-        var canPaste = Clipboard.ContainsText();
+        var canPaste = CanPaste();
 
         _cutButton.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         _copyButton.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         _pasteButton.IsEnabled = canPaste;
         _pasteButton.Opacity = canPaste ? 1.0 : 0.4;
+    }
+
+    private static bool CanPaste()
+    {
+        try
+        {
+            return Clipboard.ContainsText()
+                || Clipboard.ContainsImage()
+                || Clipboard.ContainsFileDropList();
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static Button CreateMenuItem(string text, RoutedEventHandler handler)

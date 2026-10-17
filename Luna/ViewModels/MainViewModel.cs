@@ -123,6 +123,16 @@ public partial class MainViewModel : ObservableObject
     public Task AddDroppedFilesAsync(IEnumerable<string> paths)
         => LoadAttachmentsAsync(AttachmentHelper.FromPaths(paths));
 
+    /// <summary>尝试把剪贴板中的图片/文件加入待发送列表；返回是否已处理（是则调用方应阻止默认文本粘贴）。</summary>
+    public bool TryPasteClipboardAttachments()
+    {
+        var attachments = AttachmentHelper.GetClipboardAttachments();
+        if (attachments.Count == 0) return false;
+
+        _ = LoadAttachmentsAsync(attachments);
+        return true;
+    }
+
     /// <summary>按数量/大小规则筛选后读取内容并加入待发送列表。</summary>
     private async Task LoadAttachmentsAsync(IReadOnlyList<Attachment> candidates)
     {
@@ -184,9 +194,16 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void CancelAttachmentLoad() => _attachmentCts?.Cancel();
 
-    /// <summary>转换附件内容并估算 Token。</summary>
+    /// <summary>转换附件内容并估算 Token。图片不做转换，交由 AI 的识图能力直接识别。</summary>
     private async Task LoadAttachmentContentAsync(Attachment attachment, CancellationToken ct)
     {
+        if (AttachmentHelper.IsImage(attachment))
+        {
+            attachment.ConvertedMarkdown = null;
+            attachment.TokenEstimate = 0;
+            return;
+        }
+
         var sourcePath = attachment.StoredPath;
         if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath)) return;
 
@@ -225,9 +242,10 @@ public partial class MainViewModel : ObservableObject
                 attachment.StoredPath = stored.StoredPath;
                 attachment.FileSize = stored.FileSize;
 
-                if (string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
+                // 图片不转换，交由 AI 识图；其余文档按需转换 Markdown
+                if (!AttachmentHelper.IsImage(attachment) && string.IsNullOrWhiteSpace(attachment.ConvertedMarkdown))
                     attachment.ConvertedMarkdown = await _documentConverter.ConvertToMarkdownAsync(stored.StoredPath);
-                if (attachment.TokenEstimate == 0)
+                if (!AttachmentHelper.IsImage(attachment) && attachment.TokenEstimate == 0)
                     attachment.TokenEstimate = AttachmentContentProcessor.EstimateTokens(attachment.ConvertedMarkdown);
 
                 prepared.Add(attachment);
