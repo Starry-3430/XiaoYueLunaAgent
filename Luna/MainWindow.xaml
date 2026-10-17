@@ -174,6 +174,7 @@
         <PathGeometry x:Key="IconCopy" Figures="M9 2 H15 A1 1 0 0 1 16 3 V5 A1 1 0 0 1 15 6 H9 A1 1 0 0 1 8 5 V3 A1 1 0 0 1 9 2 Z M16 4 H18 A2 2 0 0 1 20 6 V20 A2 2 0 0 1 18 22 H6 A2 2 0 0 1 4 20 V6 A2 2 0 0 1 6 4 H8"/>
         <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
         <PathGeometry x:Key="IconChevronDown" Figures="M6 9 L12 15 L18 9"/>
+        <PathGeometry x:Key="IconAttachment" Figures="M10 13 a5 5 0 0 0 7.54 .54 l3 -3 a5 5 0 0 0 -7.07 -7.07 l-1.72 1.71 M14 11 a5 5 0 0 0 -7.54 -.54 l-3 3 a5 5 0 0 0 7.07 7.07 l1.71 -1.71"/>
 
         <Style x:Key="LineIconGlyph" TargetType="Path">
             <Setter Property="Stroke" Value="#88FFFFFF"/>
@@ -182,6 +183,11 @@
             <Setter Property="StrokeEndLineCap" Value="Round"/>
             <Setter Property="StrokeLineJoin" Value="Round"/>
             <Setter Property="Fill" Value="Transparent"/>
+        </Style>
+
+        <!-- 附件图标：描边颜色跟随所在按钮的 Foreground -->
+        <Style x:Key="AttachmentIconGlyph" TargetType="Path" BasedOn="{StaticResource LineIconGlyph}">
+            <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
         </Style>
 
         <!-- 聊天消息操作按钮：正方形圆角，默认无背景，悬停才出现浅色底 -->
@@ -267,12 +273,17 @@
                             VerticalAlignment="Center"
                             Margin="0,4,0,0">
                     <Button x:Name="CapsuleAttachButton"
-                            Content="{loc:Loc Common_AddAttachment}"
-                            Height="28" Padding="12,0"
-                            FontSize="12"
-                            Style="{StaticResource PillButton}"
-                            Foreground="White" Background="#4A4A4A"
-                            Click="AttachFile_Click"/>
+                            Style="{StaticResource ChatActionButton}"
+                            Foreground="White"
+                            ToolTip="{loc:Loc Common_AddAttachment}"
+                            Click="AttachFile_Click">
+                        <Viewbox Width="15" Height="15">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource AttachmentIconGlyph}"
+                                      Data="{StaticResource IconAttachment}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                     <Button x:Name="CapsuleClearButton"
                             Content="{loc:Loc Main_ClearAttachments}"
                             Height="28" Padding="12,0" Margin="6,0,0,0"
@@ -867,13 +878,18 @@
                                 Command="{Binding CancelAttachmentLoadCommand}"/>
                     </StackPanel>
                     <Button Grid.Column="2"
-                            Content="{loc:Loc Common_AddAttachment}"
-                            Height="26" Padding="12,0"
-                            FontSize="12"
-                            Style="{StaticResource PillButton}"
-                            Foreground="#88FFFFFF" Background="#33FFFFFF"
+                            Style="{StaticResource ChatActionButton}"
+                            Foreground="#88FFFFFF"
+                            ToolTip="{loc:Loc Common_AddAttachment}"
                             VerticalAlignment="Center"
-                            Click="AttachFile_Click"/>
+                            Click="AttachFile_Click">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource AttachmentIconGlyph}"
+                                      Data="{StaticResource IconAttachment}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                 </Grid>
             </Grid>
 

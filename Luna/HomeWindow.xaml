@@ -224,6 +224,7 @@ Background="#E4E0CA"
         <PathGeometry x:Key="IconRegenerate" Figures="M3 12 A9 9 0 1 0 12 3 A9.75 9.75 0 0 0 5.26 5.74 L3 8 M3 3 V8 H8"/>
         <PathGeometry x:Key="IconChevronDown" Figures="M6 9 L12 15 L18 9"/>
         <PathGeometry x:Key="IconSearch" Figures="M10 4 A6 6 0 1 0 10 16 A6 6 0 1 0 10 4 Z M15 15 L20 20"/>
+        <PathGeometry x:Key="IconAttachment" Figures="M10 13 a5 5 0 0 0 7.54 .54 l3 -3 a5 5 0 0 0 -7.07 -7.07 l-1.72 1.71 M14 11 a5 5 0 0 0 -7.54 -.54 l-3 3 a5 5 0 0 0 7.07 7.07 l1.71 -1.71"/>
 
         <Style x:Key="LineIconGlyph" TargetType="Path">
             <Setter Property="Stroke" Value="#5B4833"/>
@@ -232,6 +233,11 @@ Background="#E4E0CA"
             <Setter Property="StrokeEndLineCap" Value="Round"/>
             <Setter Property="StrokeLineJoin" Value="Round"/>
             <Setter Property="Fill" Value="Transparent"/>
+        </Style>
+
+        <!-- 附件图标：描边颜色跟随所在按钮的 Foreground -->
+        <Style x:Key="AttachmentIconGlyph" TargetType="Path" BasedOn="{StaticResource LineIconGlyph}">
+            <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
         </Style>
 
         <!-- 聊天消息操作按钮：正方形圆角，默认无背景，悬停时才出现浅米色底 -->
@@ -1443,28 +1449,17 @@ Background="#E4E0CA"
                             Command="{Binding CancelAttachmentLoadCommand}"/>
                 </StackPanel>
                 <Button Grid.Column="2"
-                        Content="{loc:Loc Common_AddAttachment}"
+                        Style="{StaticResource ChatActionButton}"
                         Command="{Binding AddAttachmentCommand}"
-                        Cursor="Hand"
-                        Height="26"
-                        Padding="12,0"
-                        FontSize="12"
-                        BorderThickness="0"
                         Foreground="#5B4833"
-                        Background="#D4D0BA"
+                        ToolTip="{loc:Loc Common_AddAttachment}"
                         VerticalAlignment="Center">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bg" Background="{TemplateBinding Background}"
-                                    CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="#DDD9C5"/></Trigger>
-                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bg" Property="Background" Value="#C9C5AF"/></Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
+                    <Viewbox Width="15" Height="15">
+                        <Canvas Width="24" Height="24">
+                            <Path Style="{StaticResource AttachmentIconGlyph}"
+                                  Data="{StaticResource IconAttachment}"/>
+                        </Canvas>
+                    </Viewbox>
                 </Button>
             </Grid>
 
