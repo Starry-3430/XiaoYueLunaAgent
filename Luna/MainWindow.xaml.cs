@@ -324,14 +324,67 @@ public partial class MainWindow : Window
     {
         if (sender is not ScrollViewer sv) return;
         if (sv.DataContext is not ChatMessage msg) return;
+        if (sv.Content is not FrameworkElement content) return;
+
+        // 可靠的 MaxHeight 更新：
+        // - 宽度未就绪时跳过，避免极窄宽度下 TextBlock 每字换行造成高度虚高
+        // - 用 DesiredSize 强制重新测量，不依赖可能被污染的 ActualHeight
+        void UpdateMaxHeight()
+        {
+            var width = sv.ActualWidth;
+
+            if (width < 80)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ReasoningLayout] Skip: Width={width:F1}");
+                return;
+            }
+
+            content.Measure(new Size(width, double.PositiveInfinity));
+
+            var desired = content.DesiredSize.Height;
+            var textLength = msg.Reasoning.Length;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[ReasoningLayout] Width={width:F1}, Desired={desired:F1}, " +
+                $"ActualHeight={sv.ActualHeight:F1}, MaxHeight={sv.MaxHeight:F1}, " +
+                $"TextLength={textLength}, Expanded={msg.IsReasoningExpanded}, " +
+                $"Streaming={msg.IsStreaming}, Visibility={sv.Visibility}");
+
+            if (desired <= 0) return;
+
+            sv.MaxHeight = Math.Min(desired, 100);
+        }
+
+        sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
 
         PropertyChangedEventHandler handler = (_, args) =>
         {
             if (args.PropertyName == nameof(ChatMessage.Reasoning))
-                sv.ScrollToBottom();
+            {
+                content.InvalidateMeasure();
+                sv.InvalidateMeasure();
+                sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
+            }
+            else if (args.PropertyName == nameof(ChatMessage.IsReasoningExpanded))
+            {
+                sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
+            }
         };
         msg.PropertyChanged += handler;
-        sv.Unloaded += (_, _) => msg.PropertyChanged -= handler;
+
+        // 内容高度变化时自动滚到底
+        ScrollChangedEventHandler scrollHandler = (_, args) =>
+        {
+            if (args.ExtentHeightChange != 0)
+                sv.ScrollToBottom();
+        };
+        sv.ScrollChanged += scrollHandler;
+
+        sv.Unloaded += (_, _) =>
+        {
+            msg.PropertyChanged -= handler;
+            sv.ScrollChanged -= scrollHandler;
+        };
     }
 
     private static void ApplyLightScrollBarStyle(WpfMarkdownViewer.Controls.MarkdownDocumentView viewer)

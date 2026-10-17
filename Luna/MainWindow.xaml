@@ -544,6 +544,7 @@
                                                             </TextBlock>
                                                         </StackPanel>
                                                         <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto"
+                                                                      VerticalAlignment="Top"
                                                                       Loaded="ReasoningScrollViewer_Loaded"
                                                                       Visibility="{Binding IsReasoningExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                             <TextBlock Text="{Binding Reasoning}" TextWrapping="Wrap"
