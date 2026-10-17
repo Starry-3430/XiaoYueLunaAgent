@@ -155,6 +155,10 @@ public partial class HomeWindow : Window
         {
             EditorContextMenu.AttachTree(SettingsContent);
             EditorContextMenu.AttachTree(DiaryContent);
+
+            // 主界面可能在胶囊窗生成过程中才被打开：立即刷新会话列表，
+            // 让正在生成的新会话出现在历史记录中，而不是等到本轮结束。
+            _ = _viewModel.RefreshSessionsAsync();
         };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动

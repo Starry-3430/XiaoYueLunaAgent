@@ -207,6 +207,10 @@ public sealed class ChatGenerationService
             }
         }
 
+        // 用户消息与附件上下文已经入库：立即通知会话列表，
+        // 这样主界面在生成过程中打开/已打开时都能马上看到这次新对话。
+        WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+
         try
         {
             await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);

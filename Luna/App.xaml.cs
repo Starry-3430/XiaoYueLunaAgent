@@ -275,6 +275,9 @@ public partial class App : Application
     /// </summary>
     private void ShowHomeWindow()
     {
+        // 打开主界面时收起胶囊，但不打断正在进行的生成。
+        _host.Services.GetRequiredService<MainWindow>().HideCapsule();
+
         // 如果已存在且已加载，则激活
         if (_homeWindow is { IsLoaded: true })
         {

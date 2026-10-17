@@ -441,6 +441,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         await SelectSessionCommand.ExecuteAsync(session);
     }
 
+    /// <summary>
+    /// 重新从数据库加载会话列表。打开主界面时调用，确保胶囊窗刚刚创建、
+    /// 甚至仍在生成中的会话能立即出现在历史记录里（运行期对象仍是同一个，点进去可继续看流式输出）。
+    /// </summary>
+    public Task RefreshSessionsAsync() => LoadSessionsAsync();
+
     private async Task LoadSessionsAsync()
     {
         try
