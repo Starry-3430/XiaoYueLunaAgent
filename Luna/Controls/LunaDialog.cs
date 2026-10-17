@@ -5,9 +5,11 @@ using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Luna.Models;
 
 namespace Luna.Controls;
@@ -19,6 +21,11 @@ public partial class LunaDialog : Window
 
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
+
+    // 交互式拖动：按下只记录候选，移动超过系统阈值后才真正拖动窗口。
+    private bool _dragCandidate;
+    private Point _dragStartPoint;
+    private bool _isDragging;
 
     public static readonly DependencyProperty DialogTitleProperty =
         DependencyProperty.Register(nameof(DialogTitle), typeof(string), typeof(LunaDialog),
@@ -78,21 +85,110 @@ public partial class LunaDialog : Window
         dialog.ContentArea.Content = e.NewValue;
     }
 
-    /// <summary>按住按钮以外的任意位置拖动弹窗。</summary>
+    /// <summary>鼠标按下时只记录拖动候选，不立即调用 DragMove。</summary>
     private void Dialog_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState != MouseButtonState.Pressed) return;
-        if (IsInsideButton(e.OriginalSource as DependencyObject)) return;
+        _dragCandidate = false;
 
-        DragMove();
+        if (e.ButtonState != MouseButtonState.Pressed)
+            return;
+
+        var src = e.OriginalSource as DependencyObject;
+        var srcType = src?.GetType().FullName ?? "null";
+
+        if (IsInsideInteractive(src))
+        {
+            System.Diagnostics.Debug.WriteLine($"[LunaDialog] Interactive: {srcType}");
+            return;
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[LunaDialog] Drag candidate: {srcType}");
+        _dragStartPoint = e.GetPosition(this);
+        _dragCandidate = true;
     }
 
-    private static bool IsInsideButton(DependencyObject? source)
+    /// <summary>只有从非交互区域开始按下，并且移动超过系统拖动阈值，才拖动窗口。</summary>
+    private void Dialog_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_dragCandidate || _isDragging)
+            return;
+
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            _dragCandidate = false;
+            return;
+        }
+
+        var current = e.GetPosition(this);
+
+        if (Math.Abs(current.X - _dragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(current.Y - _dragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        _dragCandidate = false;
+        _isDragging = true;
+
+        try
+        {
+            DragMove();
+        }
+        finally
+        {
+            _isDragging = false;
+        }
+    }
+
+    private void Dialog_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _dragCandidate = false;
+    }
+
+    /// <summary>
+    /// 判断点击是否落在可交互元素上（按钮、输入框、滚动条、可滚动容器等）；这些位置不应触发窗口拖动。
+    /// 任何 ScrollViewer 都视为交互区域，以覆盖 Markdown 代码块内部的横向滚动容器。
+    /// </summary>
+    private static bool IsInsideInteractive(DependencyObject? source)
     {
         while (source != null)
         {
-            if (source is Button) return true;
-            source = VisualTreeHelper.GetParent(source);
+            if (source is Button or RepeatButton)
+                return true;
+
+            if (source is ScrollBar or Thumb or Track)
+                return true;
+
+            if (source is TextBoxBase or PasswordBox)
+                return true;
+
+            if (source is ScrollViewer)
+                return true;
+
+            // MarkdownViewer 内部可能是自绘滚动条 / 自定义交互元素，整个子树视为交互区域。
+            if (IsMarkdownViewerElement(source))
+                return true;
+
+            // 兼容 ContentElement / FrameworkContentElement（VisualTreeHelper 会抛异常）
+            source = source is Visual or Visual3D
+                ? VisualTreeHelper.GetParent(source)
+                : LogicalTreeHelper.GetParent(source);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 判断元素是否属于 WpfMarkdownViewer（含其内部自绘的滚动条、代码块等）。
+    /// 用命名空间前缀匹配，避免在 Luna.Controls 中硬引用第三方程序集。
+    /// </summary>
+    private static bool IsMarkdownViewerElement(DependencyObject source)
+    {
+        var type = source.GetType();
+        while (type is not null)
+        {
+            if (type.Namespace?.StartsWith("WpfMarkdownViewer", StringComparison.Ordinal) == true)
+                return true;
+            type = type.BaseType;
         }
         return false;
     }

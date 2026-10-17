@@ -7,6 +7,8 @@ using Luna.Controls;
 using Luna.Localization;
 using Luna.Models;
 using Luna.Services.Tools;
+using WpfMarkdownViewer.Controls;
+using WpfMarkdownViewer.Rendering;
 
 namespace Luna.Services;
 
@@ -128,6 +130,10 @@ public class ToolPermissionService
 
     private static UIElement BuildContent(ITool tool, string argumentsJson)
     {
+        // PowerShell 特例：直接用 Markdown 代码块展示命令，不再显示工具名与 JSON。
+        if (ToolArgumentFormatter.IsPowerShell(tool.Name))
+            return BuildPowerShellContent(argumentsJson);
+
         var panel = new StackPanel();
 
         panel.Children.Add(new TextBlock
@@ -164,6 +170,55 @@ public class ToolPermissionService
             Padding = new Thickness(10, 8, 10, 8),
             Child = details,
         });
+
+        return panel;
+    }
+
+    /// <summary>PowerShell 确认框：正文提示 + 透明背景的 Markdown 代码块（不显示工具名）。</summary>
+    private static UIElement BuildPowerShellContent(string argumentsJson)
+    {
+        var command = ToolArgumentFormatter.TryGetPowerShellCommand(argumentsJson)
+                      ?? argumentsJson?.Trim()
+                      ?? string.Empty;
+
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = LocalizationService.Instance["Dialog_ToolPermission_Body"],
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+
+        var markdown = $"```powershell\n{command}\n```";
+        var viewer = new MarkdownDocumentView
+        {
+            Background = Brushes.Transparent,
+            SelectionEnabled = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MaxWidth = 560,
+        };
+
+        var style = MarkdownStyle.Light with
+        {
+            Background = Brushes.Transparent,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            SubtleForeground = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B)),
+            InlineCodeBackground = new SolidColorBrush(Color.FromRgb(0xD4, 0xD0, 0xBA)),
+            CodeBlockBackground = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
+            Border = new SolidColorBrush(Color.FromRgb(0xD4, 0xD0, 0xBA)),
+            QuoteBar = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            ContentPadding = new Thickness(0),
+            EmSize = 13,
+            MonoTypeface = ThemeService.CodeTypeface,
+        };
+        if (ThemeService.BaseTypeface is { } baseTypeface)
+            style = style with { BaseTypeface = baseTypeface };
+
+        viewer.ApplyTheme(style);
+        viewer.SetMarkdown(markdown);
+        panel.Children.Add(viewer);
 
         return panel;
     }

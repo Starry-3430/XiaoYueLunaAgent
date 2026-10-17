@@ -447,12 +447,13 @@ public partial class HomeWindow : Window
             {
                 viewer.Reset();
                 ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
-                if (!string.IsNullOrEmpty(msg.Content))
+                // 纯空白（例如流式早期的换行）不渲染，避免空的 Markdown 块占位
+                if (!string.IsNullOrWhiteSpace(msg.Content))
                     viewer.AppendDelta(msg.Content);
             }
             else
             {
-                viewer.SetMarkdown(msg.Content);
+                viewer.SetMarkdown(string.IsNullOrWhiteSpace(msg.Content) ? string.Empty : msg.Content);
                 ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
             }
         }
@@ -492,7 +493,9 @@ public partial class HomeWindow : Window
         var delta = content[msg.StreamingState.RenderedLength..];
         if (delta.Length > 0)
         {
-            viewer.AppendDelta(delta);
+            // 整段内容仍是空白时先不渲染（保留 RenderedLength 前移，后续真实文本照常追加）
+            if (!string.IsNullOrWhiteSpace(content))
+                viewer.AppendDelta(delta);
             msg.StreamingState.RenderedLength = content.Length;
         }
 
@@ -577,13 +580,27 @@ public partial class HomeWindow : Window
         if (sender is not ScrollViewer sv) return;
         if (sv.DataContext is not ChatMessage msg) return;
 
-        PropertyChangedEventHandler handler = (_, args) =>
+        // 内容高度变化时自动滚到底（MaxHeight 交给 XAML，布局会自动取 min(内容, 100)）
+        ScrollChangedEventHandler scrollHandler = (_, args) =>
         {
-            if (args.PropertyName == nameof(ChatMessage.Reasoning))
+            if (args.ExtentHeightChange != 0)
                 sv.ScrollToBottom();
         };
+        sv.ScrollChanged += scrollHandler;
+
+        // 展开时滚到底
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatMessage.IsReasoningExpanded))
+                sv.Dispatcher.BeginInvoke(() => sv.ScrollToBottom(), DispatcherPriority.Loaded);
+        };
         msg.PropertyChanged += handler;
-        sv.Unloaded += (_, _) => msg.PropertyChanged -= handler;
+
+        sv.Unloaded += (_, _) =>
+        {
+            sv.ScrollChanged -= scrollHandler;
+            msg.PropertyChanged -= handler;
+        };
     }
 
     // ===== Shift+滚轮水平滚动 =====

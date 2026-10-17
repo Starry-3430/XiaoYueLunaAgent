@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Luna.Services.Tools;
 
 namespace Luna.Models;
 
@@ -35,6 +36,13 @@ public partial class ToolCallEntry : ObservableObject
 
     [ObservableProperty]
     private bool _isExpanded;
+
+    /// <summary>面向用户展示的调用参数（PowerShell 直接显示命令，避免裸露 JSON）。</summary>
+    public string ArgumentsDisplay => ToolArgumentFormatter.FormatArguments(ToolName, ArgumentsJson);
+
+    partial void OnArgumentsJsonChanged(string value) => OnPropertyChanged(nameof(ArgumentsDisplay));
+
+    partial void OnToolNameChanged(string value) => OnPropertyChanged(nameof(ArgumentsDisplay));
 }
 
 public partial class ChatMessage : ObservableObject
@@ -89,7 +97,7 @@ public partial class ChatMessage : ObservableObject
 
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);
 
-    public bool HasReasoning => !string.IsNullOrEmpty(Reasoning);
+    public bool HasReasoning => !string.IsNullOrWhiteSpace(Reasoning);
 
     public bool HasToolCalls => ToolCalls.Count > 0;
 
@@ -136,7 +144,8 @@ public partial class ChatMessage : ObservableObject
     partial void OnReasoningChanged(string value)
     {
         OnPropertyChanged(nameof(HasReasoning));
-        if (!string.IsNullOrEmpty(value) && !_userCollapsedReasoning)
+        // 纯空白字符（例如流式早期输出的换行）不应展开思考区域
+        if (!string.IsNullOrWhiteSpace(value) && !_userCollapsedReasoning)
             IsReasoningExpanded = true;
     }
 

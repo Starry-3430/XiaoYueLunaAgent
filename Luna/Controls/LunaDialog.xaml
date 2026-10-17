@@ -21,7 +21,9 @@
     </Window.Resources>
 
     <Border Style="{StaticResource DialogBorder}"
-            PreviewMouseLeftButtonDown="Dialog_PreviewMouseLeftButtonDown">
+            PreviewMouseLeftButtonDown="Dialog_PreviewMouseLeftButtonDown"
+            PreviewMouseMove="Dialog_PreviewMouseMove"
+            PreviewMouseLeftButtonUp="Dialog_PreviewMouseLeftButtonUp">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
