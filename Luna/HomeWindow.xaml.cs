@@ -447,12 +447,13 @@ public partial class HomeWindow : Window
             {
                 viewer.Reset();
                 ApplyStyle();                       // ★ Reset 会重置主题，必须重新应用
-                if (!string.IsNullOrEmpty(msg.Content))
+                // 纯空白（例如流式早期的换行）不渲染，避免空的 Markdown 块占位
+                if (!string.IsNullOrWhiteSpace(msg.Content))
                     viewer.AppendDelta(msg.Content);
             }
             else
             {
-                viewer.SetMarkdown(msg.Content);
+                viewer.SetMarkdown(string.IsNullOrWhiteSpace(msg.Content) ? string.Empty : msg.Content);
                 ApplyStyle();                       // ★ SetMarkdown 也会重置，必须重新应用
             }
         }
@@ -492,7 +493,9 @@ public partial class HomeWindow : Window
         var delta = content[msg.StreamingState.RenderedLength..];
         if (delta.Length > 0)
         {
-            viewer.AppendDelta(delta);
+            // 整段内容仍是空白时先不渲染（保留 RenderedLength 前移，后续真实文本照常追加）
+            if (!string.IsNullOrWhiteSpace(content))
+                viewer.AppendDelta(delta);
             msg.StreamingState.RenderedLength = content.Length;
         }
 
@@ -576,56 +579,8 @@ public partial class HomeWindow : Window
     {
         if (sender is not ScrollViewer sv) return;
         if (sv.DataContext is not ChatMessage msg) return;
-        if (sv.Content is not FrameworkElement content) return;
 
-        // 可靠的 MaxHeight 更新：
-        // - 宽度未就绪时跳过，避免 TextBlock 在极窄宽度下每字换行导致的高度虚高被固化
-        // - 用 DesiredSize 强制重新测量，不依赖可能已被污染的 ActualHeight
-        void UpdateMaxHeight()
-        {
-            var width = sv.ActualWidth;
-
-            if (width < 80)
-            {
-                System.Diagnostics.Debug.WriteLine($"[ReasoningLayout] Skip: Width={width:F1}");
-                return;
-            }
-
-            content.Measure(new Size(width, double.PositiveInfinity));
-
-            var desired = content.DesiredSize.Height;
-            var textLength = msg.Reasoning.Length;
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[ReasoningLayout] Width={width:F1}, Desired={desired:F1}, " +
-                $"ActualHeight={sv.ActualHeight:F1}, MaxHeight={sv.MaxHeight:F1}, " +
-                $"TextLength={textLength}, Expanded={msg.IsReasoningExpanded}, " +
-                $"Streaming={msg.IsStreaming}, Visibility={sv.Visibility}");
-
-            if (desired <= 0) return;
-
-            sv.MaxHeight = Math.Min(desired, 100);
-        }
-
-        sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
-
-        PropertyChangedEventHandler handler = (_, args) =>
-        {
-            if (args.PropertyName == nameof(ChatMessage.Reasoning))
-            {
-                // 先让旧测量失效，避免 DesiredSize 用到上一帧缓存
-                content.InvalidateMeasure();
-                sv.InvalidateMeasure();
-                sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
-            }
-            else if (args.PropertyName == nameof(ChatMessage.IsReasoningExpanded))
-            {
-                sv.Dispatcher.BeginInvoke(UpdateMaxHeight, DispatcherPriority.Loaded);
-            }
-        };
-        msg.PropertyChanged += handler;
-
-        // 保留：内容高度变化时自动滚到底
+        // 内容高度变化时自动滚到底（MaxHeight 交给 XAML，布局会自动取 min(内容, 100)）
         ScrollChangedEventHandler scrollHandler = (_, args) =>
         {
             if (args.ExtentHeightChange != 0)
@@ -633,10 +588,18 @@ public partial class HomeWindow : Window
         };
         sv.ScrollChanged += scrollHandler;
 
+        // 展开时滚到底
+        PropertyChangedEventHandler handler = (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChatMessage.IsReasoningExpanded))
+                sv.Dispatcher.BeginInvoke(() => sv.ScrollToBottom(), DispatcherPriority.Loaded);
+        };
+        msg.PropertyChanged += handler;
+
         sv.Unloaded += (_, _) =>
         {
-            msg.PropertyChanged -= handler;
             sv.ScrollChanged -= scrollHandler;
+            msg.PropertyChanged -= handler;
         };
     }
 

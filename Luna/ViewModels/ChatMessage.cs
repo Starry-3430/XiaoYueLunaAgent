@@ -97,7 +97,7 @@ public partial class ChatMessage : ObservableObject
 
     public bool IsThinking => IsStreaming && string.IsNullOrEmpty(Content);
 
-    public bool HasReasoning => !string.IsNullOrEmpty(Reasoning);
+    public bool HasReasoning => !string.IsNullOrWhiteSpace(Reasoning);
 
     public bool HasToolCalls => ToolCalls.Count > 0;
 
@@ -144,7 +144,8 @@ public partial class ChatMessage : ObservableObject
     partial void OnReasoningChanged(string value)
     {
         OnPropertyChanged(nameof(HasReasoning));
-        if (!string.IsNullOrEmpty(value) && !_userCollapsedReasoning)
+        // 纯空白字符（例如流式早期输出的换行）不应展开思考区域
+        if (!string.IsNullOrWhiteSpace(value) && !_userCollapsedReasoning)
             IsReasoningExpanded = true;
     }
 
