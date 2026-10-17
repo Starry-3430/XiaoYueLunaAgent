@@ -38,6 +38,7 @@
   <data name="Common_SkippedAttachments" xml:space="preserve"><value>已忽略 {0} 个附件（最多 {1} 个，每个 ≤ {2}）</value></data>
   <data name="Common_ReadAttachmentsPrompt" xml:space="preserve"><value>请阅读我发送的附件内容。</value></data>
   <data name="Common_SendFailed" xml:space="preserve"><value>发送失败：{0}</value></data>
+  <data name="Common_SendBusy" xml:space="preserve"><value>当前会话正在生成中，请稍后再试或取消当前生成。</value></data>
 
   <!-- 生成状态 -->
   <data name="Common_Status_Thinking" xml:space="preserve"><value>思考中…</value></data>

@@ -138,7 +138,10 @@ public sealed class ChatGenerationService
     public async Task SendAsync(string sessionId, string userText, IReadOnlyList<Attachment>? attachments)
     {
         var runtime = await GetOrLoadAsync(sessionId);
-        if (runtime.IsBusy) return;
+
+        // 并发发送时明确失败，避免上层误以为消息已发出而清空输入框。
+        if (runtime.IsBusy)
+            throw new InvalidOperationException(LocalizationService.Instance["Common_SendBusy"]);
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
@@ -204,7 +207,18 @@ public sealed class ChatGenerationService
             }
         }
 
-        await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+        try
+        {
+            await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+        }
+        catch (Exception ex)
+        {
+            // 用户消息已经入库：此后的生成/持久化失败不能再抛给调用方，
+            // 否则界面会误以为“没发出去”而恢复草稿，导致重复发送。
+            _logger.LogError(ex, "消息已入库，但后续生成流程失败：Session={SessionId} Turn={TurnId}",
+                sessionId, turnId);
+            runtime.Status = LocalizationService.Instance.Format("Common_Status_Error", ex.Message);
+        }
     }
 
     /// <summary>把附件转换结果拼装成注入会话的 system 内容。</summary>

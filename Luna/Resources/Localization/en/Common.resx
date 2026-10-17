@@ -38,6 +38,7 @@
   <data name="Common_SkippedAttachments" xml:space="preserve"><value>Skipped {0} attachment(s) (up to {1}, max {2} each)</value></data>
   <data name="Common_ReadAttachmentsPrompt" xml:space="preserve"><value>Please read the attachment(s) I sent.</value></data>
   <data name="Common_SendFailed" xml:space="preserve"><value>Send failed: {0}</value></data>
+  <data name="Common_SendBusy" xml:space="preserve"><value>This conversation is still generating. Please wait, or cancel the current generation and try again.</value></data>
 
   <!-- 生成状态 -->
   <data name="Common_Status_Thinking" xml:space="preserve"><value>Thinking…</value></data>
