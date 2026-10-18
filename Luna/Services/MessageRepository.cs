@@ -16,9 +16,9 @@ public class MessageRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         var id = await conn.ExecuteScalarAsync<long>(
             @"INSERT INTO Messages 
-              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ToolCallId, ErrorMessage, ContentType, CreatedAtUtc, LogicalDate)
+              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ToolCallId, ErrorMessage, ContentType, IsActive, VersionGroupId, CreatedAtUtc, LogicalDate)
               VALUES 
-              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ToolCallId, @ErrorMessage, @ContentType, @CreatedAtUtc, @LogicalDate);
+              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ToolCallId, @ErrorMessage, @ContentType, @IsActive, @VersionGroupId, @CreatedAtUtc, @LogicalDate);
               SELECT last_insert_rowid();", m);
         return id;
     }
@@ -29,6 +29,15 @@ public class MessageRepository
         await conn.ExecuteAsync(
             "DELETE FROM Messages WHERE SessionId = @SessionId AND Id > @Id",
             new { SessionId = sessionId, Id = afterId });
+    }
+
+    /// <summary>更新消息的版本激活状态与版本分组。</summary>
+    public async Task UpdateMessageVersionAsync(long id, bool isActive, string? versionGroupId)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.ExecuteAsync(
+            "UPDATE Messages SET IsActive = @IsActive, VersionGroupId = @GroupId WHERE Id = @Id",
+            new { Id = id, IsActive = isActive ? 1 : 0, GroupId = versionGroupId });
     }
 
     public async Task<List<Message>> GetBySessionAsync(string sessionId)

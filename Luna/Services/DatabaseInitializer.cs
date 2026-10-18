@@ -51,6 +51,7 @@ public class DatabaseInitializer
         AddToolCallsJsonColumn(conn);
         AddToolCallIdColumn(conn);
         AddErrorMessageColumn(conn);
+        AddMessageVersionColumns(conn);
         AddLastFollowUpColumn(conn);
         MigrateLogicalDates(conn);
         _logger.LogInformation("数据库初始化完成：{Path}", _dbPath);
@@ -190,6 +191,31 @@ public class DatabaseInitializer
         }
     }
 
+    /// <summary>消息版本化：标记当前激活版本，并把同一次提问的回复归入同一版本组。</summary>
+    private void AddMessageVersionColumns(SqliteConnection conn)
+    {
+        try
+        {
+            conn.Execute("ALTER TABLE Messages ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+
+        try
+        {
+            conn.Execute("ALTER TABLE Messages ADD COLUMN VersionGroupId TEXT");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+
+        // 索引必须在列迁移之后创建，兼容已存在的旧数据库。
+        conn.Execute("CREATE INDEX IF NOT EXISTS IX_Messages_VersionGroupId ON Messages(VersionGroupId)");
+    }
+
     /// <summary>任务跟进去重标记：记录最后一次主动跟进的 UTC 时间（按天去重）。</summary>
     private void AddLastFollowUpColumn(SqliteConnection conn)
     {
@@ -235,6 +261,8 @@ public class DatabaseInitializer
             Role          TEXT NOT NULL,
             Content       TEXT NOT NULL,
             ContentType   TEXT NOT NULL DEFAULT 'text',
+            IsActive      INTEGER NOT NULL DEFAULT 1,
+            VersionGroupId TEXT,
             CreatedAtUtc  TEXT NOT NULL,
             LogicalDate   TEXT NOT NULL
         );

@@ -476,7 +476,8 @@ public class OpenAiService : IAiService
 
         // 用当前用户输入做长期事实的相关性检索（工具循环期间最后一条 user 仍是本轮输入）。
         var messageList = messages as IList<ChatMessage> ?? messages.ToList();
-        var queryText = messageList.LastOrDefault(m => m.Role == "user")?.Content;
+        var activeMessageList = messageList.Where(m => m.IsActive).ToList();
+        var queryText = activeMessageList.LastOrDefault(m => m.Role == "user")?.Content;
 
         // 渐进披露：核心工具 + 会话已解锁组 + 根据当前输入自动命中的组。
         var activeGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -509,6 +510,10 @@ public class OpenAiService : IAiService
 
         foreach (var msg in messageList)
         {
+            // 非激活版本只在 UI 中保留，不参与模型上下文。
+            if (!msg.IsActive)
+                continue;
+
             if (msg.Role == "assistant")
             {
                 if (string.IsNullOrEmpty(msg.Content) &&

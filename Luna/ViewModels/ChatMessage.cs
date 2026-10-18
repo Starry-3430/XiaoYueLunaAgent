@@ -67,6 +67,39 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isFinalReply;
 
+    /// <summary>是否为当前激活的版本（供 UI 隐藏/显示和发送上下文过滤）。</summary>
+    [ObservableProperty]
+    private bool _isActive = true;
+
+    /// <summary>是否允许重写（仅最后一条激活的最终回复）。</summary>
+    [ObservableProperty]
+    private bool _canRewrite;
+
+    /// <summary>版本分组 ID（同一次提问的不同回答共享）。</summary>
+    public string? VersionGroupId { get; set; }
+
+    /// <summary>在版本组内的索引（1 表示 V1，2 表示 V2）。</summary>
+    [ObservableProperty]
+    private int _versionIndex = 1;
+
+    /// <summary>该版本组共有几个版本。</summary>
+    [ObservableProperty]
+    private int _totalVersions = 1;
+
+    /// <summary>用于 UI 显示的版本文本（如 "1 / 2"）。</summary>
+    public string VersionText => $"{VersionIndex} / {TotalVersions}";
+
+    /// <summary>版本组内是否存在多个版本（决定是否显示切换按钮）。</summary>
+    public bool HasMultipleVersions => TotalVersions > 1;
+
+    partial void OnVersionIndexChanged(int value) => OnPropertyChanged(nameof(VersionText));
+
+    partial void OnTotalVersionsChanged(int value)
+    {
+        OnPropertyChanged(nameof(VersionText));
+        OnPropertyChanged(nameof(HasMultipleVersions));
+    }
+
     /// <summary>正文（Markdown）是否已渲染完成。新 viewer 绑定时置 false，渲染出内容后置 true。</summary>
     [ObservableProperty]
     private bool _isBodyRendered = true;

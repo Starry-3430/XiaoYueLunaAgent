@@ -328,6 +328,12 @@
                               ScrollViewer.CanContentScroll="False"
                               PreviewMouseWheel="SmoothScroll_PreviewMouseWheel">
                     <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Visibility"
+                                        Value="{Binding IsActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
 <Border Margin="0,0,0,6" Padding="0"
@@ -698,13 +704,33 @@
                                                 </Button>
                                                 <Button Style="{StaticResource ChatActionButton}"
                                                         ToolTip="{loc:Loc Common_Rewrite}"
-                                                        Click="RewriteMessage_Click">
+                                                        Click="RewriteMessage_Click"
+                                                        Visibility="{Binding CanRewrite, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <Viewbox Width="15" Height="15">
                                                         <Canvas Width="24" Height="24">
                                                             <Path Style="{StaticResource LineIconGlyph}" Data="{StaticResource IconRegenerate}"/>
                                                         </Canvas>
                                                     </Viewbox>
                                                 </Button>
+
+                                                <!-- 版本切换：同一提问存在多个回复时显示 -->
+                                                <StackPanel Orientation="Horizontal" Margin="6,0,0,0"
+                                                            Visibility="{Binding HasMultipleVersions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <Button Content="◀" Width="20" Height="20"
+                                                            Foreground="#E4E0CA"
+                                                            Style="{StaticResource ChatActionButton}"
+                                                            ToolTip="{loc:Loc Common_PreviousVersion}"
+                                                            Command="{Binding DataContext.SwitchToPrevVersionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
+                                                    <TextBlock Text="{Binding VersionText}" VerticalAlignment="Center"
+                                                               Margin="4,0" FontSize="11" Foreground="#CCE4E0CA"/>
+                                                    <Button Content="▶" Width="20" Height="20"
+                                                            Foreground="#E4E0CA"
+                                                            Style="{StaticResource ChatActionButton}"
+                                                            ToolTip="{loc:Loc Common_NextVersion}"
+                                                            Command="{Binding DataContext.SwitchToNextVersionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
                                             </StackPanel>
                                         </StackPanel>
 

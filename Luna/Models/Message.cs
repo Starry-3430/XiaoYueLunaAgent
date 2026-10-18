@@ -14,6 +14,13 @@ public class Message
     public string ToolCallsJson { get; set; } = string.Empty;
     public string ToolCallId { get; set; } = string.Empty;
     public string ContentType { get; set; } = "text";
+
+    /// <summary>是否为当前激活的版本（1/0，SQLite 布尔）。</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>版本分组 ID；同一次提问的不同回复共享。</summary>
+    public string? VersionGroupId { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string LogicalDate { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
