@@ -192,10 +192,12 @@ public sealed class ChatGenerationService
                 await _attachmentRepo.AddAsync(attachment);
             }
 
-            // 图片：直接作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
+            // 图片：压缩后作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
             foreach (var attachment in attachments.Where(AttachmentHelper.IsImage))
             {
-                if (AttachmentHelper.TryBuildImageDataUrl(attachment, out var dataUrl, out var imageError))
+                var (success, dataUrl, imageError) =
+                    await AttachmentHelper.TryBuildImageDataUrlAsync(attachment);
+                if (success)
                     userChatMessage.Images.Add(dataUrl);
                 else
                     _logger.LogWarning("图片附件无法作为图像发送：{File}（{Error}）", attachment.FileName, imageError);
