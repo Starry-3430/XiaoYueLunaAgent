@@ -297,7 +297,7 @@ public static class ToolArgumentFormatter
         "max_results" => LocalizationService.Instance["Tool_Arg_MaxResults"],
         "url" => LocalizationService.Instance["Tool_Arg_Url"],
         "content" => LocalizationService.Instance["Tool_Arg_Content"],
-        "mode" => LocalizationService.Instance["Tool_Arg_WriteMode"],
+        "mode" => LocalizationService.Instance["Tool_Arg_Mode"],
         "depth" => LocalizationService.Instance["Tool_Arg_Depth"],
         "max_entries" => LocalizationService.Instance["Tool_Arg_MaxEntries"],
         "title" => LocalizationService.Instance["Tool_Arg_Title"],
