@@ -30,30 +30,40 @@ using System.Windows.Media;
 namespace Luna;
 
 /// <summary>
-/// 搴旂敤绋嬪簭鍏ュ彛锛氳礋璐ｅ崟瀹炰緥鎺у埗銆佹墭鐩樺浘鏍囥€佷緷璧栨敞鍏ャ€佹棩蹇椼€佹暟鎹簱鍒濆鍖栧強绐楀彛绠＄悊銆?/// </summary>
+/// 应用程序入口：负责单实例控制、托盘图标、依赖注入、日志、数据库初始化及窗口管理。
+/// </summary>
 public partial class App : Application
 {
-    private readonly IHost _host = null!;              // 渚濊禆娉ㄥ叆涓庡悗鍙版湇鍔″涓?    private readonly bool _isStartupHelper;             // 鏄惁涓衡€滅鐞嗗憳鑷惎鍔ㄢ€濇彁鏉冭緟鍔╄繘绋?    private Mutex? _singleInstanceMutex;                // 鍗曞疄渚嬩簰鏂ヤ綋
-    private EventWaitHandle? _showWindowEvent;          // 鏄剧ず绐楀彛浜嬩欢
-    private Win32Icon? _trayIconImage;                  // 鎵樼洏鍥炬爣鍥惧儚
-    private TrayIconHost? _trayIcon;                    // 鎵樼洏鍥炬爣瀹夸富
-    private TrayMenuItem? _trayOpenItem;                // 鎵樼洏鑿滃崟锛氫富鐣岄潰
-    private TrayMenuItem? _trayCloseItem;               // 鎵樼洏鑿滃崟锛氬叧闂?    private HomeWindow? _homeWindow;                    // 涓荤獥鍙ｅ疄渚?    private bool _restarting;                           // 鏄惁姝ｅ湪閲嶅惎杩涚▼
-    private CancellationTokenSource? _trayCts;          // 鎵樼洏鐐瑰嚮寤惰繜鍙栨秷浠ょ墝锛岀敤浜庡尯鍒嗗崟鍑?鍙屽嚮
-    private DateTime _lastTrayClickTime;                // 涓婃鎵樼洏鐐瑰嚮鏃堕棿锛岀敤浜庡垽鏂弻鍑婚棿闅?    private const int DoubleClickThresholdMs = 500;     // 鍙屽嚮鍒ゅ畾闃堝€硷紙姣锛?    private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
+    private readonly IHost _host = null!;              // 依赖注入与后台服务宿主
+    private readonly bool _isStartupHelper;             // 是否为“管理员自启动”提权辅助进程
+    private Mutex? _singleInstanceMutex;                // 单实例互斥体
+    private EventWaitHandle? _showWindowEvent;          // 显示窗口事件
+    private Win32Icon? _trayIconImage;                  // 托盘图标图像
+    private TrayIconHost? _trayIcon;                    // 托盘图标宿主
+    private TrayMenuItem? _trayOpenItem;                // 托盘菜单：主界面
+    private TrayMenuItem? _trayCloseItem;               // 托盘菜单：关闭
+    private HomeWindow? _homeWindow;                    // 主窗口实例
+    private bool _restarting;                           // 是否正在重启进程
+    private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
+    private DateTime _lastTrayClickTime;                // 上次托盘点击时间，用于判断双击间隔
+    private const int DoubleClickThresholdMs = 500;     // 双击判定阈值（毫秒）
+    private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
 
     public App()
     {
-        // 寮哄埗浣跨敤杞欢娓叉煋锛岄伩鍏嶇‖浠跺姞閫熷鑷寸殑鍏煎鎬ч棶棰?        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
+        // 强制使用软件渲染，避免硬件加速导致的兼容性问题
+        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
-        // 绠＄悊鍛樻彁鏉冭緟鍔╄繘绋嬶細浠呮墽琛屸€滅鐞嗗憳鑷惎鍔ㄢ€濊缃紝涓嶅垵濮嬪寲鏃ュ織/鎵樼洏/瀹夸富涓庣晫闈€?        _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
+        // 管理员提权辅助进程：仅执行“管理员自启动”设置，不初始化日志/托盘/宿主与界面。
+        _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
             string.Equals(arg, StartupService.AdminHelperArgument, StringComparison.OrdinalIgnoreCase));
         if (_isStartupHelper) return;
 
-        // 鎵樼洏鑿滃崟绛夋棭鏈?UI 鍦ㄨ缃姞杞藉墠鍗冲垱寤猴紝鍏堢敤榛樿璇█鍒濆鍖栵紱鍚姩鏃朵細鎸夌敤鎴疯缃噸鏂板簲鐢ㄣ€?        LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
+        // 托盘菜单等早期 UI 在设置加载前即创建，先用默认语言初始化；启动时会按用户设置重新应用。
+        LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
 
-        // ===== 鏃ュ織閰嶇疆 =====
+        // ===== 日志配置 =====
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Luna", "logs");
@@ -65,36 +75,38 @@ public partial class App : Application
             .WriteTo.Debug()
             .WriteTo.File(
                 logPath,
-                rollingInterval: RollingInterval.Day, // 鎸夊ぉ婊氬姩
-                retainedFileCountLimit: 7,            // 鏈€澶氫繚鐣?7 涓枃浠?                shared: true,
+                rollingInterval: RollingInterval.Day, // 按天滚动
+                retainedFileCountLimit: 7,            // 最多保留 7 个文件
+                shared: true,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
         
-        // ===== 鍏ㄥ眬寮傚父澶勭悊 =====
+        // ===== 全局异常处理 =====
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
-            Log.Fatal(args.ExceptionObject as Exception, "AppDomain 鏈鐞嗗紓甯?);
+            Log.Fatal(args.ExceptionObject as Exception, "AppDomain 未处理异常");
         };
 
         DispatcherUnhandledException += (_, args) =>
         {
-            Log.Error(args.Exception, "Dispatcher 鏈鐞嗗紓甯?);
-            args.Handled = true; // 瑙嗘儏鍐靛喅瀹氭槸鍚﹀悶鎺?        };
+            Log.Error(args.Exception, "Dispatcher 未处理异常");
+            args.Handled = true; // 视情况决定是否吞掉
+        };
 
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            Log.Error(args.Exception, "Task 鏈瀵熷紓甯?);
+            Log.Error(args.Exception, "Task 未观察异常");
             args.SetObserved();
         };
         
-        // ===== 鎵樼洏鍥炬爣鍒濆鍖?=====
+        // ===== 托盘图标初始化 =====
         var iconUri = new Uri("pack://application:,,,/iconStream/Luna.ico");
         var streamInfo = Application.GetResourceStream(iconUri);
         using var iconStream = streamInfo.Stream;
         _trayIconImage = new Win32Icon(iconStream)
         {
-            ShowAsMonochrome = false, // 鏄剧ず褰╄壊鍥炬爣
-            ThemeMode = TrayThemeMode.System // 璺熼殢绯荤粺
+            ShowAsMonochrome = false, // 显示彩色图标
+            ThemeMode = TrayThemeMode.System // 跟随系统
         };
 
         _trayOpenItem = new TrayMenuItem
@@ -109,7 +121,7 @@ public partial class App : Application
         {
             IconSource = _trayIconImage,
             ToolTipText = "Luna",
-            // 鍙冲嚮鎵樼洏鍥炬爣鏄剧ず鑿滃崟
+            // 右击托盘图标显示菜单
             Menu = new TrayMenu
             {
                 _trayOpenItem,
@@ -117,15 +129,16 @@ public partial class App : Application
             }
         };
         RefreshTrayText();
-        // 璁㈤槄鎵樼洏鍗曞嚮浜嬩欢
+        // 订阅托盘单击事件
         _trayIcon.Click += (sender, e) => Dispatcher.Invoke(OnTrayClick);
         
-        // ===== 渚濊禆娉ㄥ叆涓庢暟鎹簱閰嶇疆 =====
+        // ===== 依赖注入与数据库配置 =====
         _host = Host.CreateDefaultBuilder()
             .UseSerilog()
             .ConfigureServices((context, services) =>
             {
-                // 绐楀彛涓庤鍥炬ā鍨嬫敞鍐?                services.AddSingleton<MainWindow>();
+                // 窗口与视图模型注册
+                services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<HomeWindow>();
                 services.AddSingleton<HomeViewModel>();
@@ -134,7 +147,8 @@ public partial class App : Application
                 services.AddSingleton<DiaryViewModel>();
                 services.AddSingleton<AttachmentManagerViewModel>();
                 
-                // AI 鏈嶅姟閰嶇疆锛堜粠 settings.json 鍔犺浇锛?                services.AddSingleton<SettingsService>();
+                // AI 服务配置（从 settings.json 加载）
+                services.AddSingleton<SettingsService>();
                 services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
                 services.AddSingleton<ToolSettingsService>();
                 services.AddSingleton<ToolPermissionService>();
@@ -147,14 +161,18 @@ public partial class App : Application
                     Proxy = sp.GetRequiredService<SettingsProxy>(),
                 })
                 {
-                    // 涓嶄娇鐢?HttpClient 鐨勬€昏秴鏃讹細瀹冧細鎶婃寔缁湁鏁版嵁杩涙潵鐨勬祦寮忓洖绛斾篃鏁翠綋鎺愭柇銆?                    // 鍏蜂綋瓒呮椂鐢卞悇璋冪敤鏂规寜鈥滄€昏秴鏃?/ 鍝嶅簲澶磋秴鏃?/ 绌洪棽瓒呮椂鈥濆垎鍒帶鍒躲€?                    Timeout = Timeout.InfiniteTimeSpan,
+                    // 不使用 HttpClient 的总超时：它会把持续有数据进来的流式回答也整体掐断。
+                    // 具体超时由各调用方按“总超时 / 响应头超时 / 空闲超时”分别控制。
+                    Timeout = Timeout.InfiniteTimeSpan,
                 });
                 services.AddSingleton<HotkeyService>();
                 services.AddSingleton<StartupService>();
                 services.AddSingleton<SystemPromptBuilder>();
                 services.AddSingleton<IAiService, OpenAiService>();
 
-                // 鏂囨。杞崲锛圡arkItDown锛夛細娉ㄥ唽 IMarkItDownClient锛屽苟鎶婅浆鎹㈠伐浣滃尯瀹氬悜鍒?Luna 缂撳瓨鐩綍锛?                // 閬垮厤杞崲杩囩▼涓殑涓存椂鏂囦欢姹℃煋鐢ㄦ埛鐩綍銆?                var converterCacheDir = Path.Combine(
+                // 文档转换（MarkItDown）：注册 IMarkItDownClient，并把转换工作区定向到 Luna 缓存目录，
+                // 避免转换过程中的临时文件污染用户目录。
+                var converterCacheDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Luna", "cache", "markitdown");
                 Directory.CreateDirectory(converterCacheDir);
@@ -193,7 +211,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, EnableToolGroupTool>();
                 services.AddSingleton<ToolRegistry>();
 
-                // SQLite 鏁版嵁搴撹矾寰勪笌 DatabaseService 娉ㄥ唽
+                // SQLite 数据库路径与 DatabaseService 注册
                 var dbDir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "Luna", "database");
@@ -215,7 +233,8 @@ public partial class App : Application
                 services.AddSingleton<ReminderService>();
                 services.AddSingleton<DiaryService>();
 
-                // 鍚庡彴璋冨害鍣細鍦ㄦ暟鎹簱涓庝富绐楀彛灏辩华鍚庢墜鍔ㄥ惎鍔紙瑙?OnStartup锛夈€?                services.AddSingleton<ReminderPollJob>();
+                // 后台调度器：在数据库与主窗口就绪后手动启动（见 OnStartup）。
+                services.AddSingleton<ReminderPollJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<ReminderPollJob>());
                 services.AddSingleton<TaskFollowUpJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
@@ -227,21 +246,24 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 鎵樼洏鍥炬爣鐐瑰嚮浜嬩欢澶勭悊锛氶€氳繃鏃堕棿闂撮殧鍖哄垎鍗曞嚮涓庡弻鍑汇€?    /// 涓ゆ鐐瑰嚮闂撮殧 &lt; 500ms 瑙嗕负鍙屽嚮锛屾墦寮€ HomeWindow锛?    /// 鍗曞嚮鍒欑瓑寰?500ms 纭鏃犵浜屾鐐瑰嚮鍚庢樉绀?MainWindow銆?    /// </summary>
+    /// 托盘图标点击事件处理：通过时间间隔区分单击与双击。
+    /// 两次点击间隔 &lt; 500ms 视为双击，打开 HomeWindow；
+    /// 单击则等待 500ms 确认无第二次点击后显示 MainWindow。
+    /// </summary>
     private async void OnTrayClick()
     {
         var now = DateTime.UtcNow;
         var elapsed = (now - _lastTrayClickTime).TotalMilliseconds;
         _lastTrayClickTime = now;
 
-        // HomeWindow 宸叉墦寮€鏃讹紝浠讳綍鐐瑰嚮閮芥縺娲诲畠
+        // HomeWindow 已打开时，任何点击都激活它
         if (_homeWindow is { IsLoaded: true })
         {
             ShowHomeWindow();
             return;
         }
 
-        // 闂撮殧灏忎簬闃堝€?鈫?鍙屽嚮锛氭墦寮€ HomeWindow
+        // 间隔小于阈值 → 双击：打开 HomeWindow
         if (elapsed < DoubleClickThresholdMs)
         {
             _trayCts?.Cancel();
@@ -249,7 +271,7 @@ public partial class App : Application
             return;
         }
 
-        // 鍗曞嚮锛氬惎鍔ㄩ槇鍊煎欢杩燂紝绛夊緟鍙兘鐨勭浜屾鐐瑰嚮
+        // 单击：启动阈值延迟，等待可能的第二次点击
         _trayCts?.Cancel();
         _trayCts = new CancellationTokenSource();
         var cts = _trayCts;
@@ -263,7 +285,7 @@ public partial class App : Application
             return;
         }
 
-        // 寤惰繜缁撴潫鏈鍙栨秷 鈫?纭鏄崟鍑伙紝鏄剧ず MainWindow
+        // 延迟结束未被取消 → 确认是单击，显示 MainWindow
         if (cts.IsCancellationRequested) return;
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
@@ -273,12 +295,15 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 鏄剧ず鎴栨縺娲讳富鐣岄潰绐楀彛锛圚omeWindow锛夈€?    /// </summary>
+    /// 显示或激活主界面窗口（HomeWindow）。
+    /// </summary>
     private void ShowHomeWindow()
     {
-        // 鎵撳紑涓荤晫闈㈡椂鏀惰捣鑳跺泭锛屼絾涓嶆墦鏂鍦ㄨ繘琛岀殑鐢熸垚銆?        _host.Services.GetRequiredService<MainWindow>().HideCapsule();
+        // 打开主界面时收起胶囊，但不打断正在进行的生成。
+        _host.Services.GetRequiredService<MainWindow>().HideCapsule();
 
-        // 濡傛灉宸插瓨鍦ㄤ笖宸插姞杞斤紝鍒欐縺娲?        if (_homeWindow is { IsLoaded: true })
+        // 如果已存在且已加载，则激活
+        if (_homeWindow is { IsLoaded: true })
         {
             _homeWindow.WindowState = WindowState.Normal;
             _homeWindow.Show();
@@ -286,7 +311,8 @@ public partial class App : Application
             return;
         }
 
-        // 鍚﹀垯浠?DI 瀹瑰櫒鑾峰彇鏂板疄渚嬶紝骞舵寕鎺?Closed 浜嬩欢浠ユ竻鐞嗗紩鐢?        var window = _host.Services.GetRequiredService<HomeWindow>();
+        // 否则从 DI 容器获取新实例，并挂接 Closed 事件以清理引用
+        var window = _host.Services.GetRequiredService<HomeWindow>();
         window.Closed += (_, _) =>
         {
             if (_homeWindow == window) _homeWindow = null;
@@ -298,7 +324,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 鍚姩鍚庡彴绾跨▼鐩戝惉绗簩涓疄渚嬪彂鏉ョ殑鈥滄樉绀虹獥鍙ｂ€濅簨浠躲€?    /// </summary>
+    /// 启动后台线程监听第二个实例发来的“显示窗口”事件。
+    /// </summary>
     private void StartShowWindowListener()
     {
         var thread = new Thread(() =>
@@ -307,7 +334,7 @@ public partial class App : Application
             {
                 _showWindowEvent!.WaitOne();
 
-                // 鍦?UI 绾跨▼涓婃樉绀?MainWindow
+                // 在 UI 线程上显示 MainWindow
                 Dispatcher.Invoke(() =>
                 {
                     var mainWindow = _host.Services.GetRequiredService<MainWindow>();
@@ -327,58 +354,65 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // 鎻愭潈杈呭姪杩涚▼锛氭墽琛屸€滅鐞嗗憳鑷惎鍔ㄢ€濊缃悗绔嬪嵆閫€鍑猴紝涓嶈繘鍏ユ甯稿惎鍔ㄦ祦绋嬨€?        if (_isStartupHelper)
+        // 提权辅助进程：执行“管理员自启动”设置后立即退出，不进入正常启动流程。
+        if (_isStartupHelper)
         {
             Shutdown(StartupService.RunAdminHelper());
             return;
         }
 
-        // 寮€鏈鸿嚜鍚姩锛氬甫 --startup 鍙傛暟鏃堕潤榛樺惎鍔紝涓嶆樉绀轰富绐楀彛
+        // 开机自启动：带 --startup 参数时静默启动，不显示主窗口
         var launchedAtStartup = e.Args.Any(arg =>
             string.Equals(arg, StartupService.StartupArgument, StringComparison.OrdinalIgnoreCase));
 
-        // 1. 鍗曞疄渚嬫鏌?        _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
+        // 1. 单实例检查
+        _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
 
         if (!createdNew)
         {
-            // 宸叉湁瀹炰緥鍦ㄨ繍琛岋紝閫氱煡瀹冩樉绀虹獥鍙ｏ紝鐒跺悗閫€鍑?            try
+            // 已有实例在运行，通知它显示窗口，然后退出
+            try
             {
                 _showWindowEvent = EventWaitHandle.OpenExisting(ShowEventName);
                 _showWindowEvent.Set();
             }
             catch (WaitHandleCannotBeOpenedException)
             {
-                // 宸叉湁瀹炰緥杩樻病鍒涘缓浜嬩欢锛屽拷鐣?            }
+                // 已有实例还没创建事件，忽略
+            }
 
             Shutdown();
             return;
         }
 
-        // 2. 鍒涘缓鏄剧ず绐楀彛浜嬩欢锛屼緵绗簩涓疄渚嬮€氱煡
+        // 2. 创建显示窗口事件，供第二个实例通知
         _showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
         StartShowWindowListener();
 
-        // 3. 娉ㄥ唽 WpfMarkdownViewer 鎻掍欢锛堣娉曢珮浜€佹暟瀛︺€丼VG銆丮ermaid锛?        DefaultCapabilities.RegisterAll();
+        // 3. 注册 WpfMarkdownViewer 插件（语法高亮、数学、SVG、Mermaid）
+        DefaultCapabilities.RegisterAll();
 
-        // 4. 鍚姩 Host
+        // 4. 启动 Host
         _host.Start();
 
         _host.Services.GetRequiredService<ClipboardHistoryService>().Start();
 
-        // 4. 鏁版嵁搴撳垵濮嬪寲涓庡畬鏁存€ф鏌?        _host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+        // 4. 数据库初始化与完整性检查
+        _host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
 
-        Log.Information("Luna 宸插惎鍔?);
+        Log.Information("Luna 已启动");
 
-        // 4.1 鍏ㄥ眬鍚敤杈撳叆妗嗚嚜瀹氫箟鍙抽敭鑿滃崟锛圱extBox / PasswordBox 鍦ㄥ姞杞芥椂鑷姩鎸傝浇锛?        EditorContextMenu.EnableAutoAttach();
+        // 4.1 全局启用输入框自定义右键菜单（TextBox / PasswordBox 在加载时自动挂载）
+        EditorContextMenu.EnableAutoAttach();
 
-        // 5. 搴旂敤瀛椾綋璁剧疆
+        // 5. 应用字体设置
         var settings = _host.Services.GetRequiredService<AiSettings>();
         ApplyCulture(settings.UiLanguage);
         RefreshTrayText();
         LocalizationService.Instance.PropertyChanged += (_, _) => RefreshTrayText();
         ThemeService.ApplyFont(settings.FontFamily);
 
-        // 6. 鍒濆鍖栦富绐楀彛锛圡ainWindow锛氱揣鍑戞偓娴緭鍏ョ獥锛夛紱寮€鏈鸿嚜鍚姩鏃朵笉鏄剧ず
+        // 6. 初始化主窗口（MainWindow：紧凑悬浮输入窗）；开机自启动时不显示
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         var hotkey = _host.Services.GetRequiredService<HotkeyService>();
         hotkey.Attach(mainWindow);
@@ -397,23 +431,24 @@ public partial class App : Application
             mainWindow.ShowInternal();
         }
 
-        // 7. 鍚姩鍚庡彴璋冨害鍣紙鎻愰啋杞绛夛紱姝ゆ椂鏁版嵁搴撲笌涓荤獥鍙ｅ潎宸插氨缁級
+        // 7. 启动后台调度器（提醒轮询等；此时数据库与主窗口均已就绪）
         _host.Services.GetRequiredService<BackgroundSchedulerService>()
             .StartAsync(CancellationToken.None).GetAwaiter().GetResult();
 
-        // 7.1 鍚姩鏃ヨ鏈嶅姟锛堝惎鍔ㄥ嵆妫€鏌ヤ竴娆?+ 姣忓ぉ 4:00 鍚庤疆璇級
+        // 7.1 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
         _host.Services.GetRequiredService<DiaryService>().Start();
 
-        // 7.2 棰勫姞杞芥棩璁版湰鍐呭锛岄伩鍏嶉娆℃墦寮€鏃ヨ椤垫椂鎵嶅姞杞藉鑷寸殑鍗￠】
+        // 7.2 预加载日记本内容，避免首次打开日记页时才加载导致的卡顿
         _ = _host.Services.GetRequiredService<DiaryViewModel>().LoadAsync();
 
-        // 8. 閰嶇疆鏂囦欢涓㈠け鎴栨崯鍧忔椂锛屽凡鑷姩閲嶇疆锛屾彁绀虹敤鎴?        if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
+        // 8. 配置文件丢失或损坏时，已自动重置，提示用户
+        if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
             ShowSettingsResetDialog(mainWindow);
 
         base.OnStartup(e);
     }
 
-    /// <summary>搴旂敤鐣岄潰璇█锛氬垏鎹㈡湰鍦板寲鏈嶅姟銆乁I Culture 涓?WPF 鐨?XmlLanguage锛堝奖鍝?XAML 鍐呯殑鏍煎紡鍖栵級銆?/summary>
+    /// <summary>应用界面语言：切换本地化服务、UI Culture 与 WPF 的 XmlLanguage（影响 XAML 内的格式化）。</summary>
     private static void ApplyCulture(string? uiLanguage)
     {
         var culture = LocalizationService.ResolveCulture(uiLanguage);
@@ -427,7 +462,7 @@ public partial class App : Application
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
     }
 
-    /// <summary>鍒锋柊鎵樼洏鑿滃崟鐨勬湰鍦板寲鏂囨湰銆?/summary>
+    /// <summary>刷新托盘菜单的本地化文本。</summary>
     private void RefreshTrayText()
     {
         var loc = LocalizationService.Instance;
@@ -435,7 +470,7 @@ public partial class App : Application
         if (_trayCloseItem is not null) _trayCloseItem.Header = loc["App_Tray_Close"];
     }
 
-    /// <summary>閰嶇疆鏂囦欢涓㈠け鎴栫粨鏋勬崯鍧忓苟宸查噸缃椂寮瑰嚭鐨勬彁绀恒€?/summary>
+    /// <summary>配置文件丢失或结构损坏并已重置时弹出的提示。</summary>
     private static void ShowSettingsResetDialog(Window owner)
     {
         var loc = LocalizationService.Instance;
@@ -465,7 +500,7 @@ public partial class App : Application
         dialog.ShowDialog();
     }
 
-    /// <summary>閲嶅惎褰撳墠绋嬪簭锛氶噴鏀惧崟瀹炰緥閿佸苟鍚姩鏂扮殑杩涚▼銆?/summary>
+    /// <summary>重启当前程序：释放单实例锁并启动新的进程。</summary>
     public void Restart()
     {
         _restarting = true;
@@ -477,7 +512,7 @@ public partial class App : Application
         }
         catch
         {
-            // 蹇界暐鏈寔鏈夌殑鎯呭喌
+            // 忽略未持有的情况
         }
         _singleInstanceMutex?.Dispose();
         _singleInstanceMutex = null;
@@ -490,22 +525,25 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // 鎻愭潈杈呭姪杩涚▼鏈垵濮嬪寲鏃ュ織銆佸涓讳笌鍗曞疄渚嬭祫婧愶紝鐩存帴閫€鍑恒€?        if (_isStartupHelper)
+        // 提权辅助进程未初始化日志、宿主与单实例资源，直接退出。
+        if (_isStartupHelper)
         {
             base.OnExit(e);
             return;
         }
 
-        Log.Information("Luna 姝ｅ湪閫€鍑?);
+        Log.Information("Luna 正在退出");
 
-        // 閲婃斁鍗曞疄渚嬬浉鍏宠祫婧?        _showWindowEvent?.Dispose();
+        // 释放单实例相关资源
+        _showWindowEvent?.Dispose();
         if (!_restarting)
         {
             _singleInstanceMutex?.ReleaseMutex();
             _singleInstanceMutex?.Dispose();
         }
 
-        // 鍋滄鍚庡彴璋冨害鍣紙鎵嬪姩鍚姩锛孒ost 涓嶄細鑷姩绠＄悊锛?        try
+        // 停止后台调度器（手动启动，Host 不会自动管理）
+        try
         {
             using var schedulerStopCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             _host.Services.GetRequiredService<BackgroundSchedulerService>()
@@ -513,14 +551,14 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "鍋滄鍚庡彴璋冨害鍣ㄥけ璐?);
+            Log.Warning(ex, "停止后台调度器失败");
         }
 
-        // 鍋滄骞堕噴鏀?Host
+        // 停止并释放 Host
         _host.StopAsync().GetAwaiter().GetResult();
         _host.Dispose();
 
-        // 鍏抽棴鏃ュ織骞跺埛鏂扮紦鍐插尯
+        // 关闭日志并刷新缓冲区
         Log.CloseAndFlush();
 
         base.OnExit(e);
