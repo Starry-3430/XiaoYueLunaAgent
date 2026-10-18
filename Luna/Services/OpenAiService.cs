@@ -438,7 +438,11 @@ public class OpenAiService : IAiService
 
         var messagesArray = new JsonArray();
 
-        var systemPrompt = await _systemPromptBuilder.BuildAsync(options, ct);
+        // 用当前用户输入做长期事实的相关性检索（工具循环期间最后一条 user 仍是本轮输入）。
+        var messageList = messages as IList<ChatMessage> ?? messages.ToList();
+        var queryText = messageList.LastOrDefault(m => m.Role == "user")?.Content;
+
+        var systemPrompt = await _systemPromptBuilder.BuildAsync(options, queryText, ct);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
             messagesArray.Add(new JsonObject
@@ -457,7 +461,7 @@ public class OpenAiService : IAiService
         string? latestScreenshotPath = null;
         var lastMessageIsTool = false;
 
-        foreach (var msg in messages)
+        foreach (var msg in messageList)
         {
             if (msg.Role == "assistant")
             {

@@ -330,5 +330,41 @@ public class DatabaseInitializer
             UpdatedAtUtc TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS IX_Facts_Key ON Facts(Key);
+
+        -- 长期事实全文索引：使用普通 FTS5 表 + 触发器维护。
+        -- 中文用 trigram 分词，支持 3 字及以上子串匹配；2 字关键词由仓储层用 LIKE 兜底。
+        CREATE VIRTUAL TABLE IF NOT EXISTS FactsFts USING fts5(
+            Key, Value, tokenize='trigram'
+        );
+
+        DROP TRIGGER IF EXISTS Facts_ai;
+        DROP TRIGGER IF EXISTS Facts_ad;
+        DROP TRIGGER IF EXISTS Facts_au;
+
+        CREATE TRIGGER Facts_ai
+            AFTER INSERT ON Facts
+        BEGIN
+            INSERT INTO FactsFts(rowid, Key, Value)
+            VALUES (new.Id, new.Key, new.Value);
+        END;
+
+        CREATE TRIGGER Facts_ad
+            AFTER DELETE ON Facts
+        BEGIN
+            DELETE FROM FactsFts WHERE rowid = old.Id;
+        END;
+
+        CREATE TRIGGER Facts_au
+            AFTER UPDATE ON Facts
+        BEGIN
+            DELETE FROM FactsFts WHERE rowid = old.Id;
+            INSERT INTO FactsFts(rowid, Key, Value)
+            VALUES (new.Id, new.Key, new.Value);
+        END;
+
+        -- 回填已有事实（幂等）：首次升级或索引缺失时补齐。
+        INSERT INTO FactsFts(rowid, Key, Value)
+        SELECT Id, Key, Value FROM Facts
+        WHERE Id NOT IN (SELECT rowid FROM FactsFts);
         """;
 }
