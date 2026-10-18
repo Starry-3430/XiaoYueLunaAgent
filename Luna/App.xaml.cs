@@ -222,6 +222,8 @@ public partial class App : Application
                 services.AddSingleton<ToolPermissionRepository>();
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
+                services.AddSingleton<DataExportService>();
+                services.AddSingleton<DataImportService>();
                 services.AddSingleton<TurnSummaryService>();
                 services.AddSingleton<SessionTitleService>();
                 services.AddSingleton<ChatGenerationService>();
@@ -235,6 +237,8 @@ public partial class App : Application
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
                 services.AddSingleton<DailyBriefingJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<DailyBriefingJob>());
+                services.AddSingleton<AutoBackupJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<AutoBackupJob>());
                 services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();
@@ -386,6 +390,18 @@ public partial class App : Application
 
         // 3. 注册 WpfMarkdownViewer 插件（语法高亮、数学、SVG、Mermaid）
         DefaultCapabilities.RegisterAll();
+
+        // 3.5 应用待恢复的备份：必须在 Host 启动与数据库初始化之前，避免运行中覆盖 SQLite。
+        // 注意：这里运行在 UI 线程，若直接阻塞等待 async 方法，会因续体调度回 UI 线程而死锁。
+        try
+        {
+            Task.Run(() => _host.Services.GetRequiredService<DataImportService>()
+                .ApplyPendingRestoreAsync()).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "应用待恢复备份失败");
+        }
 
         // 4. 启动 Host
         _host.Start();
