@@ -13,12 +13,17 @@ public sealed class ClipboardHistoryService : IDisposable
     private const int MaxEntries = 50;
     private readonly object _gate = new();
     private readonly ILogger<ClipboardHistoryService> _logger;
+    private readonly ToolSettingsService _toolSettings;
     private readonly List<Entry> _entries = [];
     private DispatcherTimer? _timer;
     private string? _lastText;
     private int _nextId;
 
-    public ClipboardHistoryService(ILogger<ClipboardHistoryService> logger) => _logger = logger;
+    public ClipboardHistoryService(ILogger<ClipboardHistoryService> logger, ToolSettingsService toolSettings)
+    {
+        _logger = logger;
+        _toolSettings = toolSettings;
+    }
 
     public void Start()
     {
@@ -57,6 +62,7 @@ public sealed class ClipboardHistoryService : IDisposable
 
     private void CaptureCurrent()
     {
+        if (!_toolSettings.IsEnabled("clipboard_history")) return;
         try
         {
             if (!Clipboard.ContainsText()) return;

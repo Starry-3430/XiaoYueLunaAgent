@@ -19,7 +19,7 @@ public sealed class VolumeBrightnessTool : ITool
     public Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
     {
         var target = GetString(args, "target").ToLowerInvariant();
-        if (target is not ("volume" or "brightness")) return Task.FromResult(ToolResult.Error("target 必须是 volume 或 brightness。"));
+        if (target is not ("volume" or "brightness")) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_InvalidTarget")));
         if (target == "volume") return Task.FromResult(HandleVolume(args));
         return Task.FromResult(HandleBrightness(args, ct));
     }
@@ -27,7 +27,7 @@ public sealed class VolumeBrightnessTool : ITool
     private ToolResult HandleVolume(JsonElement args)
     {
         var endpoint = ActivateEndpoint();
-        if (endpoint is null) return ToolResult.Error("无法访问默认音频输出设备。");
+        if (endpoint is null) return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_NoAudio"));
         try
         {
             endpoint.GetMasterVolumeLevelScalar(out var current); endpoint.GetMute(out var muted);
@@ -35,15 +35,15 @@ public sealed class VolumeBrightnessTool : ITool
             if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("muted", out var m) && m.ValueKind is JsonValueKind.True or JsonValueKind.False) endpoint.SetMute(m.GetBoolean(), Guid.Empty);
             endpoint.GetMasterVolumeLevelScalar(out var updated); endpoint.GetMute(out var updatedMuted);
             Marshal.ReleaseComObject(endpoint);
-            return ToolResult.Ok($"音量：{updated * 100:0.#}%；静音：{(updatedMuted ? "是" : "否")}。");
+            return ToolResult.Ok(ToolLocalization.Text("Tool_VolumeBrightness_Msg_Volume", updated * 100, updatedMuted ? "是" : "否"));
         }
-        catch (Exception ex) { _logger.LogError(ex, "音量操作失败"); return ToolResult.Error($"音量操作失败：{ex.Message}"); }
+        catch (Exception ex) { _logger.LogError(ex, "音量操作失败"); return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_VolumeFailed", ex.Message)); }
     }
 
     private ToolResult HandleBrightness(JsonElement args, CancellationToken ct)
     {
-        if (!TryGetNumber(args, "value", out var value)) return ToolResult.Error("brightness 设置需要 value（0-100）。");
-        if (ct.IsCancellationRequested) return ToolResult.Error("亮度操作被取消。");
+        if (!TryGetNumber(args, "value", out var value)) return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessRequired"));
+        if (ct.IsCancellationRequested) return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_Cancelled"));
         var level = Math.Clamp((int)Math.Round(value), 0, 100);
         var script = "$monitors = Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods; foreach ($monitor in $monitors) { $monitor.WmiSetBrightness(1," + level + ") }";
         var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
@@ -51,8 +51,8 @@ public sealed class VolumeBrightnessTool : ITool
         try
         {
             using var process = Process.Start(psi)!; process.WaitForExit(10_000); var error = process.StandardError.ReadToEnd();
-            if (process.ExitCode != 0) return ToolResult.Error(string.IsNullOrWhiteSpace(error) ? "亮度设置失败，当前显示器可能不支持软件调节。" : $"亮度设置失败：{error.Trim()}");
-            return ToolResult.Ok($"屏幕亮度已设置为 {level}%。");
+            if (process.ExitCode != 0) return ToolResult.Error(string.IsNullOrWhiteSpace(error) ? ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessUnsupported") : ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessFailed", error.Trim()));
+            return ToolResult.Ok(ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessSet", level));
         }
         catch (Exception ex) { _logger.LogError(ex, "亮度操作失败"); return ToolResult.Error($"亮度操作失败：{ex.Message}"); }
     }
