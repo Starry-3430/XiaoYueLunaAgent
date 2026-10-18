@@ -153,6 +153,7 @@ public partial class App : Application
                 services.AddSingleton<ToolSettingsService>();
                 services.AddSingleton<ToolPermissionService>();
                 services.AddSingleton<WindowsSearchService>();
+                services.AddSingleton<ClipboardHistoryService>();
                 services.AddSingleton<SettingsProxy>();
                 services.AddSingleton(sp => new HttpClient(new SocketsHttpHandler
                 {
@@ -193,6 +194,10 @@ public partial class App : Application
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, FileOpenTool>();
                 services.AddSingleton<ITool, ReadScreenTool>();
+                services.AddSingleton<ITool, NewsCalendarTool>();
+                services.AddSingleton<ITool, WindowManagerTool>();
+                services.AddSingleton<ITool, VolumeBrightnessTool>();
+                services.AddSingleton<ITool, ClipboardHistoryTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
                 services.AddSingleton<ITool, DiarySearchTool>();
@@ -389,6 +394,8 @@ public partial class App : Application
 
         // 4. 启动 Host
         _host.Start();
+
+        _host.Services.GetRequiredService<ClipboardHistoryService>().Start();
 
         // 4. 数据库初始化与完整性检查
         _host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
