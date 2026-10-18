@@ -30,8 +30,9 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 |------|------|-------------------|
 | 信息 | 网页搜索（Tavily）、网页阅读、剪贴板读取 | ✅ 已实现         |
 | 系统 | 文件搜索（Windows 索引 / 全盘扫描）、读取文件 | ✅ 已实现         |
-| 系统 | PowerShell（白名单）、写入文件（沙箱）、打开文件/应用 |                   |
-| 系统（规划） | 截图、窗口管理、音量/亮度 | 📅 远期           |
+| 系统 | PowerShell（白名单）、写入文件（沙箱）、打开文件/应用 | ✅ 已实现         |
+| 系统 | 截图（活动窗口 / 全屏） | ✅ 已实现         |
+| 系统（规划） | 窗口管理、音量/亮度 | 📅 远期           |
 | 记忆 | 检索日记、轮次检索、长期事实 | ✅ 已实现         |
 | 组织 | 待办事项（增删改查、提醒） | ✅ 已实现         |
 | 通信 | 系统通知 | ✅ 已实现         |
@@ -43,6 +44,8 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - **None / Low**：直接执行。
 - **Medium / High**（或工具标记为需确认）：执行前弹窗，用户可选择「允许本次」「本轮对话始终允许」或「拒绝」。「始终允许」仅对当前对话生效。
 
+**截图与隐私**：`read_screen` 支持 `active_window`（当前活动窗口，默认）与 `fullscreen`（全部显示器并集）。作为 Medium 风险工具，首次执行会请求确认（选择「始终允许」后仅当前对话内免确认）。截图前会等待 0.5 秒（需要授权时从授权完成开始计时）；在 Windows 10 2004+ 上通过 `WDA_EXCLUDEFROMCAPTURE` 让 Luna 自身窗口不进入截图且用户视觉上无变化，旧系统则回退为短暂移出屏幕。图片保存至 `%LOCALAPPDATA%\Luna\cache\screenshots`，并作为多模态 user 图片注入下一轮请求（需模型支持识图）。
+
 ### 📔 日记与记忆
 
 <img width="4800" height="400" alt="5C735DEE39EA5CE92BCF7B0101696B40" src="https://github.com/user-attachments/assets/bf0e734f-c7e1-410c-8200-bf572a74dd93" />
@@ -53,7 +56,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - **轮次摘要**：每轮对话结束后异步生成结构化摘要（关键点、涉及文件、工具调用等），存入数据库。
 - **日记生成**：按“逻辑日”（凌晨 4 点为界，本地时间 -4h）聚合摘要，调用 AI 生成简短日记，失败时支持手动重试。
 - **全文检索**：基于 SQLite FTS5，可快速搜索历史日记。
-- **长期事实**：🧪 规划中——尚未实现记忆的写入与自动引用。
+- **长期事实**：AI 可通过工具记住 / 忘记 / 列出关于用户的事实（键值对，敏感信息会被拒绝写入）；相关事实会自动注入系统提示词，回答时可直接参考。
 
 ### ⏰ 待办与提醒
 
@@ -82,6 +85,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 | 日志 | Serilog（File + Debug Sink） |
 | 全局快捷键 | Win32 `RegisterHotKey` + 底层键盘钩子（`WH_KEYBOARD_LL`，user32 P/Invoke） |
 | 窗口特效 | DWM API（`DwmSetWindowAttribute` 圆角）、`WS_EX_TOOLWINDOW` |
+| 截图 | GDI+ `CopyFromScreen` + WinForms `SystemInformation.VirtualScreen`；DWM `DwmGetWindowAttribute` 取真实窗口边界，`WDA_EXCLUDEFROMCAPTURE` 排除自身窗口 |
 | 托盘 / 通知 | NativeTray（`TrayIconHost`）、Microsoft.Toolkit.Uwp.Notifications（Toast） |
 | 主题控件 | DynamicAero2 |
 
@@ -131,7 +135,7 @@ Luna/
 │   ├── ViewModels/                  # MVVM ViewModel
 │   ├── Models/                      # 数据模型与默认提示词
 │   ├── Services/
-│   │   ├── Tools/                   # ITool、ToolRegistry、各工具实现
+│   │   ├── Tools/                   # ITool、ToolRegistry、各工具实现（含 ScreenCaptureTool 截图）
 │   │   ├── Data/                    # AttachmentRepository、FileStorageService（内容寻址存储）
 │   │   ├── OpenAiService.cs         # AI 服务与流式对话
 │   │   ├── ChatGenerationService.cs # 对话/工具调用编排
@@ -168,11 +172,11 @@ Luna/
 - [x] 系统提示词自动注入时间、操作系统、语言等运行环境，并包含提示词注入防范规则
 - [x] 记忆检索工具（日记检索、轮次检索）
 - [x] 长期事实存储
-- [x] 系统级工具：PowerShell（白名单）、写入文件（沙箱）、打开文件/应用
+- [x] 系统级工具：PowerShell（白名单）、写入文件（沙箱）、打开文件/应用、截图（活动窗口 / 全屏，Luna 自身不进入截图）
 
 ### 进行中
 
-- [ ] 系统级工具：窗口管理、截图、音量/亮度
+- [ ] 系统级工具：窗口管理、音量/亮度
 - [ ] 视觉与 OCR 输入
 
 ---

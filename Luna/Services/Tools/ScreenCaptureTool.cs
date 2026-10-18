@@ -30,9 +30,28 @@ internal static class Win32Api
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    /// <summary>WDA_NONE：取消截图排除。</summary>
+    public const uint WdaNone = 0x00000000;
+
+    /// <summary>WDA_EXCLUDEFROMCAPTURE：窗口照常显示，但不进入任何截屏结果（Win10 2004+）。</summary>
+    public const uint WdaExcludeFromCapture = 0x00000011;
+
     /// <summary>阻塞到 DWM 完成下一次桌面合成，用于确保窗口移动/隐藏已生效。</summary>
     [DllImport("dwmapi.dll")]
     public static extern int DwmFlush();
+
+    /// <summary>指定窗口是否属于当前 Luna 进程。</summary>
+    public static bool IsOwnProcessWindow(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out var pid);
+        return pid == (uint)Environment.ProcessId;
+    }
 
     public const int SwHide = 0;
     public const int SwShow = 5;
@@ -92,14 +111,23 @@ public static class ScreenCaptureCore
                 if (hwnd == IntPtr.Zero)
                     throw new InvalidOperationException("无法获取当前活动窗口");
 
-                var rect = Win32Api.GetWindowBounds(hwnd);
-                bounds = new Rectangle(rect.Left, rect.Top, rect.Width, rect.Height);
-
-                // 截图前 Luna 窗口会被移出屏幕；若它仍是前台窗口，边界会落在虚拟屏幕之外。
-                // 此时退化为全屏，避免以负坐标截到黑图/空图。
-                bounds = Rectangle.Intersect(bounds, virtualScreen);
-                if (bounds.Width <= 0 || bounds.Height <= 0)
+                if (Win32Api.IsOwnProcessWindow(hwnd))
+                {
+                    // 前台仍是 Luna（可能只是被排除在截图外，窗口本身还在屏幕上）：
+                    // active_window 没有意义，改为整屏，才能看到 Luna 后面的内容。
                     bounds = virtualScreen;
+                }
+                else
+                {
+                    var rect = Win32Api.GetWindowBounds(hwnd);
+                    bounds = new Rectangle(rect.Left, rect.Top, rect.Width, rect.Height);
+
+                    // 截图前 Luna 窗口可能被移出屏幕；若边界落在虚拟屏幕之外，退化为全屏，
+                    // 避免以负坐标截到黑图/空图。
+                    bounds = Rectangle.Intersect(bounds, virtualScreen);
+                    if (bounds.Width <= 0 || bounds.Height <= 0)
+                        bounds = virtualScreen;
+                }
             }
             else
             {
@@ -184,6 +212,7 @@ public class ReadScreenTool : ITool
             mode = m.GetString() ?? "active_window";
 
         var movedWindows = new Dictionary<Window, WindowSnapshot>();
+        var excludedHandles = new List<IntPtr>();
         Bitmap? rawBitmap = null;
 
         try
@@ -192,10 +221,13 @@ public class ReadScreenTool : ITool
             //    这段时间 Luna 仍然可见，不做任何窗口移动。
             await Task.Delay(UserInstructionDelayMs, ct);
 
-            // 2. 仅在真正截图的瞬间把 Luna 窗口移出屏幕
-            movedWindows = await MoveLunaWindowsOffScreenAsync();
+            // 2. 优先用 WDA_EXCLUDEFROMCAPTURE 让 Luna 完全不消失；
+            //    仅当系统/窗口不支持（如 Win10 2004 以前）时才回退到移屏。
+            excludedHandles = await ExcludeLunaWindowsFromCaptureAsync();
+            if (excludedHandles.Count == 0)
+                movedWindows = await MoveLunaWindowsOffScreenAsync();
 
-            // 3. 窗口消失只持续到“像素拷贝完成”：DwmFlush 等一帧合成后立刻 CopyFromScreen。
+            // 3. 等一帧合成后立刻 CopyFromScreen，随后马上恢复。
             rawBitmap = await Task.Run(() =>
             {
                 ct.ThrowIfCancellationRequested();
@@ -203,7 +235,8 @@ public class ReadScreenTool : ITool
                 return ScreenCaptureCore.CaptureRaw(mode);
             }, ct);
 
-            // 4. 像素已在内存中，立刻恢复 Luna；缩放和 JPEG 编码都放到恢复之后。
+            // 4. 像素已在内存中，立刻恢复；缩放和 JPEG 编码都放到恢复之后。
+            RestoreCaptureExclusion(excludedHandles);
             await RestoreLunaWindowsAsync(movedWindows);
             movedWindows.Clear();
 
@@ -246,9 +279,94 @@ public class ReadScreenTool : ITool
         finally
         {
             rawBitmap?.Dispose();
-            // 5. 【必须】无论成功、失败还是取消，都恢复 Luna 窗口
+            // 5. 【必须】无论成功、失败还是取消，都恢复截图排除与窗口位置
+            RestoreCaptureExclusion(excludedHandles);
             await RestoreLunaWindowsAsync(movedWindows);
         }
+    }
+
+    /// <summary>
+    /// 给所有可见的 Luna 窗口设置 WDA_EXCLUDEFROMCAPTURE，使窗口照常显示但不进入截图。
+    /// 任一窗口不支持（或系统早于 Win10 2004）时回滚并返回空列表，由调用方改用移屏兜底。
+    /// </summary>
+    private async Task<List<IntPtr>> ExcludeLunaWindowsFromCaptureAsync()
+    {
+        var handles = new List<IntPtr>();
+        var app = WpfApplication.Current;
+        var dispatcher = app?.Dispatcher;
+        if (app is null || dispatcher is null || dispatcher.HasShutdownStarted)
+            return handles;
+
+        try
+        {
+            await dispatcher.InvokeAsync(() =>
+            {
+                var windowHandles = new List<IntPtr>();
+                foreach (var window in app.Windows.OfType<Window>().ToList())
+                {
+                    if (!window.IsVisible || window.WindowState == WindowState.Minimized)
+                        continue;
+
+                    var hwnd = new WindowInteropHelper(window).Handle;
+                    if (hwnd == IntPtr.Zero)
+                        return;
+
+                    windowHandles.Add(hwnd);
+                }
+
+                if (windowHandles.Count == 0)
+                    return;
+
+                foreach (var hwnd in windowHandles)
+                {
+                    if (!Win32Api.SetWindowDisplayAffinity(hwnd, Win32Api.WdaExcludeFromCapture))
+                    {
+                        RollbackExclusion(handles);
+                        return;
+                    }
+
+                    handles.Add(hwnd);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "设置截图排除失败，改用移屏兜底");
+            RollbackExclusion(handles);
+        }
+
+        return handles;
+
+        void RollbackExclusion(List<IntPtr> applied)
+        {
+            foreach (var hwnd in applied)
+            {
+                try { Win32Api.SetWindowDisplayAffinity(hwnd, Win32Api.WdaNone); }
+                catch { /* 忽略回滚失败 */ }
+            }
+
+            applied.Clear();
+        }
+    }
+
+    /// <summary>取消所有窗口的截图排除设置。</summary>
+    private void RestoreCaptureExclusion(List<IntPtr> handles)
+    {
+        if (handles.Count == 0) return;
+
+        foreach (var hwnd in handles)
+        {
+            try
+            {
+                Win32Api.SetWindowDisplayAffinity(hwnd, Win32Api.WdaNone);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "恢复截图排除设置失败");
+            }
+        }
+
+        handles.Clear();
     }
 
     /// <summary>记录窗口原状态，便于截图后恢复。</summary>
