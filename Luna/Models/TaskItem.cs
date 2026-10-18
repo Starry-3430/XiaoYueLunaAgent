@@ -17,6 +17,10 @@ public class TaskItem
     public int Priority { get; set; }
     public int ReminderCount { get; set; }
     public DateTime? LastRemindedAtUtc { get; set; }
+
+    /// <summary>最后一次主动跟进（催办）的 UTC 时间，用于按天去重。</summary>
+    public DateTime? LastFollowUpUtc { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

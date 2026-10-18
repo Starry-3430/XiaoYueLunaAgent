@@ -31,7 +31,8 @@ public static class FileSandbox
     /// 是否为可读文本由读取工具在读取后按内容判断。
     /// 相对路径基于 <see cref="Root"/>。
     /// </summary>
-    public static bool TryResolveExisting(string input, out string fullPath, out string error)
+    public static bool TryResolveExisting(string input, out string fullPath, out string error,
+        long maxBytes = MaxBytes)
     {
         fullPath = string.Empty;
         error = string.Empty;
@@ -70,9 +71,9 @@ public static class FileSandbox
             return false;
         }
 
-        if (length > MaxBytes)
+        if (length > maxBytes)
         {
-            error = LocalizationService.Instance.Format("Tool_Fs_TooLarge", length / 1024, MaxBytes / 1024);
+            error = LocalizationService.Instance.Format("Tool_Fs_TooLarge", length / 1024, maxBytes / 1024);
             return false;
         }
 

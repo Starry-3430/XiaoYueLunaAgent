@@ -206,6 +206,7 @@ public class DiaryService
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
                     DeepThinking = false,
+                    IsBackgroundTask = true,
                 });
         }
         catch (Exception ex)
@@ -234,7 +235,7 @@ public class DiaryService
         {
             LogicalDate = date,
             Content = content,
-            Model = _settings.Model,
+            Model = _settings.EffectiveBackgroundModel,
             SourceSessionIds = sessionIds,
             SourceTurnIds = turnIds,
             TokenCount = null,
@@ -295,6 +296,7 @@ public class DiaryService
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
                     DeepThinking = false,
+                    IsBackgroundTask = true,
                 });
 
             shortened = shortened.Trim();
@@ -453,6 +455,15 @@ public class DiaryService
     }
 
     // ===== 读取 / 检索 / 重试（供日记本 UI 使用） =====
+
+    /// <summary>读取指定逻辑日的日记正文；没有记录时返回 null。</summary>
+    public async Task<string?> GetEntryContentAsync(string logicalDate)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        return await conn.QueryFirstOrDefaultAsync<string?>(
+            "SELECT Content FROM DiaryEntries WHERE LogicalDate = @Date",
+            new { Date = logicalDate });
+    }
 
     /// <summary>
     /// 返回从安装日（最早记录）到当前逻辑日的所有日期视图，缺记录的日子为 NoData。

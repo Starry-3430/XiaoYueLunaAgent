@@ -21,8 +21,8 @@ public sealed class WindowManagerTool : ITool
     {
         var action = GetString(args, "action").ToLowerInvariant(); if (string.IsNullOrEmpty(action)) action = "list";
         if (action == "list") return Task.FromResult(ListWindows());
-        if (action is not ("minimize" or "maximize" or "restore" or "move" or "resize" or "close")) return Task.FromResult(ToolResult.Error("action 必须是 list、minimize、maximize、restore、move、resize 或 close。"));
-        var hwnd = FindWindow(args); if (hwnd == IntPtr.Zero) return Task.FromResult(ToolResult.Error("未找到匹配的可见窗口，请提供 title 或 hwnd。"));
+        if (action is not ("minimize" or "maximize" or "restore" or "move" or "resize" or "close")) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_InvalidAction")));
+        var hwnd = FindWindow(args); if (hwnd == IntPtr.Zero) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_NotFound")));
         try
         {
             switch (action)
@@ -31,19 +31,19 @@ public sealed class WindowManagerTool : ITool
                 case "maximize": ShowWindow(hwnd, 3); break;
                 case "restore": ShowWindow(hwnd, 9); break;
                 case "close": PostMessage(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); break;
-                case "move": if (!TryGetInt(args, "x", out var x) || !TryGetInt(args, "y", out var y)) return Task.FromResult(ToolResult.Error("move 需要 x 和 y。")); if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
-                case "resize": if (!TryGetInt(args, "width", out var width) || !TryGetInt(args, "height", out var height) || width < 100 || height < 80) return Task.FromResult(ToolResult.Error("resize 需要至少 100x80 的 width 和 height。")); if (!SetWindowPos(hwnd, IntPtr.Zero, 0, 0, width, height, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
+                case "move": if (!TryGetInt(args, "x", out var x) || !TryGetInt(args, "y", out var y)) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_MoveArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
+                case "resize": if (!TryGetInt(args, "width", out var width) || !TryGetInt(args, "height", out var height) || width < 100 || height < 80) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_ResizeArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, 0, 0, width, height, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
             }
             _logger.LogInformation("Window operation {Action} executed on {Hwnd}", action, hwnd);
-            return Task.FromResult(ToolResult.Ok($"已对窗口执行 {action} 操作。"));
+            return Task.FromResult(ToolResult.Ok(ToolLocalization.Text("Tool_WindowManager_Msg_Done", action)));
         }
-        catch (Exception ex) { _logger.LogError(ex, "Window operation failed"); return Task.FromResult(ToolResult.Error($"窗口操作失败：{ex.Message}")); }
+        catch (Exception ex) { _logger.LogError(ex, "Window operation failed"); return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_Failed", ex.Message))); }
     }
 
     private static ToolResult ListWindows()
     {
         var rows = new List<string>(); EnumWindows((hwnd, _) => { if (!IsWindowVisible(hwnd)) return true; var title = GetTitle(hwnd); if (string.IsNullOrWhiteSpace(title)) return true; if (GetWindowRect(hwnd, out var rect)) rows.Add($"0x{hwnd.ToInt64():X} {title} [{rect.Left},{rect.Top} {rect.Right - rect.Left}x{rect.Bottom - rect.Top}]"); return true; }, IntPtr.Zero);
-        return ToolResult.Ok(rows.Count == 0 ? "没有找到可见窗口。" : "可见窗口：\n" + string.Join('\n', rows));
+        return ToolResult.Ok(rows.Count == 0 ? ToolLocalization.Text("Tool_WindowManager_Msg_ListEmpty") : ToolLocalization.Text("Tool_WindowManager_Msg_ListHeading") + "\n" + string.Join('\n', rows));
     }
     private static IntPtr FindWindow(JsonElement args)
     {

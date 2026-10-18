@@ -45,14 +45,16 @@
   <data name="Tool_Powershell_Description" xml:space="preserve"><value>执行 PowerShell 命令</value></data>
   <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>文件搜索</value></data>
   <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>按文件名搜索文件，优先查 Windows 搜索索引</value></data>
-  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>读取文件</value></data>
-  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>读取指定文件内容</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>读取文件/文档</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>读取文本/代码，或把 PDF / Word / Excel / PPT 等文档转换为 Markdown；支持关键词搜索与分段读取</value></data>
   <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>写入文件</value></data>
   <data name="Tool_WriteFile_Description" xml:space="preserve"><value>写入文件内容、创建新文件</value></data>
   <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>打开文件/应用</value></data>
   <data name="Tool_FileOpen_Description" xml:space="preserve"><value>打开指定文件或启动应用程序</value></data>
   <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>截图</value></data>
   <data name="Tool_Screenshot_Description" xml:space="preserve"><value>截取屏幕截图</value></data>
+  <data name="Tool_ReadScreen_DisplayName" xml:space="preserve"><value>读取屏幕</value></data>
+  <data name="Tool_ReadScreen_Description" xml:space="preserve"><value>截取当前活动窗口或整个屏幕</value></data>
   <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>窗口管理</value></data>
   <data name="Tool_WindowManager_Description" xml:space="preserve"><value>管理窗口位置、大小和状态</value></data>
   <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>音量/亮度</value></data>
@@ -107,16 +109,16 @@
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>获取 BBC 新闻摘要，或查询本地当前日期、时间和月份信息</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
-  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取指定文本文件的内容（仅限允许的目录、扩展名与大小）</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取文件内容。文本/代码文件直接读取；PDF、Word、Excel、PPT、HTML 等文档会通过 MarkItDown 自动转换为 Markdown 后返回。大文本文件请用 keyword 搜索，或用 start_line/end_line 分段读取；不要为了读取文件内容而调用 PowerShell。</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
-  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>获取新闻摘要或当前日期、月份信息</value></data>
-  <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>截取整个虚拟桌面并保存为 PNG 文件</value></data>
-  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>列出并管理可见窗口的位置、大小和状态</value></data>
-  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>调节系统音量、静音状态或屏幕亮度</value></data>
-  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>查看、复制或清空 Luna 运行期间采集的文本剪贴板历史</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>列出并管理可见窗口的位置、大小和状态；管理操作需要确认</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>查询或调节系统音量、静音状态和显示器亮度；设置操作需要确认</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>查看、复制或清空 Luna 启用期间采集的文本剪贴板历史；仅保存在内存中</value></data>
+  <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>截取当前用户的屏幕画面。当你需要看用户当前的界面、或者排查报错弹窗时调用。</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>获取指定目录的文件树结构（支持深度与条目数限制）</value></data>
@@ -136,10 +138,37 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>执行被取消。</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>用户拒绝执行。</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>、</value></data>
-  <data name="Tool_Screenshot_Msg_Cancelled" xml:space="preserve"><value>截图操作被取消。</value></data>
-  <data name="Tool_Screenshot_Msg_InvalidSize" xml:space="preserve"><value>虚拟桌面尺寸无效或过大。</value></data>
-  <data name="Tool_Screenshot_Msg_Saved" xml:space="preserve"><value>截图已保存：{0}</value></data>
-  <data name="Tool_Screenshot_Msg_Failed" xml:space="preserve"><value>截图失败：{0}</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Empty" xml:space="preserve"><value>暂无剪贴板历史。Luna 只记录启用该工具后发现的文本内容。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Cleared" xml:space="preserve"><value>剪贴板历史已清空。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Copied" xml:space="preserve"><value>已将剪贴板历史 #{0} 复制到当前剪贴板。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_NotFound" xml:space="preserve"><value>找不到剪贴板历史 #{0}。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_InvalidAction" xml:space="preserve"><value>action 必须是 list、copy 或 clear。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_List" xml:space="preserve"><value>剪贴板历史：</value></data>
+  <data name="Tool_NewsCalendar_Msg_InvalidMode" xml:space="preserve"><value>mode 必须是 news 或 calendar。</value></data>
+  <data name="Tool_NewsCalendar_Msg_HttpFailed" xml:space="preserve"><value>新闻获取失败：HTTP {0}</value></data>
+  <data name="Tool_NewsCalendar_Msg_NoResults" xml:space="preserve"><value>没有获取到新闻条目。</value></data>
+  <data name="Tool_NewsCalendar_Msg_NewsHeading" xml:space="preserve"><value>新闻摘要（BBC RSS）：</value></data>
+  <data name="Tool_NewsCalendar_Msg_Cancelled" xml:space="preserve"><value>新闻获取被取消。</value></data>
+  <data name="Tool_NewsCalendar_Msg_Failed" xml:space="preserve"><value>新闻获取失败：{0}</value></data>
+  <data name="Tool_WindowManager_Msg_InvalidAction" xml:space="preserve"><value>action 必须是 list、minimize、maximize、restore、move、resize 或 close。</value></data>
+  <data name="Tool_WindowManager_Msg_NotFound" xml:space="preserve"><value>未找到匹配的可见窗口，请提供 title 或 hwnd。</value></data>
+  <data name="Tool_WindowManager_Msg_MoveArgs" xml:space="preserve"><value>move 需要 x 和 y。</value></data>
+  <data name="Tool_WindowManager_Msg_ResizeArgs" xml:space="preserve"><value>resize 需要至少 100x80 的 width 和 height。</value></data>
+  <data name="Tool_WindowManager_Msg_ListEmpty" xml:space="preserve"><value>没有找到可见窗口。</value></data>
+  <data name="Tool_WindowManager_Msg_ListHeading" xml:space="preserve"><value>可见窗口：</value></data>
+  <data name="Tool_WindowManager_Msg_Done" xml:space="preserve"><value>已对窗口执行 {0} 操作。</value></data>
+  <data name="Tool_WindowManager_Msg_Failed" xml:space="preserve"><value>窗口操作失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target 必须是 volume 或 brightness。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>无法访问默认音频输出设备。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>音量：{0:0.#}%；静音：{1}。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>brightness 设置需要 value（0-100）。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>亮度操作被取消。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>亮度设置失败，当前显示器可能不支持软件调节。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessFailed" xml:space="preserve"><value>亮度设置失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessSet" xml:space="preserve"><value>屏幕亮度已设置为 {0}%。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_VolumeFailed" xml:space="preserve"><value>音量操作失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_TargetVolume" xml:space="preserve"><value>volume</value></data>
+  <data name="Tool_VolumeBrightness_Msg_TargetBrightness" xml:space="preserve"><value>brightness</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>路径为空。</value></data>
@@ -173,6 +202,12 @@
 
   <!-- read_clipboard -->
   <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>读取剪贴板失败：{0}</value></data>
+
+  <!-- read_screen -->
+  <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>截图模式：active_window（截取当前焦点窗口，推荐），fullscreen（截取整个屏幕）。默认 active_window。</value></data>
+  <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>已捕获屏幕画面（模式：{0}），图片保存在：{1}</value></data>
+  <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>截图失败：{0}</value></data>
+  <data name="Tool_ReadScreen_Msg_ImageInjected" xml:space="preserve"><value>这是刚才截取的屏幕画面：</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>要执行的 Python 代码（仅支持 Python）。沙箱为尽力而为：禁止联网与文件系统访问（正则黑名单拦截 import socket/urllib/requests、open()、os./shutil/pathlib/subprocess 等）</value></data>
@@ -283,10 +318,22 @@
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>…（输出已截断）</value></data>
 
   <!-- read_file -->
-  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名</value></data>
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录；支持文本/代码文件，以及 PDF、Word、Excel、PPT、HTML 等文档</value></data>
+  <data name="Tool_ReadFile_Param_Keyword" xml:space="preserve"><value>可选：在文件中搜索关键词（不区分大小写），返回命中行及上下文；读取大文件时优先使用</value></data>
+  <data name="Tool_ReadFile_Param_StartLine" xml:space="preserve"><value>可选：起始行号（从 1 开始），用于分段读取</value></data>
+  <data name="Tool_ReadFile_Param_EndLine" xml:space="preserve"><value>可选：结束行号（包含）；省略时最多读取 120 行</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>读取文件被取消。</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>读取文件失败：{0}</value></data>
   <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>文件内容不是可读文本（可能是二进制或加密文件），已拒绝读取。</value></data>
+  <data name="Tool_ReadFile_Msg_Empty" xml:space="preserve"><value>未能从该文档中提取到文本内容。</value></data>
+  <data name="Tool_ReadFile_Msg_TooLarge" xml:space="preserve"><value>文件过大（{0}），一次性读取会占用过多上下文。请提供 keyword 参数进行搜索，或使用 start_line/end_line 分段读取。</value></data>
+  <data name="Tool_ReadFile_Msg_SearchHeader" xml:space="preserve"><value>在 {0} 中搜索“{1}”，显示 {2} 处匹配：</value></data>
+  <data name="Tool_ReadFile_Msg_MoreMatches" xml:space="preserve"><value>（可能还有更多匹配，可增加关键词或缩小行号范围。）</value></data>
+  <data name="Tool_ReadFile_Msg_KeywordNotFound" xml:space="preserve"><value>未在文件中找到关键词“{0}”。可以尝试更短的关键词，或使用 start_line/end_line 分段读取。</value></data>
+  <data name="Tool_ReadFile_Msg_RangeHeader" xml:space="preserve"><value>{0} 第 {1}-{2} 行：</value></data>
+  <data name="Tool_ReadFile_Msg_RangeEmpty" xml:space="preserve"><value>第 {0}-{1} 行没有内容（文件可能没有这么长）。</value></data>
+  <data name="Tool_ReadFile_Msg_BadRange" xml:space="preserve"><value>无效的行号范围：起始行 {0} 大于结束行 {1}。</value></data>
+  <data name="Tool_ReadFile_Msg_ResultTruncated" xml:space="preserve"><value>...（结果超出长度上限，已截断。可以缩小范围或使用更具体的关键词。）</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>英文短语 + 下划线的事实标识，如 preferred_language、editor_theme</value></data>
@@ -363,6 +410,7 @@
   <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
   <data name="Tool_Arg_Content" xml:space="preserve"><value>内容</value></data>
   <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>写入模式</value></data>
+  <data name="Tool_Arg_Mode" xml:space="preserve"><value>模式</value></data>
   <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>创建</value></data>
   <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>覆盖</value></data>
   <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>追加</value></data>
@@ -377,10 +425,33 @@
   <data name="Tool_Arg_Status" xml:space="preserve"><value>状态</value></data>
   <data name="Tool_Arg_TaskId" xml:space="preserve"><value>任务 ID</value></data>
   <data name="Tool_Arg_Keyword" xml:space="preserve"><value>关键词</value></data>
+  <data name="Tool_Arg_LineRange" xml:space="preserve"><value>行范围</value></data>
   <data name="Tool_Arg_Limit" xml:space="preserve"><value>条数上限</value></data>
   <data name="Tool_Arg_Key" xml:space="preserve"><value>键</value></data>
   <data name="Tool_Arg_Value" xml:space="preserve"><value>值</value></data>
   <data name="Tool_Arg_GitAction" xml:space="preserve"><value>操作</value></data>
   <data name="Tool_Arg_Args" xml:space="preserve"><value>参数</value></data>
   <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>提交信息</value></data>
+
+  <!-- ask_user -->
+  <data name="Tool_AskUser_DisplayName" xml:space="preserve"><value>询问用户</value></data>
+  <data name="Tool_AskUser_Description" xml:space="preserve"><value>缺少关键信息或需要用户做决定时，向用户提问。</value></data>
+  <data name="Tool_AskUser_AiDescription" xml:space="preserve"><value>当缺少完成任务的关键信息、需求存在歧义，或需要用户在多个选项间做决定时，向用户提问。调用后会等待用户回答；超时时有选项则自动采用第一个选项，填空则返回超时结果。</value></data>
+  <data name="Tool_AskUser_Param_Question" xml:space="preserve"><value>向用户提出的问题，应清晰、具体。</value></data>
+  <data name="Tool_AskUser_Param_Options" xml:space="preserve"><value>可选选项。提供后用户从中选择，第一个选项为超时默认值；不提供则显示文本输入框。</value></data>
+  <data name="Tool_AskUser_Msg_Answer" xml:space="preserve"><value>用户的回答：{0}</value></data>
+  <data name="Tool_AskUser_Msg_Cancelled" xml:space="preserve"><value>用户取消了回答。</value></data>
+  <data name="Tool_AskUser_Msg_Closed" xml:space="preserve"><value>用户关闭了提问窗口。</value></data>
+  <data name="Tool_AskUser_Msg_Empty" xml:space="preserve"><value>用户没有提供内容。</value></data>
+  <data name="Tool_AskUser_Msg_Timeout" xml:space="preserve"><value>用户未在时限内回答。</value></data>
+  <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>用户未在时限内回答，已自动选择默认选项：{0}</value></data>
+  <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>当前无法显示提问窗口。</value></data>
+  <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>显示提问窗口失败：{0}</value></data>
+
+  <!-- enable_tool_group -->
+  <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>解锁工具组</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：info（网络信息）、filesystem（文件操作）、system_dev（系统与开发：PowerShell/代码/Git）、memory_organize（记忆与待办修改）。</value></data>
+  <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>需要解锁的工具组：info、filesystem、system_dev 或 memory_organize。</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>已解锁工具组：{0}。可用工具：{1}。请在下一轮直接使用。</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>未知工具组：{0}。</value></data>
 </root>

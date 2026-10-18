@@ -179,4 +179,11 @@
   <data name="AiConnection_Test_Failed" xml:space="preserve">
     <value>Connection failed: {0}</value>
   </data>
+
+  <data name="AiConnection_BackgroundModel_Title" xml:space="preserve">
+    <value>Background model</value>
+  </data>
+  <data name="AiConnection_BackgroundModel_Desc" xml:space="preserve">
+    <value>Used for session titles, turn summaries, diary and daily briefings. Leave empty to use the main model. Examples: gpt-4o-mini, deepseek-flash.</value>
+  </data>
 </root>

@@ -19,6 +19,7 @@ using Luna.Data;
 using Luna.Models;
 using Luna.Services;
 using Luna.Services.Data;
+using Luna.Services.Jobs;
 using Luna.Services.Tools;
 using Luna.ViewModels;
 using MarkItDown.DependencyInjection;
@@ -192,8 +193,8 @@ public partial class App : Application
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, FileOpenTool>();
+                services.AddSingleton<ITool, ReadScreenTool>();
                 services.AddSingleton<ITool, NewsCalendarTool>();
-                services.AddSingleton<ITool, ScreenshotTool>();
                 services.AddSingleton<ITool, WindowManagerTool>();
                 services.AddSingleton<ITool, VolumeBrightnessTool>();
                 services.AddSingleton<ITool, ClipboardHistoryTool>();
@@ -206,6 +207,8 @@ public partial class App : Application
                 services.AddSingleton<ITool, ListFactsTool>();
                 services.AddSingleton<ITool, CompleteTaskTool>();
                 services.AddSingleton<ITool, DeleteTaskTool>();
+                services.AddSingleton<ITool, AskUserTool>();
+                services.AddSingleton<ITool, EnableToolGroupTool>();
                 services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册
@@ -221,6 +224,7 @@ public partial class App : Application
                 services.AddSingleton<SearchRepository>();
                 services.AddSingleton<TaskRepository>();
                 services.AddSingleton<FactRepository>();
+                services.AddSingleton<ToolPermissionRepository>();
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
                 services.AddSingleton<TurnSummaryService>();
@@ -228,6 +232,15 @@ public partial class App : Application
                 services.AddSingleton<ChatGenerationService>();
                 services.AddSingleton<ReminderService>();
                 services.AddSingleton<DiaryService>();
+
+                // 后台调度器：在数据库与主窗口就绪后手动启动（见 OnStartup）。
+                services.AddSingleton<ReminderPollJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<ReminderPollJob>());
+                services.AddSingleton<TaskFollowUpJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
+                services.AddSingleton<DailyBriefingJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<DailyBriefingJob>());
+                services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();
     }
@@ -418,8 +431,9 @@ public partial class App : Application
             mainWindow.ShowInternal();
         }
 
-        // 7. 启动提醒服务（轮询待办提醒）
-        _host.Services.GetRequiredService<ReminderService>().Start();
+        // 7. 启动后台调度器（提醒轮询等；此时数据库与主窗口均已就绪）
+        _host.Services.GetRequiredService<BackgroundSchedulerService>()
+            .StartAsync(CancellationToken.None).GetAwaiter().GetResult();
 
         // 7.1 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
         _host.Services.GetRequiredService<DiaryService>().Start();
@@ -526,6 +540,18 @@ public partial class App : Application
         {
             _singleInstanceMutex?.ReleaseMutex();
             _singleInstanceMutex?.Dispose();
+        }
+
+        // 停止后台调度器（手动启动，Host 不会自动管理）
+        try
+        {
+            using var schedulerStopCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            _host.Services.GetRequiredService<BackgroundSchedulerService>()
+                .StopAsync(schedulerStopCts.Token).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "停止后台调度器失败");
         }
 
         // 停止并释放 Host

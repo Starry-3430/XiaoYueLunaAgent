@@ -29,21 +29,21 @@ public sealed class ClipboardHistoryTool : ITool
         if (action == "clear")
         {
             _history.Clear();
-            return ToolResult.Ok("剪贴板历史已清空。");
+            return ToolResult.Ok(ToolLocalization.Text("Tool_ClipboardHistory_Msg_Cleared"));
         }
         if (action == "copy")
         {
             if (!GetInt(args, "id", out var id)) return ToolResult.Error(ToolLocalization.Text("Tool_Msg_MissingParam", "id"));
             return await _history.CopyAsync(id)
-                ? ToolResult.Ok($"已将剪贴板历史 #{id} 复制到当前剪贴板。")
-                : ToolResult.Error($"找不到剪贴板历史 #{id}。");
+                ? ToolResult.Ok(ToolLocalization.Text("Tool_ClipboardHistory_Msg_Copied", id))
+                : ToolResult.Error(ToolLocalization.Text("Tool_ClipboardHistory_Msg_NotFound", id));
         }
-        if (action != "list") return ToolResult.Error("action 必须是 list、copy 或 clear。");
+        if (action != "list") return ToolResult.Error(ToolLocalization.Text("Tool_ClipboardHistory_Msg_InvalidAction"));
 
         var limit = GetInt(args, "limit", out var n) ? Math.Clamp(n, 1, 50) : 10;
         var entries = _history.GetEntries(limit);
-        if (entries.Count == 0) return ToolResult.Ok("暂无剪贴板历史。Luna 只会记录应用运行期间发现的文本内容。");
-        var sb = new StringBuilder("剪贴板历史：\n");
+        if (entries.Count == 0) return ToolResult.Ok(ToolLocalization.Text("Tool_ClipboardHistory_Msg_Empty"));
+        var sb = new StringBuilder(ToolLocalization.Text("Tool_ClipboardHistory_Msg_List") + "\n");
         foreach (var entry in entries)
         {
             var preview = entry.Text.Replace("\r", " ").Replace("\n", " ");

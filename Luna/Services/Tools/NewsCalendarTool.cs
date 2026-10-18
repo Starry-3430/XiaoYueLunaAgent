@@ -21,7 +21,7 @@ public sealed class NewsCalendarTool : ITool
     {
         var mode = GetString(args, "mode").ToLowerInvariant(); if (string.IsNullOrEmpty(mode)) mode = "news";
         if (mode == "calendar") return ToolResult.Ok(BuildCalendar());
-        if (mode != "news") return ToolResult.Error("mode 必须是 news 或 calendar。");
+        if (mode != "news") return ToolResult.Error(ToolLocalization.Text("Tool_NewsCalendar_Msg_InvalidMode"));
         var limit = 5; if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("limit", out var l) && l.TryGetInt32(out var n)) limit = Math.Clamp(n, 1, 10);
         try
         {
@@ -29,14 +29,14 @@ public sealed class NewsCalendarTool : ITool
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(20));
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://feeds.bbci.co.uk/news/rss.xml");
             request.Headers.UserAgent.ParseAdd("Luna/1.0");
-            using var response = await _http.SendAsync(request, timeoutCts.Token); if (!response.IsSuccessStatusCode) return ToolResult.Error($"新闻获取失败：HTTP {(int)response.StatusCode}");
+            using var response = await _http.SendAsync(request, timeoutCts.Token); if (!response.IsSuccessStatusCode) return ToolResult.Error(ToolLocalization.Text("Tool_NewsCalendar_Msg_HttpFailed", (int)response.StatusCode));
             var xml = await response.Content.ReadAsStringAsync(timeoutCts.Token); var doc = XDocument.Parse(xml); var items = doc.Descendants("item").Take(limit).ToList();
-            if (items.Count == 0) return ToolResult.Error("没有获取到新闻条目。");
+            if (items.Count == 0) return ToolResult.Error(ToolLocalization.Text("Tool_NewsCalendar_Msg_NoResults"));
             var lines = items.Select((item, index) => $"{index + 1}. {Clean(item.Element("title")?.Value)}\n   {Clean(item.Element("description")?.Value)}\n   {item.Element("link")?.Value}");
-            return ToolResult.Ok("新闻摘要（BBC RSS）：\n" + string.Join("\n", lines));
+            return ToolResult.Ok(ToolLocalization.Text("Tool_NewsCalendar_Msg_NewsHeading") + "\n" + string.Join("\n", lines));
         }
-        catch (OperationCanceledException) { return ToolResult.Error("新闻获取被取消。"); }
-        catch (Exception ex) { _logger.LogError(ex, "获取新闻失败"); return ToolResult.Error($"新闻获取失败：{ex.Message}"); }
+        catch (OperationCanceledException) { return ToolResult.Error(ToolLocalization.Text("Tool_NewsCalendar_Msg_Cancelled")); }
+        catch (Exception ex) { _logger.LogError(ex, "获取新闻失败"); return ToolResult.Error(ToolLocalization.Text("Tool_NewsCalendar_Msg_Failed", ex.Message)); }
     }
     private static string BuildCalendar()
     {

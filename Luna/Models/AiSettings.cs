@@ -39,6 +39,18 @@ public class AiSettings
 
     public string BaseUrl { get; set; } = DefaultBaseUrl;
     public string Model { get; set; } = DefaultModel;
+
+    /// <summary>
+    /// 后台任务专用模型（会话标题、轮次摘要、日记、每日早报等）。
+    /// 留空时与主聊天模型相同。
+    /// </summary>
+    public string BackgroundModel { get; set; } = string.Empty;
+
+    /// <summary>后台任务实际使用的模型：未配置后台模型时回退到主模型。</summary>
+    [JsonIgnore]
+    public string EffectiveBackgroundModel =>
+        string.IsNullOrWhiteSpace(BackgroundModel) ? Model : BackgroundModel;
+
     public int MaxTokens { get; set; } = DefaultMaxTokens;
     public double Temperature { get; set; } = DefaultTemperature;
     public double TopP { get; set; } = DefaultTopP;

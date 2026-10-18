@@ -51,6 +51,19 @@
   <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>Execution failed: {0}</value></data>
   <data name="Common_Tool_Timeout" xml:space="preserve"><value>Tool {0} exceeded {1:0} seconds and was stopped. Narrow the task or try again.</value></data>
   <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (result truncated)</value></data>
+  <data name="Common_TurnTimeout" xml:space="preserve"><value>This turn took too long and was stopped automatically.</value></data>
+  <data name="Common_ToolLoopDetected" xml:space="preserve"><value>The AI appears to be stuck in a tool-call loop and was stopped automatically.</value></data>
+
+  <!-- 主动任务跟进 -->
+  <data name="Common_TaskFollowUp_Title" xml:space="preserve"><value>Task follow-up</value></data>
+  <data name="Common_TaskFollowUp_Overdue" xml:space="preserve"><value>{0} (overdue, was due {1})</value></data>
+  <data name="Common_TaskFollowUp_DueSoon" xml:space="preserve"><value>{0} (due {1})</value></data>
+  <data name="Common_TaskFollowUp_More" xml:space="preserve"><value>and {0} more task(s) waiting.</value></data>
+
+  <!-- 每日早报 -->
+  <data name="Common_DailyBriefing_SessionTitle" xml:space="preserve"><value>🌅 Morning Briefing ({0})</value></data>
+  <data name="Common_DailyBriefing_NotifyTitle" xml:space="preserve"><value>Good morning</value></data>
+  <data name="Common_DailyBriefing_NotifyMessage" xml:space="preserve"><value>Your morning briefing is ready. Open Luna to see today's plan.</value></data>
 
   <!-- 注入提示词的运行环境 -->
   <data name="Common_UserEnv_Title" xml:space="preserve"><value>## Current Environment and User Folders</value></data>
@@ -82,4 +95,5 @@
   <data name="Common_Attachment_AnyFile" xml:space="preserve"><value>All files</value></data>
   <data name="Common_Attachment_ImageMissing" xml:space="preserve"><value>Image file does not exist.</value></data>
   <data name="Common_Attachment_ImageTooLarge" xml:space="preserve"><value>Image too large ({0}); the limit is {1}.</value></data>
+  <data name="Common_Attachment_ImageCompressFailed" xml:space="preserve"><value>Image processing failed: {0}</value></data>
 </root>

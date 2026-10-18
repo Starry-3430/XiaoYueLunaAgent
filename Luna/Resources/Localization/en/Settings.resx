@@ -121,6 +121,23 @@
     <value>Browse…</value>
   </data>
 
+  <!-- 工具授权 -->
+  <data name="Settings_ToolPermissions_Title" xml:space="preserve">
+    <value>Tool Permissions</value>
+  </data>
+  <data name="Settings_ToolPermissions_Desc" xml:space="preserve">
+    <value>Luna remembers read-only tools you chose to "Always allow (remember)". Clear them to be asked again next time.</value>
+  </data>
+  <data name="Settings_ToolPermissions_Clear" xml:space="preserve">
+    <value>Clear remembered permissions</value>
+  </data>
+  <data name="Settings_ToolPermissions_Cleared" xml:space="preserve">
+    <value>Cleared</value>
+  </data>
+  <data name="Settings_ToolPermissions_ClearFailed" xml:space="preserve">
+    <value>Clear failed</value>
+  </data>
+
   <!-- 软件更新 -->
   <data name="Settings_Update_Title" xml:space="preserve">
     <value>Software Update</value>

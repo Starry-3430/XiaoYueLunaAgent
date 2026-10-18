@@ -119,12 +119,23 @@
     <value>允许本次</value>
   </data>
   <data name="Dialog_ToolPermission_AllowAlways" xml:space="preserve">
-    <value>本轮对话始终允许</value>
+    <value>始终允许（记住）</value>
   </data>
   <data name="Dialog_ToolPermission_Deny" xml:space="preserve">
     <value>拒绝</value>
   </data>
   <data name="Dialog_ToolPermission_NoArgs" xml:space="preserve">
     <value>（无参数）</value>
+  </data>
+  <data name="Dialog_ToolPermission_BatchTitle" xml:space="preserve">
+    <value>需要授权（{0} 项）</value>
+  </data>
+  <data name="Dialog_ToolPermission_BatchBody" xml:space="preserve">
+    <value>以下 {0} 项敏感操作需要确认：</value>
+  </data>
+
+  <!-- ask_user -->
+  <data name="Dialog_AskUser_Title" xml:space="preserve">
+    <value>AI 向你提问</value>
   </data>
 </root>

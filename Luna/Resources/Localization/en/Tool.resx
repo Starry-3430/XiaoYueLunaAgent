@@ -45,14 +45,16 @@
   <data name="Tool_Powershell_Description" xml:space="preserve"><value>Run PowerShell commands.</value></data>
   <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>File Search</value></data>
   <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>Search files by name, preferring the Windows Search index.</value></data>
-  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File</value></data>
-  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read the contents of a specified file.</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File / Document</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read text/code, or convert PDF / Word / Excel / PPT documents to Markdown; supports keyword search and segmented reads.</value></data>
   <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>Write File</value></data>
   <data name="Tool_WriteFile_Description" xml:space="preserve"><value>Write file contents or create new files.</value></data>
   <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>Open File / App</value></data>
   <data name="Tool_FileOpen_Description" xml:space="preserve"><value>Open a specified file or launch an application.</value></data>
   <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>Screenshot</value></data>
   <data name="Tool_Screenshot_Description" xml:space="preserve"><value>Capture a screenshot.</value></data>
+  <data name="Tool_ReadScreen_DisplayName" xml:space="preserve"><value>Read Screen</value></data>
+  <data name="Tool_ReadScreen_Description" xml:space="preserve"><value>Capture the active window or the entire screen.</value></data>
   <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>Window Manager</value></data>
   <data name="Tool_WindowManager_Description" xml:space="preserve"><value>Manage window position, size and state.</value></data>
   <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>Volume / Brightness</value></data>
@@ -107,16 +109,16 @@
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>Search the internet and return the titles, URLs and content snippets of relevant web pages.</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>Get BBC news summaries or the local current date, time and month information.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
-  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read the contents of a text file (restricted by allowed directories, extensions and size).</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
-  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>Get news summaries or current date and month information.</value></data>
-  <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
-  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
-  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
-  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states; management actions require confirmation.</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Read or adjust system volume, mute state and monitor brightness; setting changes require confirmation.</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while this tool is enabled; entries stay in memory.</value></data>
+  <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
@@ -136,10 +138,35 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>Execution cancelled.</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>User denied execution.</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>, </value></data>
-  <data name="Tool_Screenshot_Msg_Cancelled" xml:space="preserve"><value>Screenshot cancelled.</value></data>
-  <data name="Tool_Screenshot_Msg_InvalidSize" xml:space="preserve"><value>The virtual desktop size is invalid or too large.</value></data>
-  <data name="Tool_Screenshot_Msg_Saved" xml:space="preserve"><value>Screenshot saved: {0}</value></data>
-  <data name="Tool_Screenshot_Msg_Failed" xml:space="preserve"><value>Screenshot failed: {0}</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Empty" xml:space="preserve"><value>No clipboard history yet. Luna only records text captured while this tool is enabled.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Cleared" xml:space="preserve"><value>Clipboard history cleared.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Copied" xml:space="preserve"><value>Copied clipboard history #{0} to the current clipboard.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_NotFound" xml:space="preserve"><value>Clipboard history #{0} was not found.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_InvalidAction" xml:space="preserve"><value>action must be list, copy or clear.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_List" xml:space="preserve"><value>Clipboard history:</value></data>
+  <data name="Tool_NewsCalendar_Msg_InvalidMode" xml:space="preserve"><value>mode must be news or calendar.</value></data>
+  <data name="Tool_NewsCalendar_Msg_HttpFailed" xml:space="preserve"><value>Failed to fetch news: HTTP {0}</value></data>
+  <data name="Tool_NewsCalendar_Msg_NoResults" xml:space="preserve"><value>No news items were returned.</value></data>
+  <data name="Tool_NewsCalendar_Msg_NewsHeading" xml:space="preserve"><value>News summary (BBC RSS):</value></data>
+  <data name="Tool_NewsCalendar_Msg_Cancelled" xml:space="preserve"><value>News request cancelled.</value></data>
+  <data name="Tool_NewsCalendar_Msg_Failed" xml:space="preserve"><value>Failed to fetch news: {0}</value></data>
+  <data name="Tool_WindowManager_Msg_InvalidAction" xml:space="preserve"><value>action must be list, minimize, maximize, restore, move, resize or close.</value></data>
+  <data name="Tool_WindowManager_Msg_NotFound" xml:space="preserve"><value>No matching visible window. Provide title or hwnd.</value></data>
+  <data name="Tool_WindowManager_Msg_MoveArgs" xml:space="preserve"><value>move requires x and y.</value></data>
+  <data name="Tool_WindowManager_Msg_ResizeArgs" xml:space="preserve"><value>resize requires width and height of at least 100x80.</value></data>
+  <data name="Tool_WindowManager_Msg_ListEmpty" xml:space="preserve"><value>No visible windows found.</value></data>
+  <data name="Tool_WindowManager_Msg_ListHeading" xml:space="preserve"><value>Visible windows:</value></data>
+  <data name="Tool_WindowManager_Msg_Done" xml:space="preserve"><value>Window action {0} completed.</value></data>
+  <data name="Tool_WindowManager_Msg_Failed" xml:space="preserve"><value>Window operation failed: {0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target must be volume or brightness.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>Cannot access the default audio output device.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>Volume: {0:0.#}%; muted: {1}.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>Setting brightness requires value (0-100).</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>Brightness operation cancelled.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>Brightness adjustment failed; this monitor may not support software control.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessFailed" xml:space="preserve"><value>Brightness adjustment failed: {0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessSet" xml:space="preserve"><value>Screen brightness set to {0}%.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_VolumeFailed" xml:space="preserve"><value>Volume operation failed: {0}</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>Path is empty.</value></data>
@@ -173,6 +200,12 @@
 
   <!-- read_clipboard -->
   <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>Failed to read the clipboard: {0}</value></data>
+
+  <!-- read_screen -->
+  <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>Capture mode: active_window (current focused window, recommended) or fullscreen (entire screen). Default: active_window.</value></data>
+  <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>Captured the screen (mode: {0}). Image saved at: {1}</value></data>
+  <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>Screenshot failed: {0}</value></data>
+  <data name="Tool_ReadScreen_Msg_ImageInjected" xml:space="preserve"><value>Here is the screenshot just captured:</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>Python code to run (Python only). Best-effort sandbox: networking and file-system access are blocked (regex blocklist for import socket/urllib/requests, open(), os./shutil/pathlib/subprocess, etc.).</value></data>
@@ -283,10 +316,22 @@ Offending segment: {0}</value></data>
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>… (output truncated)</value></data>
 
   <!-- read_file -->
-  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; common text/code extensions are supported.</value></data>
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; supports text/code files plus PDF, Word, Excel, PPT, HTML and similar documents.</value></data>
+  <data name="Tool_ReadFile_Param_Keyword" xml:space="preserve"><value>Optional: search for a keyword (case-insensitive) and return matching lines with context. Prefer this for large files.</value></data>
+  <data name="Tool_ReadFile_Param_StartLine" xml:space="preserve"><value>Optional: 1-based start line for reading a segment.</value></data>
+  <data name="Tool_ReadFile_Param_EndLine" xml:space="preserve"><value>Optional: inclusive end line; up to 120 lines are read when omitted.</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
   <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>The file is not readable text (it may be binary or encrypted), so it was not read.</value></data>
+  <data name="Tool_ReadFile_Msg_Empty" xml:space="preserve"><value>No text content could be extracted from this document.</value></data>
+  <data name="Tool_ReadFile_Msg_TooLarge" xml:space="preserve"><value>The file is too large ({0}) to read in one call. Provide a keyword to search, or use start_line/end_line to read a segment.</value></data>
+  <data name="Tool_ReadFile_Msg_SearchHeader" xml:space="preserve"><value>Search "{1}" in {0}: showing {2} match(es):</value></data>
+  <data name="Tool_ReadFile_Msg_MoreMatches" xml:space="preserve"><value>(More matches may exist; add a keyword or narrow the line range.)</value></data>
+  <data name="Tool_ReadFile_Msg_KeywordNotFound" xml:space="preserve"><value>Keyword "{0}" was not found. Try a shorter keyword, or use start_line/end_line to read a segment.</value></data>
+  <data name="Tool_ReadFile_Msg_RangeHeader" xml:space="preserve"><value>{0}, lines {1}-{2}:</value></data>
+  <data name="Tool_ReadFile_Msg_RangeEmpty" xml:space="preserve"><value>No content in lines {0}-{1} (the file may be shorter).</value></data>
+  <data name="Tool_ReadFile_Msg_BadRange" xml:space="preserve"><value>Invalid line range: start line {0} is greater than end line {1}.</value></data>
+  <data name="Tool_ReadFile_Msg_ResultTruncated" xml:space="preserve"><value>... (result exceeded the length limit and was truncated; narrow the range or use a more specific keyword.)</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>
@@ -363,6 +408,7 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
   <data name="Tool_Arg_Content" xml:space="preserve"><value>Content</value></data>
   <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>Write mode</value></data>
+  <data name="Tool_Arg_Mode" xml:space="preserve"><value>Mode</value></data>
   <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>Create</value></data>
   <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>Overwrite</value></data>
   <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>Append</value></data>
@@ -377,10 +423,33 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Tool_Arg_TaskId" xml:space="preserve"><value>Task ID</value></data>
   <data name="Tool_Arg_Keyword" xml:space="preserve"><value>Keyword</value></data>
+  <data name="Tool_Arg_LineRange" xml:space="preserve"><value>Line range</value></data>
   <data name="Tool_Arg_Limit" xml:space="preserve"><value>Limit</value></data>
   <data name="Tool_Arg_Key" xml:space="preserve"><value>Key</value></data>
   <data name="Tool_Arg_Value" xml:space="preserve"><value>Value</value></data>
   <data name="Tool_Arg_GitAction" xml:space="preserve"><value>Action</value></data>
   <data name="Tool_Arg_Args" xml:space="preserve"><value>Arguments</value></data>
   <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>Commit message</value></data>
+
+  <!-- ask_user -->
+  <data name="Tool_AskUser_DisplayName" xml:space="preserve"><value>Ask User</value></data>
+  <data name="Tool_AskUser_Description" xml:space="preserve"><value>Ask the user for missing information or a decision.</value></data>
+  <data name="Tool_AskUser_AiDescription" xml:space="preserve"><value>Ask the user when essential information is missing, the request is ambiguous, or the user must choose between options. Blocks until the user answers. On timeout, the first option is selected automatically; a text prompt returns a timeout result.</value></data>
+  <data name="Tool_AskUser_Param_Question" xml:space="preserve"><value>The question to ask. Be clear and specific.</value></data>
+  <data name="Tool_AskUser_Param_Options" xml:space="preserve"><value>Optional choices. If provided, the user picks one; the first choice is used automatically if the user does not respond. Otherwise a text box is shown.</value></data>
+  <data name="Tool_AskUser_Msg_Answer" xml:space="preserve"><value>The user's answer: {0}</value></data>
+  <data name="Tool_AskUser_Msg_Cancelled" xml:space="preserve"><value>The user cancelled the answer.</value></data>
+  <data name="Tool_AskUser_Msg_Closed" xml:space="preserve"><value>The user closed the question dialog.</value></data>
+  <data name="Tool_AskUser_Msg_Empty" xml:space="preserve"><value>The user provided no content.</value></data>
+  <data name="Tool_AskUser_Msg_Timeout" xml:space="preserve"><value>The user did not answer in time.</value></data>
+  <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>The user did not answer in time; the default option was selected: {0}</value></data>
+  <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>Unable to show the question dialog right now.</value></data>
+  <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>Failed to show the question dialog: {0}</value></data>
+
+  <!-- enable_tool_group -->
+  <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>Unlock Tool Group</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information), filesystem (file operations), system_dev (system &amp; dev: PowerShell/code/Git), memory_organize (memory &amp; tasks).</value></data>
+  <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>The tool group to unlock: info, filesystem, system_dev, or memory_organize.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>Tool group unlocked: {0}. Available tools: {1}. Use them in the next round.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>Unknown tool group: {0}.</value></data>
 </root>
