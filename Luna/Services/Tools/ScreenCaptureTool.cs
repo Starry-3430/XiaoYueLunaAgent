@@ -137,8 +137,14 @@ public class ReadScreenTool : ITool
     /// <summary>把 Luna 窗口移出所有屏幕的坐标（足够覆盖多屏向左扩展的情况）。</summary>
     private const double OffScreenCoordinate = -10000d;
 
-    /// <summary>移走窗口后等待 DWM 重新合成一帧、并让下方窗口重绘的时间。</summary>
-    private const int ScreenshotDelayMs = 500;
+    /// <summary>
+    /// 用户接受截图指令（若需授权，则从授权完成）后、真正截图前的等待时间。
+    /// 工具执行入口本身就在授权完成之后，所以在这里等待即可。
+    /// </summary>
+    private const int UserInstructionDelayMs = 500;
+
+    /// <summary>窗口移出屏幕后等待 DWM 重新合成的时间；尽量短，减少窗口消失的违和感。</summary>
+    private const int WindowHideSettleMs = 50;
 
     private static readonly JsonElement Schema = ToolSchema.Parse("""
     {
@@ -179,13 +185,17 @@ public class ReadScreenTool : ITool
 
         try
         {
-            // 1. 把 Luna 自己的窗口临时移出屏幕（最大化窗口退化为隐藏）
+            // 1. 用户指令已接受（需要授权时，授权已在进入本方法前完成）→ 先等 0.5 秒。
+            //    这段时间 Luna 仍然可见，不做任何窗口移动。
+            await Task.Delay(UserInstructionDelayMs, ct);
+
+            // 2. 仅在真正截图的瞬间把 Luna 窗口移出屏幕
             movedWindows = await MoveLunaWindowsOffScreenAsync();
 
-            // 2. 等待 DWM 合成新一帧，并让下方窗口获得焦点/重绘
-            await Task.Delay(ScreenshotDelayMs, ct);
+            // 3. 极短等待，让 DWM 合成移走窗口后的新一帧
+            await Task.Delay(WindowHideSettleMs, ct);
 
-            // 3. 在后台线程截图并保存，避免大屏幕截图阻塞 UI
+            // 4. 在后台线程截图并保存，避免大屏幕截图阻塞 UI
             return await Task.Run(() =>
             {
                 try
@@ -235,7 +245,7 @@ public class ReadScreenTool : ITool
         }
         finally
         {
-            // 4. 【必须】无论成功、失败还是取消，都恢复 Luna 窗口
+            // 5. 【必须】无论成功、失败还是取消，都恢复 Luna 窗口
             await RestoreLunaWindowsAsync(movedWindows);
         }
     }
