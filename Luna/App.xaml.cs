@@ -237,6 +237,8 @@ public partial class App : Application
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
                 services.AddSingleton<DailyBriefingJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<DailyBriefingJob>());
+                services.AddSingleton<AutoBackupJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<AutoBackupJob>());
                 services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();
