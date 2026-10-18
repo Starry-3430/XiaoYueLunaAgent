@@ -26,6 +26,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- UseWindowsForms 会注入全局 using，和 WPF 类型大量冲突，这里移除，按需显式引用 -->
+        <Using Remove="System.Drawing" />
+        <Using Remove="System.Windows.Forms" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Resource Include="Assets\CascadiaMono.ttf" />
         <Resource Include="Assets\icons\ChatUI\attachmentimport.png" />
         <Resource Include="Assets\icons\DiaryUI\failed.png" />
