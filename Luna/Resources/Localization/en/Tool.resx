@@ -115,6 +115,9 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states; management actions require confirmation.</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Read or adjust system volume, mute state and monitor brightness; setting changes require confirmation.</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while this tool is enabled; entries stay in memory.</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
   <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
   <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>

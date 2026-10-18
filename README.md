@@ -10,7 +10,11 @@
 
 ---
 
+<<<<<<< HEAD
 ![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
+=======
+![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B%20%7C%20Screenshot%202004%2B&color=blue)
+>>>>>>> 9f8d757 (补充剩余系统工具)
 
 *当前仅支持 Windows*
 
@@ -262,8 +266,7 @@ Luna/
 
 ### 计划中
 
-- [ ] OCR 与语音输入
-- [ ] 自动事实抽取与事实管理 UI
+- [ ] OCR 与语音输入`r`n- [ ] 自动事实抽取与事实管理 UI
 
 ---
 
