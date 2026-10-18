@@ -450,7 +450,7 @@
 
   <!-- enable_tool_group -->
   <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>解锁工具组</value></data>
-  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：info（网络信息）、filesystem（文件操作）、system_dev（系统与开发：PowerShell/代码/Git）、memory_organize（记忆与待办修改）。</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：info（网络信息、新闻与日历）、filesystem（文件操作与截图）、system_dev（系统与开发：PowerShell/代码/Git、窗口与音量/亮度控制）、memory_organize（记忆、待办与剪贴板历史）。</value></data>
   <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>需要解锁的工具组：info、filesystem、system_dev 或 memory_organize。</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>已解锁工具组：{0}。可用工具：{1}。请在下一轮直接使用。</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>未知工具组：{0}。</value></data>

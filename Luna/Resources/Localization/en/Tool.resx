@@ -449,7 +449,7 @@ Its content will be lost.</value></data>
 
   <!-- enable_tool_group -->
   <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>Unlock Tool Group</value></data>
-  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information), filesystem (file operations), system_dev (system &amp; dev: PowerShell/code/Git), memory_organize (memory &amp; tasks).</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information, news &amp; calendar), filesystem (file operations &amp; screenshots), system_dev (system &amp; dev: PowerShell/code/Git, window and volume/brightness control), memory_organize (memory, tasks &amp; clipboard history).</value></data>
   <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>The tool group to unlock: info, filesystem, system_dev, or memory_organize.</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>Tool group unlocked: {0}. Available tools: {1}. Use them in the next round.</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>Unknown tool group: {0}.</value></data>
