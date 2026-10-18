@@ -56,8 +56,16 @@ public sealed class ClipboardHistoryService : IDisposable
     public async Task<bool> CopyAsync(int id)
     {
         if (!TryGet(id, out var entry) || entry is null) return false;
-        await Application.Current.Dispatcher.InvokeAsync(() => Clipboard.SetText(entry.Text));
-        return true;
+        try
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() => Clipboard.SetText(entry.Text));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "复制剪贴板历史失败：{Id}", id);
+            return false;
+        }
     }
 
     private void CaptureCurrent()

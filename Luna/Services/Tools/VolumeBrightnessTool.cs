@@ -26,18 +26,23 @@ public sealed class VolumeBrightnessTool : ITool
 
     private ToolResult HandleVolume(JsonElement args)
     {
-        var endpoint = ActivateEndpoint();
-        if (endpoint is null) return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_NoAudio"));
+        IAudioEndpointVolume? endpoint = null;
         try
         {
-            endpoint.GetMasterVolumeLevelScalar(out var current); endpoint.GetMute(out var muted);
+            endpoint = ActivateEndpoint();
+            if (endpoint is null) return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_NoAudio"));
+            endpoint.GetMasterVolumeLevelScalar(out _); endpoint.GetMute(out _);
             if (TryGetNumber(args, "value", out var value)) endpoint.SetMasterVolumeLevelScalar((float)Math.Clamp(value / 100d, 0, 1), Guid.Empty);
             if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("muted", out var m) && m.ValueKind is JsonValueKind.True or JsonValueKind.False) endpoint.SetMute(m.GetBoolean(), Guid.Empty);
             endpoint.GetMasterVolumeLevelScalar(out var updated); endpoint.GetMute(out var updatedMuted);
-            Marshal.ReleaseComObject(endpoint);
-            return ToolResult.Ok(ToolLocalization.Text("Tool_VolumeBrightness_Msg_Volume", updated * 100, updatedMuted ? "是" : "否"));
+            return ToolResult.Ok(ToolLocalization.Text("Tool_VolumeBrightness_Msg_Volume", updated * 100,
+                ToolLocalization.Text(updatedMuted ? "Tool_VolumeBrightness_Msg_Muted" : "Tool_VolumeBrightness_Msg_Unmuted")));
         }
         catch (Exception ex) { _logger.LogError(ex, "音量操作失败"); return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_VolumeFailed", ex.Message)); }
+        finally
+        {
+            if (endpoint is not null && Marshal.IsComObject(endpoint)) Marshal.ReleaseComObject(endpoint);
+        }
     }
 
     private ToolResult HandleBrightness(JsonElement args, CancellationToken ct)
@@ -50,11 +55,17 @@ public sealed class VolumeBrightnessTool : ITool
         psi.ArgumentList.Add("-NoProfile"); psi.ArgumentList.Add("-NonInteractive"); psi.ArgumentList.Add("-Command"); psi.ArgumentList.Add(script);
         try
         {
-            using var process = Process.Start(psi)!; process.WaitForExit(10_000); var error = process.StandardError.ReadToEnd();
+            using var process = Process.Start(psi)!;
+            if (!process.WaitForExit(10_000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* best effort */ }
+                return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessFailed", "操作超时"));
+            }
+            var error = process.StandardError.ReadToEnd();
             if (process.ExitCode != 0) return ToolResult.Error(string.IsNullOrWhiteSpace(error) ? ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessUnsupported") : ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessFailed", error.Trim()));
             return ToolResult.Ok(ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessSet", level));
         }
-        catch (Exception ex) { _logger.LogError(ex, "亮度操作失败"); return ToolResult.Error($"亮度操作失败：{ex.Message}"); }
+        catch (Exception ex) { _logger.LogError(ex, "亮度操作失败"); return ToolResult.Error(ToolLocalization.Text("Tool_VolumeBrightness_Msg_BrightnessFailed", ex.Message)); }
     }
 
     private static bool TryGetNumber(JsonElement args, string name, out double value) { value = 0; return args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var v) && v.TryGetDouble(out value); }

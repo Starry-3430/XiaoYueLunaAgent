@@ -28,7 +28,6 @@ public class EditorContextMenu
     private readonly Button _copyButton;
     private readonly Button _pasteButton;
     private Func<bool>? _tryPasteAttachment;
-    private bool _isOpen;
     private bool _windowEventsAttached;
     private Window? _window;
 
@@ -128,7 +127,6 @@ public class EditorContextMenu
             StaysOpen = true,          // 改为 true，避免右键事件序列导致立即关闭
             AllowsTransparency = true,
         };
-        _popup.Closed += (_, _) => _isOpen = false;
 
         target.ContextMenu = null;
         target.ContextMenuOpening += (_, e) => e.Handled = true;
@@ -200,7 +198,6 @@ public class EditorContextMenu
     private void CloseMenu()
     {
         _popup.IsOpen = false;
-        _isOpen = false;
     }
 
     // 右键打开逻辑
@@ -228,7 +225,6 @@ public class EditorContextMenu
         _target.Dispatcher.BeginInvoke(new Action(() =>
         {
             _popup.IsOpen = true;
-            _isOpen = true;
         }), System.Windows.Threading.DispatcherPriority.Input);
     }
 

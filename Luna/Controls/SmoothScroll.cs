@@ -25,7 +25,7 @@ public static class SmoothScroll
         public bool HActive;
         public bool Rendering;
         public long LastTimestamp;
-        public EventHandler RenderingHandler;
+        public EventHandler? RenderingHandler;
     }
 
     private static readonly ConditionalWeakTable<ScrollViewer, State> States = new();
