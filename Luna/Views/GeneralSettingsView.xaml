@@ -16,6 +16,26 @@
     </UserControl.Resources>
 
     <StackPanel PreviewMouseDown="Root_PreviewMouseDown">
+        <!-- 软件更新 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc Settings_Update_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Update_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Content="{loc:Loc Settings_Update_CheckButton}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 字体 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>
@@ -364,6 +384,29 @@
             </Grid>
         </Border>
 
+        <!-- 数据备份 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc Settings_Backup_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Backup_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding BackupStatus}" Foreground="#78A29F" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               MaxWidth="320" TextWrapping="Wrap"/>
+                    <Button Content="{loc:Loc Settings_Import_Button}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Margin="0,0,6,0" Command="{Binding ImportDataCommand}"/>
+                    <Button Content="{loc:Loc Settings_Backup_ExportButton}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding ExportDataCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 工具授权 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>
@@ -380,26 +423,6 @@
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button Content="{loc:Loc Settings_ToolPermissions_Clear}" Style="{StaticResource SecondaryActionButton}"
                             Padding="12,6" Command="{Binding ClearPersistentToolPermissionsCommand}"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 软件更新 -->
-        <Border Style="{StaticResource SettingsCard}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="{loc:Loc Settings_Update_Title}" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="{loc:Loc Settings_Update_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
-                               VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <Button Content="{loc:Loc Settings_Update_CheckButton}" Style="{StaticResource SecondaryActionButton}"
-                            Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>

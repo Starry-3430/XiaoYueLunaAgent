@@ -1,6 +1,9 @@
 using System.IO;
 using System.Security.Cryptography;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
+using Luna.Services;
 
 namespace Luna.Services.Data;
 
@@ -11,12 +14,14 @@ namespace Luna.Services.Data;
 public class FileStorageService
 {
     private readonly ILogger<FileStorageService> _logger;
+    private readonly DatabaseInitializer _db;
 
     /// <summary>blobs 根目录：%LocalAppData%\Luna\blobs。</summary>
     public string BlobsRoot { get; }
 
-    public FileStorageService(ILogger<FileStorageService> logger)
+    public FileStorageService(DatabaseInitializer db, ILogger<FileStorageService> logger)
     {
+        _db = db;
         _logger = logger;
         BlobsRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -94,6 +99,52 @@ public class FileStorageService
             _logger.LogWarning(ex, "删除附件 blob 失败：{Path}", path);
             return false;
         }
+    }
+
+    /// <summary>
+    /// 删除数据库未引用的 blob 文件（例如恢复备份后遗留的旧附件）。
+    /// 读取引用失败时不做删除，避免误删仍在使用的附件。
+    /// </summary>
+    public async Task<int> CleanupOrphansAsync(CancellationToken ct = default)
+    {
+        if (!Directory.Exists(BlobsRoot)) return 0;
+
+        var referenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            using var conn = new SqliteConnection($"{_db.ConnectionString};Pooling=False");
+            await conn.OpenAsync(ct);
+            var hashes = await conn.QueryAsync<string>(new CommandDefinition(
+                "SELECT DISTINCT Sha256 FROM Attachments WHERE Sha256 IS NOT NULL AND Sha256 <> ''",
+                cancellationToken: ct));
+            foreach (var hash in hashes) referenced.Add(hash);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "读取附件引用失败，跳过孤儿文件清理");
+            return 0;
+        }
+
+        var deleted = 0;
+        foreach (var path in Directory.EnumerateFiles(BlobsRoot))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (referenced.Contains(Path.GetFileName(path))) continue;
+
+            try
+            {
+                File.Delete(path);
+                deleted++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "删除孤儿附件失败：{Path}", path);
+            }
+        }
+
+        if (deleted > 0)
+            _logger.LogInformation("已清理孤儿附件文件：{Count} 个", deleted);
+        return deleted;
     }
 
     private static async Task<string> ComputeSha256Async(string path, CancellationToken ct)
