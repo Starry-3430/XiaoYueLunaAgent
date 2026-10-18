@@ -37,7 +37,7 @@ public class ToolPermissionService
     }
 
     /// <summary>永不缓存授权、每次都需确认的工具（如 powershell）。</summary>
-    private static bool IsAlwaysConfirm(ITool tool)
+    public static bool IsAlwaysConfirm(ITool tool)
         => string.Equals(tool.Name, "powershell", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>当前对话是否已对本工具选择过“始终允许”。</summary>
@@ -126,6 +126,143 @@ public class ToolPermissionService
             dispatcher.Invoke(ShowDialog);
 
         return decision;
+    }
+
+    /// <summary>
+    /// 弹出批量授权确认框：一次展示本轮所有待确认工具，并统一返回选择。
+    /// 只有 1 项时复用单工具确认框；0 项视为无需确认。
+    /// </summary>
+    public ToolPermissionDecision RequestBatchConfirmation(
+        string? conversationId, IReadOnlyList<(ITool Tool, ToolCallEntry Entry)> tools)
+    {
+        if (tools.Count == 0) return ToolPermissionDecision.AllowOnce;
+        if (tools.Count == 1)
+            return RequestConfirmation(tools[0].Tool, tools[0].Entry.ArgumentsJson);
+
+        var decision = ToolPermissionDecision.Deny;
+
+        void ShowDialog()
+        {
+            var dialog = new LunaDialog
+            {
+                Owner = GetOwner(),
+                DialogTitle = LocalizationService.Instance.Format(
+                    "Dialog_ToolPermission_BatchTitle", tools.Count),
+                DialogContent = BuildBatchContent(tools),
+            };
+
+            var buttons = new ObservableCollection<DialogButton>
+            {
+                new()
+                {
+                    Text = LocalizationService.Instance["Dialog_ToolPermission_AllowOnce"],
+                    StyleKey = "StyleBeige",
+                    Command = new RelayCommand(() =>
+                    {
+                        decision = ToolPermissionDecision.AllowOnce;
+                        dialog.Close();
+                    }),
+                },
+            };
+
+            // 只要包含每次都必须确认的工具（如 powershell），就不提供“始终允许”。
+            if (!tools.Any(t => IsAlwaysConfirm(t.Tool)))
+            {
+                buttons.Add(new()
+                {
+                    Text = LocalizationService.Instance["Dialog_ToolPermission_AllowAlways"],
+                    StyleKey = "StyleDanger",
+                    Command = new RelayCommand(() =>
+                    {
+                        decision = ToolPermissionDecision.AllowAlways;
+                        dialog.Close();
+                    }),
+                });
+            }
+
+            buttons.Add(new()
+            {
+                Text = LocalizationService.Instance["Dialog_ToolPermission_Deny"],
+                StyleKey = "StyleCancel",
+                Command = new RelayCommand(() =>
+                {
+                    decision = ToolPermissionDecision.Deny;
+                    dialog.Close();
+                }),
+            });
+
+            dialog.Buttons = buttons;
+
+            dialog.ShowDialog();
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            ShowDialog();
+        else
+            dispatcher.Invoke(ShowDialog);
+
+        return decision;
+    }
+
+    /// <summary>批量确认框内容：逐项列出工具名与格式化后的参数（可滚动）。</summary>
+    private static UIElement BuildBatchContent(IReadOnlyList<(ITool Tool, ToolCallEntry Entry)> tools)
+    {
+        var loc = LocalizationService.Instance;
+        var panel = new StackPanel();
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = loc.Format("Dialog_ToolPermission_BatchBody", tools.Count),
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+
+        var items = new StackPanel();
+        for (var i = 0; i < tools.Count; i++)
+        {
+            var (tool, entry) = tools[i];
+            var item = new StackPanel();
+
+            item.Children.Add(new TextBlock
+            {
+                Text = $"{i + 1}. {tool.DisplayName}",
+                Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+            });
+            item.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(entry.ArgumentsJson)
+                    ? loc["Dialog_ToolPermission_NoArgs"]
+                    : ToolArgumentFormatter.FormatArguments(tool.Name, entry.ArgumentsJson),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B)),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 0),
+            });
+
+            items.Children.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(0xE4, 0xE0, 0xCA)),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 8, 10, 8),
+                Margin = new Thickness(0, 0, 0, 6),
+                Child = item,
+            });
+        }
+
+        panel.Children.Add(new ScrollViewer
+        {
+            MaxHeight = 320,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = items,
+        });
+
+        return panel;
     }
 
     private static UIElement BuildContent(ITool tool, string argumentsJson)

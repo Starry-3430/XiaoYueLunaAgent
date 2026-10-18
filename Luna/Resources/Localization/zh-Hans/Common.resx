@@ -51,6 +51,8 @@
   <data name="Common_Tool_ExecFailed" xml:space="preserve"><value>执行失败: {0}</value></data>
   <data name="Common_Tool_Timeout" xml:space="preserve"><value>工具 {0} 执行超过 {1:0} 秒，已被中止；请缩小任务范围或重试。</value></data>
   <data name="Common_Tool_ResultTruncated" xml:space="preserve"><value>… (结果已截断)</value></data>
+  <data name="Common_TurnTimeout" xml:space="preserve"><value>本轮对话执行时间过长，已自动终止。</value></data>
+  <data name="Common_ToolLoopDetected" xml:space="preserve"><value>AI 似乎陷入了工具调用的死循环，已自动中止。</value></data>
 
   <!-- 注入提示词的运行环境 -->
   <data name="Common_UserEnv_Title" xml:space="preserve"><value>## 当前运行环境与用户目录</value></data>

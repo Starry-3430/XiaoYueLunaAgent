@@ -127,4 +127,10 @@ Continue?</value>
   <data name="Dialog_ToolPermission_NoArgs" xml:space="preserve">
     <value>(no arguments)</value>
   </data>
+  <data name="Dialog_ToolPermission_BatchTitle" xml:space="preserve">
+    <value>Authorization Required ({0})</value>
+  </data>
+  <data name="Dialog_ToolPermission_BatchBody" xml:space="preserve">
+    <value>The following {0} sensitive operations require your confirmation:</value>
+  </data>
 </root>

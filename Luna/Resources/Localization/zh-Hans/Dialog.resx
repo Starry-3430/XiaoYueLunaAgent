@@ -127,4 +127,10 @@
   <data name="Dialog_ToolPermission_NoArgs" xml:space="preserve">
     <value>（无参数）</value>
   </data>
+  <data name="Dialog_ToolPermission_BatchTitle" xml:space="preserve">
+    <value>需要授权（{0} 项）</value>
+  </data>
+  <data name="Dialog_ToolPermission_BatchBody" xml:space="preserve">
+    <value>以下 {0} 项敏感操作需要确认：</value>
+  </data>
 </root>
