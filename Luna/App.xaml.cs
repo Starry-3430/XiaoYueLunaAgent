@@ -389,11 +389,12 @@ public partial class App : Application
         // 3. 注册 WpfMarkdownViewer 插件（语法高亮、数学、SVG、Mermaid）
         DefaultCapabilities.RegisterAll();
 
-        // 3.5 应用待恢复的备份：必须在 Host 启动与数据库初始化之前，避免运行中覆盖 SQLite
+        // 3.5 应用待恢复的备份：必须在 Host 启动与数据库初始化之前，避免运行中覆盖 SQLite。
+        // 注意：这里运行在 UI 线程，若直接阻塞等待 async 方法，会因续体调度回 UI 线程而死锁。
         try
         {
-            _host.Services.GetRequiredService<DataImportService>()
-                .ApplyPendingRestoreAsync().GetAwaiter().GetResult();
+            Task.Run(() => _host.Services.GetRequiredService<DataImportService>()
+                .ApplyPendingRestoreAsync()).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {

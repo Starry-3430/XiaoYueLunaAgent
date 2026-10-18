@@ -16,6 +16,26 @@
     </UserControl.Resources>
 
     <StackPanel PreviewMouseDown="Root_PreviewMouseDown">
+        <!-- 软件更新 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc Settings_Update_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Update_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Content="{loc:Loc Settings_Update_CheckButton}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 字体 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>
@@ -403,26 +423,6 @@
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Button Content="{loc:Loc Settings_ToolPermissions_Clear}" Style="{StaticResource SecondaryActionButton}"
                             Padding="12,6" Command="{Binding ClearPersistentToolPermissionsCommand}"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 软件更新 -->
-        <Border Style="{StaticResource SettingsCard}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="{loc:Loc Settings_Update_Title}" Style="{StaticResource SettingsTitle}"/>
-                    <TextBlock Text="{loc:Loc Settings_Update_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding UpdateStatus}" Foreground="#5B4833" FontSize="13"
-                               VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <Button Content="{loc:Loc Settings_Update_CheckButton}" Style="{StaticResource SecondaryActionButton}"
-                            Padding="12,6" Command="{Binding CheckUpdateCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>
