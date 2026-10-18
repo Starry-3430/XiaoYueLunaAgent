@@ -65,6 +65,47 @@ public class FactRepository
     }
 
     /// <summary>
+    /// 按用户原始输入检索相关事实。无法提炼关键词或没有匹配时，
+    /// 回退到最近更新的 <paramref name="limit"/> 条，避免完全失去上下文。
+    /// </summary>
+    public async Task<List<Fact>> SearchRelevantAsync(string query, int limit = 5)
+    {
+        if (limit <= 0)
+            return [];
+
+        if (string.IsNullOrWhiteSpace(query))
+            return await GetRecentAsync(limit);
+
+        var keywords = FactQueryKeywords.Extract(query);
+        if (keywords.Count == 0)
+            return await GetRecentAsync(limit);
+
+        try
+        {
+            var facts = await SearchRelevantAsync(keywords, limit);
+            return facts.Count > 0 ? facts : await GetRecentAsync(limit);
+        }
+        catch (SqliteException)
+        {
+            // FTS5 不可用或查询异常：退化为按时间取最近事实。
+            return await GetRecentAsync(limit);
+        }
+    }
+
+    /// <summary>最近更新的若干条事实（检索兜底）。</summary>
+    public async Task<List<Fact>> GetRecentAsync(int limit)
+    {
+        if (limit <= 0)
+            return [];
+
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        var rows = await conn.QueryAsync<Fact>(
+            "SELECT * FROM Facts ORDER BY UpdatedAtUtc DESC LIMIT @Limit",
+            new { Limit = limit });
+        return rows.ToList();
+    }
+
+    /// <summary>
     /// 按关键词检索最相关的事实：优先走 FTS5（trigram，适配 3 字及以上中文/英文），
     /// 2 字及以下关键词用 LIKE 兜底。结果去重后最多返回 <paramref name="limit"/> 条。
     /// </summary>
@@ -89,20 +130,27 @@ public class FactRepository
         var ftsTerms = terms.Where(k => k.Length >= 3).Take(8).ToList();
         if (ftsTerms.Count > 0)
         {
-            var query = string.Join(" OR ", ftsTerms.Select(QuoteFtsTerm));
-            var rows = await conn.QueryAsync<Fact>(
-                @"SELECT f.*
-                  FROM FactsFts
-                  JOIN Facts f ON f.Id = FactsFts.rowid
-                  WHERE FactsFts MATCH @Query
-                  ORDER BY bm25(FactsFts, 4.0, 1.0)
-                  LIMIT @Limit",
-                new { Query = query, Limit = limit * 3 });
-
-            foreach (var row in rows)
+            try
             {
-                if (seen.Add(row.Id))
-                    results.Add(row);
+                var query = string.Join(" OR ", ftsTerms.Select(QuoteFtsTerm));
+                var rows = await conn.QueryAsync<Fact>(
+                    @"SELECT f.*
+                      FROM FactsFts
+                      JOIN Facts f ON f.Id = FactsFts.rowid
+                      WHERE FactsFts MATCH @Query
+                      ORDER BY bm25(FactsFts, 4.0, 1.0)
+                      LIMIT @Limit",
+                    new { Query = query, Limit = limit * 3 });
+
+                foreach (var row in rows)
+                {
+                    if (seen.Add(row.Id))
+                        results.Add(row);
+                }
+            }
+            catch (SqliteException)
+            {
+                // FTS5 查询失败时继续用下面的 LIKE 兜底。
             }
         }
 
