@@ -401,13 +401,15 @@
   <!-- ask_user -->
   <data name="Tool_AskUser_DisplayName" xml:space="preserve"><value>询问用户</value></data>
   <data name="Tool_AskUser_Description" xml:space="preserve"><value>缺少关键信息或需要用户做决定时，向用户提问。</value></data>
-  <data name="Tool_AskUser_AiDescription" xml:space="preserve"><value>当缺少完成任务的关键信息、需求存在歧义，或需要用户在多个选项间做决定时，向用户提问。调用后会等待用户回答。</value></data>
+  <data name="Tool_AskUser_AiDescription" xml:space="preserve"><value>当缺少完成任务的关键信息、需求存在歧义，或需要用户在多个选项间做决定时，向用户提问。调用后会等待用户回答；超时时有选项则自动采用第一个选项，填空则返回超时结果。</value></data>
   <data name="Tool_AskUser_Param_Question" xml:space="preserve"><value>向用户提出的问题，应清晰、具体。</value></data>
-  <data name="Tool_AskUser_Param_Options" xml:space="preserve"><value>可选选项。提供后用户从中选择；不提供则显示文本输入框。</value></data>
+  <data name="Tool_AskUser_Param_Options" xml:space="preserve"><value>可选选项。提供后用户从中选择，第一个选项为超时默认值；不提供则显示文本输入框。</value></data>
   <data name="Tool_AskUser_Msg_Answer" xml:space="preserve"><value>用户的回答：{0}</value></data>
   <data name="Tool_AskUser_Msg_Cancelled" xml:space="preserve"><value>用户取消了回答。</value></data>
   <data name="Tool_AskUser_Msg_Closed" xml:space="preserve"><value>用户关闭了提问窗口。</value></data>
   <data name="Tool_AskUser_Msg_Empty" xml:space="preserve"><value>用户没有提供内容。</value></data>
+  <data name="Tool_AskUser_Msg_Timeout" xml:space="preserve"><value>用户未在时限内回答。</value></data>
+  <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>用户未在时限内回答，已自动选择默认选项：{0}</value></data>
   <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>当前无法显示提问窗口。</value></data>
   <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>显示提问窗口失败：{0}</value></data>
 </root>

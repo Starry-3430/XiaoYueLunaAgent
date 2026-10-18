@@ -31,8 +31,11 @@ public class AskUserTool : ITool
         .Replace("$options$", Param("Tool_AskUser_Param_Options")));
     public ToolRiskLevel Risk => ToolRiskLevel.Low;
 
-    /// <summary>给用户充足的响应时间；超时后由外层工具超时逻辑关闭弹窗。</summary>
-    public TimeSpan ExecutionTimeout => TimeSpan.FromMinutes(5);
+    /// <summary>用户无响应的时限；超时后自动关闭弹窗（有选项时选第一个）。</summary>
+    private static readonly TimeSpan ResponseTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>比内部超时稍长，作为外层硬兜底，确保内部超时能先返回结果。</summary>
+    public TimeSpan ExecutionTimeout => ResponseTimeout + TimeSpan.FromSeconds(15);
 
     /// <summary>对话框内的输入状态，便于确认按钮与外部点击关闭共享同一份数据。</summary>
     private sealed class InputState
@@ -53,8 +56,32 @@ public class AskUserTool : ITool
             return Task.FromResult(ToolResult.Error(Text("Tool_AskUser_Msg_Unavailable")));
 
         var options = GetOptions(args);
+        var defaultOption = options.Count > 0 ? options[0] : null;
         var tcs = new TaskCompletionSource<ToolResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         LunaDialog? dialog = null;
+
+        // 内部响应超时：到点后关闭弹窗；有选项时自动采用第一个选项，填空则返回超时错误。
+        using var timeoutCts = new CancellationTokenSource(ResponseTimeout);
+        using var timeoutRegistration = timeoutCts.Token.Register(() =>
+        {
+            if (tcs.Task.IsCompleted)
+                return;
+
+            var result = defaultOption is not null
+                ? ToolResult.Ok(Text("Tool_AskUser_Msg_TimeoutDefault", defaultOption))
+                : ToolResult.Error(Text("Tool_AskUser_Msg_Timeout"));
+            tcs.TrySetResult(result);
+
+            var current = dialog;
+            if (current is not null)
+            {
+                current.Dispatcher.BeginInvoke(() =>
+                {
+                    if (current.IsVisible)
+                        current.Close();
+                });
+            }
+        });
 
         using var registration = ct.Register(() =>
         {
@@ -74,7 +101,7 @@ public class AskUserTool : ITool
 
         void ShowDialog()
         {
-            if (ct.IsCancellationRequested)
+            if (ct.IsCancellationRequested || tcs.Task.IsCompleted)
                 return;
 
             var state = new InputState();
@@ -165,6 +192,9 @@ public class AskUserTool : ITool
             return Task.FromResult(ToolResult.Error(
                 Text("Tool_AskUser_Msg_Failed", ex.Message)));
         }
+
+        // 弹窗已关闭（回答/取消/超时），停止内部计时器。
+        timeoutCts.Cancel();
 
         return tcs.Task;
     }
