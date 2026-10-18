@@ -45,8 +45,8 @@
   <data name="Tool_Powershell_Description" xml:space="preserve"><value>执行 PowerShell 命令</value></data>
   <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>文件搜索</value></data>
   <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>按文件名搜索文件，优先查 Windows 搜索索引</value></data>
-  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>读取文件</value></data>
-  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>读取指定文件内容</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>读取文件/文档</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>读取文本/代码，或把 PDF / Word / Excel / PPT 等文档转换为 Markdown；支持关键词搜索与分段读取</value></data>
   <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>写入文件</value></data>
   <data name="Tool_WriteFile_Description" xml:space="preserve"><value>写入文件内容、创建新文件</value></data>
   <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>打开文件/应用</value></data>
@@ -111,7 +111,7 @@
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
-  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取指定文本文件的内容（仅限允许的目录、扩展名与大小）</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取文件内容。文本/代码文件直接读取；PDF、Word、Excel、PPT、HTML 等文档会通过 MarkItDown 自动转换为 Markdown 后返回。大文本文件请用 keyword 搜索，或用 start_line/end_line 分段读取；不要为了读取文件内容而调用 PowerShell。</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>截取当前用户的屏幕画面。当你需要看用户当前的界面、或者排查报错弹窗时调用。</value></data>
@@ -283,10 +283,22 @@
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>…（输出已截断）</value></data>
 
   <!-- read_file -->
-  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录，支持常见文本/代码扩展名</value></data>
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>要读取的文件路径。相对路径基于工作目录；支持文本/代码文件，以及 PDF、Word、Excel、PPT、HTML 等文档</value></data>
+  <data name="Tool_ReadFile_Param_Keyword" xml:space="preserve"><value>可选：在文件中搜索关键词（不区分大小写），返回命中行及上下文；读取大文件时优先使用</value></data>
+  <data name="Tool_ReadFile_Param_StartLine" xml:space="preserve"><value>可选：起始行号（从 1 开始），用于分段读取</value></data>
+  <data name="Tool_ReadFile_Param_EndLine" xml:space="preserve"><value>可选：结束行号（包含）；省略时最多读取 120 行</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>读取文件被取消。</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>读取文件失败：{0}</value></data>
   <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>文件内容不是可读文本（可能是二进制或加密文件），已拒绝读取。</value></data>
+  <data name="Tool_ReadFile_Msg_Empty" xml:space="preserve"><value>未能从该文档中提取到文本内容。</value></data>
+  <data name="Tool_ReadFile_Msg_TooLarge" xml:space="preserve"><value>文件过大（{0}），一次性读取会占用过多上下文。请提供 keyword 参数进行搜索，或使用 start_line/end_line 分段读取。</value></data>
+  <data name="Tool_ReadFile_Msg_SearchHeader" xml:space="preserve"><value>在 {0} 中搜索“{1}”，显示 {2} 处匹配：</value></data>
+  <data name="Tool_ReadFile_Msg_MoreMatches" xml:space="preserve"><value>（可能还有更多匹配，可增加关键词或缩小行号范围。）</value></data>
+  <data name="Tool_ReadFile_Msg_KeywordNotFound" xml:space="preserve"><value>未在文件中找到关键词“{0}”。可以尝试更短的关键词，或使用 start_line/end_line 分段读取。</value></data>
+  <data name="Tool_ReadFile_Msg_RangeHeader" xml:space="preserve"><value>{0} 第 {1}-{2} 行：</value></data>
+  <data name="Tool_ReadFile_Msg_RangeEmpty" xml:space="preserve"><value>第 {0}-{1} 行没有内容（文件可能没有这么长）。</value></data>
+  <data name="Tool_ReadFile_Msg_BadRange" xml:space="preserve"><value>无效的行号范围：起始行 {0} 大于结束行 {1}。</value></data>
+  <data name="Tool_ReadFile_Msg_ResultTruncated" xml:space="preserve"><value>...（结果超出长度上限，已截断。可以缩小范围或使用更具体的关键词。）</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>英文短语 + 下划线的事实标识，如 preferred_language、editor_theme</value></data>
@@ -378,6 +390,7 @@
   <data name="Tool_Arg_Status" xml:space="preserve"><value>状态</value></data>
   <data name="Tool_Arg_TaskId" xml:space="preserve"><value>任务 ID</value></data>
   <data name="Tool_Arg_Keyword" xml:space="preserve"><value>关键词</value></data>
+  <data name="Tool_Arg_LineRange" xml:space="preserve"><value>行范围</value></data>
   <data name="Tool_Arg_Limit" xml:space="preserve"><value>条数上限</value></data>
   <data name="Tool_Arg_Key" xml:space="preserve"><value>键</value></data>
   <data name="Tool_Arg_Value" xml:space="preserve"><value>值</value></data>
