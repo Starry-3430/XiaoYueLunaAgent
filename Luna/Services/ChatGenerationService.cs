@@ -24,6 +24,9 @@ public sealed partial class SessionRuntime : ObservableObject
 
     public ObservableCollection<ChatMessage> Messages { get; } = new();
 
+    /// <summary>本会话已解锁的工具组（渐进披露）。</summary>
+    public HashSet<string> ActiveToolGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -418,8 +421,10 @@ public sealed class ChatGenerationService
 
                 // 以快照调用接口，避免流式枚举期间集合被界面/其它逻辑修改
                 var snapshot = messages.ToList();
+                var activeGroups = runtime.ActiveToolGroups
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var (content, reasoning, pendingToolCalls, finishReason) =
-                    await StreamOneRoundAsync(uiReply, snapshot, ct);
+                    await StreamOneRoundAsync(uiReply, snapshot, activeGroups, ct);
 
                 if (pendingToolCalls.Count == 0)
                 {
@@ -553,6 +558,19 @@ public sealed class ChatGenerationService
                         entry.ResultJson = TruncateResult(result.Content);
                         entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
                         completedEntries.Add(entry);
+
+                        // enable_tool_group 本身不执行业务，只把组名写入会话运行时，
+                        // 下一轮 StreamOneRoundAsync 会把该组工具一起下发给模型。
+                        if (!result.IsError &&
+                            string.Equals(entry.ToolName, "enable_tool_group", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var group = ToolArgumentFormatter.TryGetStringArgument(entry.ArgumentsJson, "group_name");
+                            if (!string.IsNullOrWhiteSpace(group))
+                            {
+                                runtime.ActiveToolGroups.Add(group.Trim().ToLowerInvariant());
+                                _logger.LogInformation("已解锁工具组：{Group}", group);
+                            }
+                        }
 
                         var permissionResult = permissionResults.GetValueOrDefault(entry,
                             autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
@@ -733,7 +751,8 @@ public sealed class ChatGenerationService
     }
 
     private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls, string? finishReason)>
-        StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages, CancellationToken ct)
+        StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages,
+            IReadOnlySet<string> activeToolGroups, CancellationToken ct)
     {
         var lockObj = new object();
         var buffer = new List<StreamEvent>();
@@ -741,6 +760,7 @@ public sealed class ChatGenerationService
         var reasoningBuf = new StringBuilder();
         var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
         string? finishReason = null;
+        var requestOptions = new AiRequestOptions { ActiveToolGroups = activeToolGroups };
         // 批次定时器用 Input 优先级：高于 Background 的 Markdown pump，
         // 这样文档变大、pump 变重时也不会把流式文本的更新节奏饿死（避免 16ms 拖成几百 ms 的大块）。
         var timer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
@@ -814,7 +834,7 @@ public sealed class ChatGenerationService
 
             var consumeTask = Task.Run(async () =>
             {
-                await foreach (var evt in _aiService.ChatStreamAsync(messages, ct))
+                await foreach (var evt in _aiService.ChatStreamAsync(messages, requestOptions, ct))
                 {
                     lock (lockObj)
                         buffer.Add(evt);

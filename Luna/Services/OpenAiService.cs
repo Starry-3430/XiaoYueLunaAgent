@@ -86,11 +86,17 @@ public class OpenAiService : IAiService
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
+    public IAsyncEnumerable<StreamEvent> ChatStreamAsync(
+        IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default)
+        => ChatStreamAsync(messages, new AiRequestOptions(), cancellationToken);
+
     public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
+        AiRequestOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var requestBody = await BuildRequestBodyAsync(messages, stream: true, new AiRequestOptions(), cancellationToken);
+        var requestBody = await BuildRequestBodyAsync(messages, stream: true, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
         var requestModel = requestBody["model"]?.GetValue<string>() ?? _settings.Model;
@@ -472,6 +478,16 @@ public class OpenAiService : IAiService
         var messageList = messages as IList<ChatMessage> ?? messages.ToList();
         var queryText = messageList.LastOrDefault(m => m.Role == "user")?.Content;
 
+        // 渐进披露：核心工具 + 会话已解锁组 + 根据当前输入自动命中的组。
+        var activeGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (options.ActiveToolGroups is not null)
+        {
+            foreach (var group in options.ActiveToolGroups)
+                activeGroups.Add(group);
+        }
+        foreach (var group in ToolGroups.MatchGroups(queryText))
+            activeGroups.Add(group);
+
         var systemPrompt = await _systemPromptBuilder.BuildAsync(options, queryText, ct);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
@@ -611,7 +627,9 @@ public class OpenAiService : IAiService
         root["messages"] = messagesArray;
 
         var registeredTools = options.IncludeTools
-            ? _toolRegistry.GetEnabledTools().ToList()
+            ? _toolRegistry.GetEnabledTools()
+                .Where(tool => ToolGroups.ShouldInclude(tool.Name, activeGroups))
+                .ToList()
             : new List<ITool>();
         if (registeredTools.Count > 0)
         {

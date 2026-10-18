@@ -412,4 +412,11 @@
   <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>用户未在时限内回答，已自动选择默认选项：{0}</value></data>
   <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>当前无法显示提问窗口。</value></data>
   <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>显示提问窗口失败：{0}</value></data>
+
+  <!-- enable_tool_group -->
+  <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>解锁工具组</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：filesystem（文件操作）、network（网络搜索）、system（终端/代码）、memory_modify（事实与待办修改）。</value></data>
+  <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>需要解锁的工具组：filesystem、network、system 或 memory_modify。</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>已解锁工具组：{0}。可用工具：{1}。请在下一轮直接使用。</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>未知工具组：{0}。</value></data>
 </root>

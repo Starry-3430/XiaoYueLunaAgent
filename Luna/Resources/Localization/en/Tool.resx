@@ -412,4 +412,11 @@ Its content will be lost.</value></data>
   <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>The user did not answer in time; the default option was selected: {0}</value></data>
   <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>Unable to show the question dialog right now.</value></data>
   <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>Failed to show the question dialog: {0}</value></data>
+
+  <!-- enable_tool_group -->
+  <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>Unlock Tool Group</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: filesystem (file operations), network (web search), system (shell/code), memory_modify (facts and tasks).</value></data>
+  <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>The tool group to unlock: filesystem, network, system, or memory_modify.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>Tool group unlocked: {0}. Available tools: {1}. Use them in the next round.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>Unknown tool group: {0}.</value></data>
 </root>

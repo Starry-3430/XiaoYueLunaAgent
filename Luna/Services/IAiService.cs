@@ -41,6 +41,9 @@ public sealed record AiRequestOptions
     /// </summary>
     public bool IsBackgroundTask { get; init; }
 
+    /// <summary>当前会话已解锁的工具组（由 enable_tool_group 或关键词自动激活）。</summary>
+    public IReadOnlySet<string>? ActiveToolGroups { get; init; }
+
     /// <summary>response_format.type，例如 "json_object"；null 时不发送该参数。</summary>
     public string? ResponseFormat { get; init; }
 }
@@ -54,5 +57,10 @@ public interface IAiService
 
     IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<StreamEvent> ChatStreamAsync(
+        IEnumerable<ChatMessage> messages,
+        AiRequestOptions options,
         CancellationToken cancellationToken = default);
 }
