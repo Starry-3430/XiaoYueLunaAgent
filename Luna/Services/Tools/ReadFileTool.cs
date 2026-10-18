@@ -17,13 +17,24 @@ namespace Luna.Services.Tools;
 public class ReadFileTool : ITool
 {
     private const string SchemaTemplate =
-        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"}},"required":["path"]}""";
+        """{"type":"object","properties":{"path":{"type":"string","description":"$path$"},"keyword":{"type":"string","description":"$keyword$"},"start_line":{"type":"integer","description":"$startLine$"},"end_line":{"type":"integer","description":"$endLine$"}},"required":["path"]}""";
 
     /// <summary>不允许出现的控制字符占解码文本的比例上限。</summary>
     private const int MaxControlPercent = 5;
 
     /// <summary>UTF-8 解码后替换字符（U+FFFD）的比例上限，超过视为二进制/加密。</summary>
     private const int MaxReplacementPercent = 10;
+
+    /// <summary>搜索/分段读取时允许的最大文本文件大小。</summary>
+    private const long SegmentedTextMaxBytes = 64L * 1024 * 1024;
+
+    /// <summary>工具结果字符预算，控制在 ChatGenerationService 的 5000 字符截断以内。</summary>
+    private const int MaxResultChars = 4500;
+
+    private const int MaxKeywordMatches = 10;
+    private const int KeywordContextLines = 2;
+    private const int MaxRangeLines = 120;
+    private const int MaxLineChars = 500;
 
     /// <summary>需要先经 MarkItDown 转换的文档扩展名。</summary>
     private static readonly HashSet<string> DocumentExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -44,7 +55,11 @@ public class ReadFileTool : ITool
     public string Name => "read_file";
     public string DisplayName => ToolLocalization.DisplayName(Name);
     public string Description => ToolLocalization.Description(Name);
-    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$path$", Param("Tool_ReadFile_Param_Path")));
+    public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate
+        .Replace("$path$", Param("Tool_ReadFile_Param_Path"))
+        .Replace("$keyword$", Param("Tool_ReadFile_Param_Keyword"))
+        .Replace("$startLine$", Param("Tool_ReadFile_Param_StartLine"))
+        .Replace("$endLine$", Param("Tool_ReadFile_Param_EndLine")));
     public ToolRiskLevel Risk => ToolRiskLevel.Medium;
 
     /// <summary>文档转换可能较慢，给读文件工具更长的兜底时间。</summary>
@@ -62,15 +77,48 @@ public class ReadFileTool : ITool
         if (string.IsNullOrWhiteSpace(path))
             return ToolResult.Error(Text("Tool_Msg_MissingParam", "path"));
 
+        var keyword = GetOptionalString(args, "keyword");
+        var startLine = GetOptionalInt(args, "start_line");
+        var endLine = GetOptionalInt(args, "end_line");
+        var hasSelector = !string.IsNullOrWhiteSpace(keyword) || startLine.HasValue || endLine.HasValue;
+
         var isDocument = DocumentExtensions.Contains(Path.GetExtension(path));
-        var maxBytes = isDocument ? DocumentMaxBytes : FileSandbox.MaxBytes;
+        var maxBytes = isDocument ? DocumentMaxBytes : SegmentedTextMaxBytes;
         if (!FileSandbox.TryResolveExisting(path, out var fullPath, out var error, maxBytes))
             return ToolResult.Error(error);
+
+        long length;
+        try
+        {
+            length = new FileInfo(fullPath).Length;
+        }
+        catch (Exception ex)
+        {
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_Failed", ex.Message));
+        }
+
+        // 普通文本一次性整文件读取仍限制在 1MB；更大的文本必须搜索或分段。
+        if (!isDocument && !hasSelector && length > FileSandbox.MaxBytes)
+        {
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_TooLarge",
+                AttachmentHelper.FormatSize(length)));
+        }
 
         try
         {
             if (isDocument)
-                return await ReadDocumentAsync(fullPath, ct);
+            {
+                var markdown = await _documentConverter.ConvertToMarkdownAsync(fullPath, ct);
+
+                if (markdown.StartsWith(ConversionFailurePrefix, StringComparison.Ordinal))
+                    return ToolResult.Error(markdown);
+
+                if (string.IsNullOrWhiteSpace(markdown))
+                    return ToolResult.Error(Text("Tool_ReadFile_Msg_Empty"));
+
+                _logger.LogInformation("文档读取成功：{Path}，长度 {Length}", fullPath, markdown.Length);
+                return BuildResult(markdown, fullPath, keyword, startLine, endLine);
+            }
 
             var bytes = await File.ReadAllBytesAsync(fullPath, ct);
             if (!TryDecodeText(bytes, out var content))
@@ -80,7 +128,7 @@ public class ReadFileTool : ITool
             }
 
             _logger.LogInformation("读取文件成功：{Path}，长度 {Length}", fullPath, content.Length);
-            return ToolResult.Ok(content);
+            return BuildResult(content, fullPath, keyword, startLine, endLine);
         }
         catch (OperationCanceledException)
         {
@@ -93,26 +141,180 @@ public class ReadFileTool : ITool
         }
     }
 
-    /// <summary>把 PDF/Office 等文档交给 MarkItDown 转成 Markdown 后返回。</summary>
-    private async Task<ToolResult> ReadDocumentAsync(string fullPath, CancellationToken ct)
+    private static ToolResult BuildResult(string content, string fullPath,
+        string? keyword, int? startLine, int? endLine)
     {
-        var markdown = await _documentConverter.ConvertToMarkdownAsync(fullPath, ct);
+        if (!string.IsNullOrWhiteSpace(keyword))
+            return SearchKeyword(content, fullPath, keyword, startLine, endLine);
 
-        if (markdown.StartsWith(ConversionFailurePrefix, StringComparison.Ordinal))
-            return ToolResult.Error(markdown);
+        if (startLine.HasValue || endLine.HasValue)
+            return ReadRange(content, fullPath, startLine, endLine);
 
-        if (string.IsNullOrWhiteSpace(markdown))
-            return ToolResult.Error(Text("Tool_ReadFile_Msg_Empty"));
+        return ToolResult.Ok(content);
+    }
 
-        _logger.LogInformation("文档读取成功：{Path}，长度 {Length}", fullPath, markdown.Length);
-        return ToolResult.Ok(markdown);
+    /// <summary>按关键词搜索，返回命中行及前后各两行上下文。</summary>
+    private static ToolResult SearchKeyword(string content, string fullPath,
+        string keyword, int? startLine, int? endLine)
+    {
+        var matchLines = new List<int>();
+        var lineNo = 0;
+        var reachedLimit = false;
+
+        foreach (var line in EnumerateLines(content))
+        {
+            lineNo++;
+            if (startLine is { } start && lineNo < Math.Max(1, start)) continue;
+            if (endLine is { } end && lineNo > Math.Max(1, end)) break;
+
+            if (line.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+            {
+                matchLines.Add(lineNo);
+                if (matchLines.Count >= MaxKeywordMatches)
+                {
+                    reachedLimit = true;
+                    break;
+                }
+            }
+        }
+
+        if (matchLines.Count == 0)
+            return ToolResult.Ok(Text("Tool_ReadFile_Msg_KeywordNotFound", keyword));
+
+        var displayLines = new SortedSet<int>();
+        foreach (var match in matchLines)
+        {
+            var from = Math.Max(1, match - KeywordContextLines);
+            var to = match + KeywordContextLines;
+            for (var i = from; i <= to; i++)
+                displayLines.Add(i);
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine(Text("Tool_ReadFile_Msg_SearchHeader",
+            Path.GetFileName(fullPath), keyword, matchLines.Count));
+
+        if (reachedLimit)
+            sb.AppendLine(Text("Tool_ReadFile_Msg_MoreMatches"));
+
+        var truncated = false;
+        lineNo = 0;
+        var lastLine = 0;
+
+        foreach (var line in EnumerateLines(content))
+        {
+            lineNo++;
+            if (!displayLines.Contains(lineNo)) continue;
+
+            if (lastLine > 0 && lineNo > lastLine + 1)
+                sb.AppendLine("...");
+
+            AppendNumberedLine(sb, lineNo, line);
+            lastLine = lineNo;
+
+            if (sb.Length >= MaxResultChars)
+            {
+                truncated = true;
+                break;
+            }
+        }
+
+        if (truncated)
+            sb.AppendLine(Text("Tool_ReadFile_Msg_ResultTruncated"));
+
+        return ToolResult.Ok(sb.ToString().TrimEnd());
+    }
+
+    /// <summary>按行号分段读取，单次最多 120 行。</summary>
+    private static ToolResult ReadRange(string content, string fullPath, int? startLine, int? endLine)
+    {
+        var start = Math.Max(1, startLine ?? 1);
+        var end = Math.Max(1, endLine ?? start + MaxRangeLines - 1);
+        if (end < start)
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_BadRange", start, end));
+
+        if (end - start + 1 > MaxRangeLines)
+            end = start + MaxRangeLines - 1;
+
+        var sb = new StringBuilder();
+        sb.AppendLine(Text("Tool_ReadFile_Msg_RangeHeader",
+            Path.GetFileName(fullPath), start, end));
+
+        var lineNo = 0;
+        var emitted = 0;
+        var truncated = false;
+
+        foreach (var line in EnumerateLines(content))
+        {
+            lineNo++;
+            if (lineNo < start) continue;
+            if (lineNo > end) break;
+
+            AppendNumberedLine(sb, lineNo, line);
+            emitted++;
+
+            if (sb.Length >= MaxResultChars)
+            {
+                truncated = true;
+                break;
+            }
+        }
+
+        if (emitted == 0)
+            return ToolResult.Ok(Text("Tool_ReadFile_Msg_RangeEmpty", start, end));
+
+        if (truncated)
+            sb.AppendLine(Text("Tool_ReadFile_Msg_ResultTruncated"));
+
+        return ToolResult.Ok(sb.ToString().TrimEnd());
+    }
+
+    private static IEnumerable<string> EnumerateLines(string content)
+    {
+        using var reader = new StringReader(content);
+        while (reader.ReadLine() is { } line)
+            yield return line;
+    }
+
+    private static void AppendNumberedLine(StringBuilder sb, int lineNo, string line)
+    {
+        if (line.Length > MaxLineChars)
+            line = line[..MaxLineChars] + "…";
+
+        sb.Append(lineNo).Append(": ").AppendLine(line);
     }
 
     private static string ExtractPath(JsonElement args)
     {
         if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("path", out var p))
-            return p.GetString()?.Trim() ?? string.Empty;
+            return p.GetString()?.Trim().Trim('"', '\'').Trim() ?? string.Empty;
         return string.Empty;
+    }
+
+    private static string? GetOptionalString(JsonElement args, string name)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value))
+            return null;
+
+        return value.ValueKind == JsonValueKind.String
+            ? value.GetString()?.Trim()
+            : null;
+    }
+
+    private static int? GetOptionalInt(JsonElement args, string name)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value))
+            return null;
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+            return number;
+
+        // 兼容部分模型把数字参数序列化成字符串的情况。
+        if (value.ValueKind == JsonValueKind.String &&
+            int.TryParse(value.GetString(), out var parsed))
+            return parsed;
+
+        return null;
     }
 
     /// <summary>

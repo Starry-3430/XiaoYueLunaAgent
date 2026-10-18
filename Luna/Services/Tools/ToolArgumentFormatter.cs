@@ -26,7 +26,7 @@ public static class ToolArgumentFormatter
             return code;
 
         if (IsReadFile(toolName) && TryGetStringArgument(argumentsJson, "path") is { Length: > 0 } readPath)
-            return FormatFileInfo(readPath);
+            return FormatReadFile(argumentsJson, readPath);
 
         if (IsFileOpen(toolName) && TryGetStringArgument(argumentsJson, "path") is { Length: > 0 } openPath)
             return FormatFileInfo(openPath);
@@ -122,6 +122,55 @@ public static class ToolArgumentFormatter
             sb.AppendLine().Append(loc["Tool_Arg_FileSize"]).Append(": ").Append(sizeText);
 
         return sb.ToString();
+    }
+
+    /// <summary>read_file 的参数展示：路径/大小，外加关键词或行范围。</summary>
+    private static string FormatReadFile(string argumentsJson, string path)
+    {
+        var loc = LocalizationService.Instance;
+        var sb = new StringBuilder(FormatFileInfo(path));
+
+        var keyword = TryGetStringArgument(argumentsJson, "keyword");
+        if (!string.IsNullOrWhiteSpace(keyword))
+            sb.AppendLine().Append(loc["Tool_Arg_Keyword"]).Append(": ").Append(keyword);
+
+        var start = TryGetIntArgument(argumentsJson, "start_line");
+        var end = TryGetIntArgument(argumentsJson, "end_line");
+        if (start.HasValue || end.HasValue)
+        {
+            sb.AppendLine().Append(loc["Tool_Arg_LineRange"]).Append(": ")
+              .Append(start?.ToString() ?? "1")
+              .Append('-')
+              .Append(end?.ToString() ?? "…");
+        }
+
+        return sb.ToString();
+    }
+
+    private static int? TryGetIntArgument(string? argumentsJson, string name)
+    {
+        if (string.IsNullOrWhiteSpace(argumentsJson)) return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(argumentsJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+                !doc.RootElement.TryGetProperty(name, out var value))
+                return null;
+
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+                return number;
+
+            if (value.ValueKind == JsonValueKind.String &&
+                int.TryParse(value.GetString(), out var parsed))
+                return parsed;
+        }
+        catch (JsonException)
+        {
+            // 流式传输中可能是半截 JSON。
+        }
+
+        return null;
     }
 
     private static string? TryGetFileSizeText(string path)

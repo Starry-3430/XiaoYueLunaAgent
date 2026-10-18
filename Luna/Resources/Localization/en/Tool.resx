@@ -46,7 +46,7 @@
   <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>File Search</value></data>
   <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>Search files by name, preferring the Windows Search index.</value></data>
   <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File / Document</value></data>
-  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read text files, or convert PDF / Word / Excel / PPT documents to Markdown.</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read text/code, or convert PDF / Word / Excel / PPT documents to Markdown; supports keyword search and segmented reads.</value></data>
   <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>Write File</value></data>
   <data name="Tool_WriteFile_Description" xml:space="preserve"><value>Write file contents or create new files.</value></data>
   <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>Open File / App</value></data>
@@ -109,7 +109,7 @@
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
-  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. Prefer this tool for user-uploaded documents or when you need the document body.</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
@@ -275,10 +275,21 @@ Offending segment: {0}</value></data>
 
   <!-- read_file -->
   <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; supports text/code files plus PDF, Word, Excel, PPT, HTML and similar documents.</value></data>
+  <data name="Tool_ReadFile_Param_Keyword" xml:space="preserve"><value>Optional: search for a keyword (case-insensitive) and return matching lines with context. Prefer this for large files.</value></data>
+  <data name="Tool_ReadFile_Param_StartLine" xml:space="preserve"><value>Optional: 1-based start line for reading a segment.</value></data>
+  <data name="Tool_ReadFile_Param_EndLine" xml:space="preserve"><value>Optional: inclusive end line; up to 120 lines are read when omitted.</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
   <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>The file is not readable text (it may be binary or encrypted), so it was not read.</value></data>
   <data name="Tool_ReadFile_Msg_Empty" xml:space="preserve"><value>No text content could be extracted from this document.</value></data>
+  <data name="Tool_ReadFile_Msg_TooLarge" xml:space="preserve"><value>The file is too large ({0}) to read in one call. Provide a keyword to search, or use start_line/end_line to read a segment.</value></data>
+  <data name="Tool_ReadFile_Msg_SearchHeader" xml:space="preserve"><value>Search "{1}" in {0}: showing {2} match(es):</value></data>
+  <data name="Tool_ReadFile_Msg_MoreMatches" xml:space="preserve"><value>(More matches may exist; add a keyword or narrow the line range.)</value></data>
+  <data name="Tool_ReadFile_Msg_KeywordNotFound" xml:space="preserve"><value>Keyword "{0}" was not found. Try a shorter keyword, or use start_line/end_line to read a segment.</value></data>
+  <data name="Tool_ReadFile_Msg_RangeHeader" xml:space="preserve"><value>{0}, lines {1}-{2}:</value></data>
+  <data name="Tool_ReadFile_Msg_RangeEmpty" xml:space="preserve"><value>No content in lines {0}-{1} (the file may be shorter).</value></data>
+  <data name="Tool_ReadFile_Msg_BadRange" xml:space="preserve"><value>Invalid line range: start line {0} is greater than end line {1}.</value></data>
+  <data name="Tool_ReadFile_Msg_ResultTruncated" xml:space="preserve"><value>... (result exceeded the length limit and was truncated; narrow the range or use a more specific keyword.)</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>
@@ -369,6 +380,7 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_Status" xml:space="preserve"><value>Status</value></data>
   <data name="Tool_Arg_TaskId" xml:space="preserve"><value>Task ID</value></data>
   <data name="Tool_Arg_Keyword" xml:space="preserve"><value>Keyword</value></data>
+  <data name="Tool_Arg_LineRange" xml:space="preserve"><value>Line range</value></data>
   <data name="Tool_Arg_Limit" xml:space="preserve"><value>Limit</value></data>
   <data name="Tool_Arg_Key" xml:space="preserve"><value>Key</value></data>
   <data name="Tool_Arg_Value" xml:space="preserve"><value>Value</value></data>

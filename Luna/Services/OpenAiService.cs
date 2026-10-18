@@ -354,7 +354,8 @@ public class OpenAiService : IAiService
                 sb.AppendLine($"- {path}");
 
             sb.AppendLine("如需更多细节，可调用 read_file 读取上述原始路径；" +
-                          "PDF、Word、Excel、PPT 等文档会自动转换为 Markdown。");
+                          "PDF、Word、Excel、PPT 等文档会自动转换为 Markdown；" +
+                          "大文件可用 keyword 或 start_line/end_line 分段读取。");
         }
         else
         {
