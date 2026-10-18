@@ -7,12 +7,16 @@ using Microsoft.Extensions.Logging;
 namespace Luna.Services.Jobs;
 
 /// <summary>
-/// 每日早报：每天本地时间 08:00 汇总今日待办与昨天的日记，调用模型生成一段早安问候，
+/// 每日早报：每天本地时间 06:30 汇总今日待办与昨天的日记，调用模型生成一段早安问候，
 /// 写入一个名为「🌅 今日早报」的新会话，并发送一条系统通知。
+/// 若应用在 06:30 时未运行，则在 10:00 前启动时补发当天早报。
 /// </summary>
 public sealed class DailyBriefingJob : IBackgroundJob
 {
-    private static readonly TimeSpan TargetTime = new(8, 0, 0);
+    private static readonly TimeSpan TargetTime = new(6, 30, 0);
+
+    /// <summary>补发窗口截止时间：晚于该时刻启动不再补发，避免晚上突然弹出早报。</summary>
+    private static readonly TimeSpan CatchUpWindowEnd = new(10, 0, 0);
 
     /// <summary>早报中最多列出的待办数，避免 Prompt 过长。</summary>
     private const int MaxTasks = 5;
@@ -43,10 +47,12 @@ public sealed class DailyBriefingJob : IBackgroundJob
 
     public string Name => "DailyBriefingJob";
 
-    /// <summary>只在每天 08:00 触发；应用启动晚了不补发，避免突然弹出旧早报。</summary>
-    public bool RunOnStartup => false;
+    /// <summary>
+    /// 每天 06:30 触发；启动时也检查一次，用于在 06:30-10:00 补发窗口内补生成当天的早报。
+    /// </summary>
+    public bool RunOnStartup => true;
 
-    /// <summary>计算下一个本地时间 08:00。</summary>
+    /// <summary>计算下一个本地时间 06:30。</summary>
     public DateTime GetNextRunTime(DateTime lastRunTime)
     {
         var todayTarget = lastRunTime.Date + TargetTime;
@@ -72,6 +78,15 @@ public sealed class DailyBriefingJob : IBackgroundJob
     private async Task GenerateAsync(CancellationToken ct)
     {
         var nowLocal = DateTime.Now;
+        var timeOfDay = nowLocal.TimeOfDay;
+
+        // 定时触发或启动补发都走这里：早于 06:30 或晚于 10:00 直接跳过。
+        if (timeOfDay < TargetTime || timeOfDay > CatchUpWindowEnd)
+        {
+            _logger.LogDebug("当前不在早报生成窗口（06:30-10:00），跳过");
+            return;
+        }
+
         var loc = LocalizationService.Instance;
         var title = loc.Format("Common_DailyBriefing_SessionTitle", nowLocal.ToString("yyyy-MM-dd"));
 

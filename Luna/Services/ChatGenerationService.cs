@@ -66,6 +66,20 @@ public sealed class ChatGenerationService
     // 连续出现相同工具调用（工具名 + 参数）的次数上限。
     private const int MaxRepeatedToolCalls = 2;
 
+    // 只读/无副作用工具的最大并发数：太高容易触发搜索接口限流。
+    private const int MaxConcurrentToolCalls = 3;
+
+    /// <summary>
+    /// 可安全并发执行的只读/无副作用工具白名单。
+    /// 不在名单内的工具（如 write_file、powershell、send_notification、read_screen）
+    /// 会被视为屏障，串行执行，避免顺序依赖或共享状态冲突。
+    /// </summary>
+    private static readonly HashSet<string> ConcurrentTools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "read_file", "file_tree", "search_files", "read_clipboard",
+        "web_search", "fetch_url", "list_tasks", "list_facts", "diary_search", "turn_search",
+    };
+
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
@@ -494,40 +508,43 @@ public sealed class ChatGenerationService
                     }
                 }
 
-                foreach (var (_, entry) in sortedCalls)
+                // ====== 分组并发执行 ======
+                // 只有连续的只读工具会并行；遇到写操作/命令等屏障时先等待前面的批次完成。
+                using var concurrencySemaphore = new SemaphoreSlim(MaxConcurrentToolCalls);
+                var completedEntries = new HashSet<ToolCallEntry>();
+                var executableCalls = sortedCalls
+                    .Select(call => call.Value)
+                    .Where(entry => !deniedEntries.Contains(entry));
+                var batches = GroupCallsIntoBatches(executableCalls);
+
+                foreach (var batch in batches)
                 {
                     if (ct.IsCancellationRequested) break;
-                    if (deniedEntries.Contains(entry)) continue;
 
-                    var tool = _toolRegistry.GetTool(entry.ToolName);
-                    if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
-                    {
-                        entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = LocalizationService.Instance["Common_Tool_NotEnabled"];
-                        _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
-                        continue;
-                    }
+                    var tasks = new List<Task<(ToolCallEntry Entry, ToolResult Result)>>(batch.Count);
+                    foreach (var entry in batch)
+                        tasks.Add(ExecuteToolIsolatedAsync(entry, concurrencySemaphore, ct));
 
-                    try
+                    var results = await Task.WhenAll(tasks);
+
+                    // 结果在 UI 线程按原顺序写回条目，避免跨线程绑定问题。
+                    foreach (var (entry, result) in results)
                     {
-                        using var argsDoc = JsonDocument.Parse(
-                            string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
-                        var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
                         entry.ResultJson = TruncateResult(result.Content);
                         entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
-                        if (result.IsError)
-                            _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
-                        else
-                            _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
-                    }
-                    catch (Exception ex)
-                    {
-                        entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = LocalizationService.Instance.Format("Common_Tool_ExecFailed", ex.Message);
-                        _logger.LogError(ex, "工具 {Name} 执行失败", entry.ToolName);
+                        completedEntries.Add(entry);
                     }
                 }
 
+                // 取消导致未执行的调用也要给出结果，保证每条 tool_call 都有对应的 tool 消息。
+                foreach (var (_, entry) in sortedCalls)
+                {
+                    if (completedEntries.Contains(entry) || deniedEntries.Contains(entry)) continue;
+                    entry.Status = ToolCallStatus.Failed;
+                    entry.ResultJson = LocalizationService.Instance["Common_Canceled"];
+                }
+
+                // 所有结果按原始调用顺序写入会话，包含被用户拒绝的占位结果。
                 foreach (var (_, entry) in sortedCalls)
                 {
                     messages.Add(new ChatMessage
@@ -852,6 +869,89 @@ public sealed class ChatGenerationService
     {
         if (string.IsNullOrEmpty(toolName)) return "";
         return _toolRegistry.GetTool(toolName)?.DisplayName ?? toolName;
+    }
+
+    /// <summary>
+    /// 把工具调用按“可并发”与“屏障”切分为连续批次。
+    /// 例如 [读A, 读B, 写C, 读D] → [[读A, 读B], [写C], [读D]]。
+    /// </summary>
+    private static List<List<ToolCallEntry>> GroupCallsIntoBatches(IEnumerable<ToolCallEntry> calls)
+    {
+        var batches = new List<List<ToolCallEntry>>();
+        List<ToolCallEntry>? currentBatch = null;
+
+        foreach (var entry in calls)
+        {
+            if (ConcurrentTools.Contains(entry.ToolName))
+            {
+                currentBatch ??= [];
+                currentBatch.Add(entry);
+                continue;
+            }
+
+            // 屏障工具：先把已累积的并发批次收尾，再让屏障单独成批（保证前后顺序）。
+            if (currentBatch is { Count: > 0 })
+            {
+                batches.Add(currentBatch);
+                currentBatch = null;
+            }
+
+            batches.Add([entry]);
+        }
+
+        if (currentBatch is { Count: > 0 })
+            batches.Add(currentBatch);
+
+        return batches;
+    }
+
+    /// <summary>
+    /// 执行单个工具（受并发信号量限制），只返回结果，不修改会话/条目状态。
+    /// 条目状态由调用方在 UI 线程统一写回，避免跨线程绑定问题。
+    /// </summary>
+    private async Task<(ToolCallEntry Entry, ToolResult Result)> ExecuteToolIsolatedAsync(
+        ToolCallEntry entry, SemaphoreSlim semaphore, CancellationToken ct)
+    {
+        var acquired = false;
+        try
+        {
+            await semaphore.WaitAsync(ct);
+            acquired = true;
+            ct.ThrowIfCancellationRequested();
+
+            var tool = _toolRegistry.GetTool(entry.ToolName);
+            if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
+            {
+                _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
+                return (entry, ToolResult.Error(LocalizationService.Instance["Common_Tool_NotEnabled"]));
+            }
+
+            using var argsDoc = JsonDocument.Parse(
+                string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
+            var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
+
+            if (result.IsError)
+                _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
+            else
+                _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
+
+            return (entry, result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return (entry, ToolResult.Error(LocalizationService.Instance["Common_Canceled"]));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "工具 {Name} 执行失败", entry.ToolName);
+            return (entry, ToolResult.Error(
+                LocalizationService.Instance.Format("Common_Tool_ExecFailed", ex.Message)));
+        }
+        finally
+        {
+            if (acquired)
+                semaphore.Release();
+        }
     }
 
     /// <summary>
