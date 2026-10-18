@@ -25,6 +25,8 @@
   <data name="Common_Rename" xml:space="preserve"><value>重命名</value></data>
   <data name="Common_Delete" xml:space="preserve"><value>删除</value></data>
   <data name="Common_Rewrite" xml:space="preserve"><value>重写</value></data>
+  <data name="Common_PreviousVersion" xml:space="preserve"><value>上一个版本</value></data>
+  <data name="Common_NextVersion" xml:space="preserve"><value>下一个版本</value></data>
   <data name="Common_ScrollToBottom" xml:space="preserve"><value>滚动到底部</value></data>
   <data name="Common_Send" xml:space="preserve"><value>发送</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>取消</value></data>

@@ -25,6 +25,8 @@
   <data name="Common_Rename" xml:space="preserve"><value>Rename</value></data>
   <data name="Common_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Common_Rewrite" xml:space="preserve"><value>Rewrite</value></data>
+  <data name="Common_PreviousVersion" xml:space="preserve"><value>Previous version</value></data>
+  <data name="Common_NextVersion" xml:space="preserve"><value>Next version</value></data>
   <data name="Common_ScrollToBottom" xml:space="preserve"><value>Scroll to bottom</value></data>
   <data name="Common_Send" xml:space="preserve"><value>Send</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>

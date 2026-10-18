@@ -341,4 +341,18 @@ public partial class MainViewModel : ObservableObject
         if (_currentSessionId is null || IsBusy) return;
         await _generation.RewriteAsync(_currentSessionId, msg);
     }
+
+    [RelayCommand]
+    private Task SwitchToPrevVersionAsync(ChatMessage msg)
+        => SwitchVersionAsync(msg, -1);
+
+    [RelayCommand]
+    private Task SwitchToNextVersionAsync(ChatMessage msg)
+        => SwitchVersionAsync(msg, 1);
+
+    private async Task SwitchVersionAsync(ChatMessage msg, int direction)
+    {
+        if (_currentSessionId is null || IsBusy) return;
+        await _generation.SwitchVersionAsync(_currentSessionId, msg, direction);
+    }
 }

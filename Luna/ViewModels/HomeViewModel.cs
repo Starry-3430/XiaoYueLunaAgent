@@ -845,6 +845,20 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         await _generation.RewriteAsync(_currentSessionId, msg);
     }
 
+    [RelayCommand]
+    private Task SwitchToPrevVersionAsync(ChatMessage msg)
+        => SwitchVersionAsync(msg, -1);
+
+    [RelayCommand]
+    private Task SwitchToNextVersionAsync(ChatMessage msg)
+        => SwitchVersionAsync(msg, 1);
+
+    private async Task SwitchVersionAsync(ChatMessage msg, int direction)
+    {
+        if (_currentSessionId is null || IsBusy) return;
+        await _generation.SwitchVersionAsync(_currentSessionId, msg, direction);
+    }
+
     public void Receive(SessionUpdateMessage message)
     {
         // 通知可能来自后台线程（如标题生成），集合变更必须在 UI 线程执行，否则会破坏绑定。

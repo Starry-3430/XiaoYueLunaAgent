@@ -123,7 +123,10 @@ public sealed class ChatGenerationService
             runtime.Messages.Clear();
             foreach (var m in msgs)
                 runtime.Messages.Add(MapToChatMessage(m));
+            AssignVersionMetadata(runtime.Messages);
+            await RepairVersionGroupsAsync(runtime.Messages);
             MarkFinalReplies(runtime.Messages);
+            UpdateRewriteEligibility(runtime.Messages);
             runtime.Loaded = true;
         }
         finally
@@ -237,6 +240,7 @@ public sealed class ChatGenerationService
 
         // 用户消息与附件上下文已经入库：立即通知会话列表，
         // 这样主界面在生成过程中打开/已打开时都能马上看到这次新对话。
+        UpdateRewriteEligibility(runtime.Messages);
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
 
         try
@@ -293,7 +297,7 @@ public sealed class ChatGenerationService
         return string.Join("\n", lines);
     }
 
-    /// <summary>重写某条 AI 回复：截断其后内容并重新生成。</summary>
+    /// <summary>重写最后一条 AI 回复：旧版本保留并隐藏，生成一个新版本。</summary>
     public async Task RewriteAsync(string sessionId, ChatMessage msg)
     {
         var runtime = await GetOrLoadAsync(sessionId);
@@ -301,82 +305,127 @@ public sealed class ChatGenerationService
 
         var messages = runtime.Messages;
         var index = messages.IndexOf(msg);
-        if (index < 0) return;
+        if (index < 0 || msg.Role != "assistant") return;
 
-        string userText = "";
-        int userIndex = -1;
-        for (var i = index - 1; i >= 0; i--)
+        // 目前只支持重写最后一条“激活”的回复，避免破坏其后的有效上下文。
+        if (messages.Skip(index + 1).Any(m => m.IsActive))
         {
-            if (messages[i].Role == "user")
-            {
-                userText = messages[i].Content;
-                userIndex = i;
-                break;
-            }
+            _logger.LogWarning("目前仅支持重写最后一条 AI 回复");
+            return;
         }
 
-        if (string.IsNullOrEmpty(userText) || userIndex < 0) return;
+        var versionGroupId = msg.VersionGroupId ?? Guid.NewGuid().ToString("N");
+        var existingVersions = messages
+            .Where(m => m.Role == "assistant" &&
+                        string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
+            .OrderBy(m => m.DbId)
+            .ToList();
 
-        var userDbId = messages[userIndex].DbId;
-        var userImages = messages[userIndex].Images.ToList(); // 保留原用户消息携带的图片，重写时继续作为图像发送
+        if (!existingVersions.Contains(msg))
+            existingVersions.Add(msg);
 
-        // 重写前先保留该轮次注入的附件上下文（system 消息），重写后原样带回去
-        var attachmentContexts = new List<string>();
-        for (var i = userIndex + 1; i < messages.Count; i++)
+        var totalVersions = existingVersions.Count + 1;
+
+        // 先把旧版本全部隐藏并归组；内存中保留，供 UI 切换。
+        for (var i = 0; i < existingVersions.Count; i++)
         {
-            if (messages[i].Role == "system" && !string.IsNullOrWhiteSpace(messages[i].Content))
-                attachmentContexts.Add(messages[i].Content);
-        }
+            var version = existingVersions[i];
+            version.VersionGroupId = versionGroupId;
+            version.VersionIndex = i + 1;
+            version.TotalVersions = totalVersions;
+            version.IsActive = false;
 
-        while (messages.Count > userIndex)
-            messages.RemoveAt(userIndex);
+            if (version.DbId > 0)
+                await _messageRepo.UpdateMessageVersionAsync(version.DbId, false, versionGroupId);
+        }
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
+        var messageCountBefore = messages.Count;
 
-        if (userDbId > 0)
+        var success = false;
+        try
         {
-            await _messageRepo.DeleteAfterAsync(sessionId, userDbId);
-            // 复用的用户消息重新归属到新轮次，并清理旧轮次残留摘要
-            await _messageRepo.ReassignTurnAsync(userDbId, turnId, logicalDate);
-            await _turnSummaryService.DeleteOrphanedAsync(sessionId);
+            success = await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate,
+                versionGroupId, totalVersions, totalVersions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重写 AI 回复失败");
         }
 
-        var newUserMessage = new ChatMessage { Role = "user", Content = userText, DbId = userDbId };
-        foreach (var image in userImages)
-            newUserMessage.Images.Add(image);
-        messages.Add(newUserMessage);
-
-        // 重新注入保留的附件上下文（引用与转换内容），使重写仍能基于文件作答
-        foreach (var context in attachmentContexts)
+        if (!success)
         {
-            var contextDbId = 0L;
-            if (userDbId > 0)
+            // 清理本次失败尝试新增的消息：数据库标记为非激活，内存中移除，避免挡住后续重写。
+
+            for (var i = messages.Count - 1; i >= messageCountBefore; i--)
             {
-                contextDbId = await _messageRepo.InsertAsync(new Message
+                var added = messages[i];
+                if (added.DbId > 0)
                 {
-                    SessionId = sessionId,
-                    TurnId = turnId,
-                    Role = "system",
-                    Content = context,
-                    CreatedAtUtc = DateTime.UtcNow,
-                    LogicalDate = logicalDate,
-                });
+                    await _messageRepo.UpdateMessageVersionAsync(
+                        added.DbId, false, added.VersionGroupId);
+                }
+                messages.RemoveAt(i);
             }
 
-            messages.Add(new ChatMessage
+            // 恢复旧版本，避免会话没有可见回复。
+            msg.IsActive = true;
+            foreach (var version in existingVersions)
             {
-                Role = "system",
-                Content = context,
-                AttachmentSummary = ExtractAttachmentSummary(context),
-                DbId = contextDbId,
-            });
-        }
+                version.TotalVersions = existingVersions.Count;
+                if (version.DbId > 0)
+                {
+                    await _messageRepo.UpdateMessageVersionAsync(
+                        version.DbId, ReferenceEquals(version, msg), versionGroupId);
+                }
+            }
 
-        await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+            if (existingVersions.Count == 1)
+            {
+                msg.VersionIndex = 1;
+                msg.TotalVersions = 1;
+            }
+
+            UpdateRewriteEligibility(messages);
+        }
     }
 
-    private async Task RunAiLoopAsync(SessionRuntime runtime, string sessionId, string turnId, string logicalDate)
+    /// <summary>在同一版本组内左右切换当前激活的回复，并同步数据库状态。</summary>
+    public async Task SwitchVersionAsync(string sessionId, ChatMessage msg, int direction)
+    {
+        var runtime = await GetOrLoadAsync(sessionId);
+        if (runtime.IsBusy) return;
+
+        var messages = runtime.Messages;
+        if (string.IsNullOrEmpty(msg.VersionGroupId) || !messages.Contains(msg)) return;
+
+        var versions = messages
+            .Where(m => m.Role == "assistant" &&
+                        string.Equals(m.VersionGroupId, msg.VersionGroupId, StringComparison.Ordinal))
+            .OrderBy(m => m.VersionIndex)
+            .ToList();
+        if (versions.Count <= 1) return;
+
+        var targetIndex = msg.VersionIndex + direction;
+        if (targetIndex < 1 || targetIndex > versions.Count) return;
+
+        var target = versions.FirstOrDefault(m => m.VersionIndex == targetIndex);
+        if (target is null || ReferenceEquals(target, msg)) return;
+
+        foreach (var version in versions)
+            version.IsActive = ReferenceEquals(version, target);
+
+        foreach (var version in versions.Where(v => v.DbId > 0))
+            await _messageRepo.UpdateMessageVersionAsync(
+                version.DbId, version.IsActive, version.VersionGroupId);
+
+        MarkFinalReplies(messages);
+        UpdateRewriteEligibility(messages);
+    }
+
+    private async Task<bool> RunAiLoopAsync(SessionRuntime runtime, string sessionId, string turnId, string logicalDate,
+        string? versionGroupId = null, int versionIndex = 1, int totalVersions = 1)
     {
         runtime.IsBusy = true;
         runtime.Status = LocalizationService.Instance["Common_Status_Thinking"];
@@ -443,6 +492,14 @@ public sealed class ChatGenerationService
                     replyContent = content;
                     replyReasoning = reasoning;
                     replyFinishReason = finishReason;
+
+                    if (versionGroupId is not null)
+                    {
+                        uiReply.VersionGroupId = versionGroupId;
+                        uiReply.VersionIndex = versionIndex;
+                        uiReply.TotalVersions = totalVersions;
+                    }
+
                     lastAssistantMsg = uiReply;
                     break;
                 }
@@ -683,7 +740,7 @@ public sealed class ChatGenerationService
             if (truncated)
                 lastAssistantMsg.ErrorMessage = OutputTruncatedNotice;
 
-            await _messageRepo.InsertAsync(new Message
+            var id = await _messageRepo.InsertAsync(new Message
             {
                 SessionId = sessionId,
                 TurnId = turnId,
@@ -692,9 +749,12 @@ public sealed class ChatGenerationService
                 ReasoningContent = replyReasoning,
                 ErrorMessage = truncated ? OutputTruncatedNotice : string.Empty,
                 ContentType = truncated ? "error" : "text",
+                IsActive = lastAssistantMsg.IsActive,
+                VersionGroupId = lastAssistantMsg.VersionGroupId,
                 CreatedAtUtc = DateTime.UtcNow,
                 LogicalDate = logicalDate,
             });
+            lastAssistantMsg.DbId = id;
 
             // 成功结束后异步生成轮次摘要，不阻塞界面
             _turnSummaryService.Trigger(sessionId, turnId, logicalDate);
@@ -714,6 +774,8 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = LocalizationService.Instance["Common_Status_Ready"];
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+        UpdateRewriteEligibility(messages);
+        return lastAssistantMsg is not null && !string.IsNullOrWhiteSpace(lastAssistantMsg.Content);
     }
 
     /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>
@@ -871,6 +933,8 @@ public sealed class ChatGenerationService
             DbId = m.Id,
             ToolCallId = m.ToolCallId,
             ErrorMessage = m.ErrorMessage,
+            IsActive = m.IsActive,
+            VersionGroupId = m.VersionGroupId,
         };
 
         if (m.Role == "system")
@@ -908,14 +972,69 @@ public sealed class ChatGenerationService
 
     private static void MarkFinalReplies(ObservableCollection<ChatMessage> messages)
     {
-        for (var i = 0; i < messages.Count; i++)
+        foreach (var message in messages)
+            message.IsFinalReply = false;
+
+        var active = messages.Where(m => m.IsActive).ToList();
+        for (var i = 0; i < active.Count; i++)
         {
-            var m = messages[i];
+            var m = active[i];
             if (m.Role != "assistant") continue;
 
-            var isTurnEnd = i == messages.Count - 1 || messages[i + 1].Role == "user";
+            var isTurnEnd = i == active.Count - 1 || active[i + 1].Role == "user";
             if (isTurnEnd && (!string.IsNullOrEmpty(m.Content) || !string.IsNullOrEmpty(m.ErrorMessage)))
                 m.IsFinalReply = true;
+        }
+    }
+
+    /// <summary>
+    /// 只有“最后一条激活的最终 AI 回复”允许重写，避免历史消息上出现无效按钮。
+    /// </summary>
+    private static void UpdateRewriteEligibility(ObservableCollection<ChatMessage> messages)
+    {
+        var lastActive = messages.LastOrDefault(m => m.IsActive);
+        var target = lastActive is { Role: "assistant", IsFinalReply: true } ? lastActive : null;
+
+        foreach (var message in messages)
+            message.CanRewrite = ReferenceEquals(message, target);
+    }
+
+    /// <summary>按版本分组计算 V1/V2 序号与总数，保证重启后 UI 显示正确。</summary>
+    private static void AssignVersionMetadata(ObservableCollection<ChatMessage> messages)
+    {
+        var groups = messages
+            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
+
+        foreach (var group in groups)
+        {
+            var versions = group.OrderBy(m => m.DbId).ToList();
+            for (var i = 0; i < versions.Count; i++)
+            {
+                versions[i].VersionIndex = i + 1;
+                versions[i].TotalVersions = versions.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 崩溃恢复：如果某个版本组没有任何激活版本（例如重写途中应用退出），
+    /// 自动激活最新版本，避免会话完全没有可见回复。
+    /// </summary>
+    private async Task RepairVersionGroupsAsync(IReadOnlyList<ChatMessage> messages)
+    {
+        var groups = messages
+            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
+
+        foreach (var group in groups)
+        {
+            if (group.Any(m => m.IsActive)) continue;
+
+            var latest = group.OrderByDescending(m => m.DbId).First();
+            latest.IsActive = true;
+            if (latest.DbId > 0)
+                await _messageRepo.UpdateMessageVersionAsync(latest.DbId, true, latest.VersionGroupId);
         }
     }
 
