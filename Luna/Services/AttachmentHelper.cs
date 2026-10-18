@@ -28,8 +28,11 @@ public static class AttachmentHelper
     /// <summary>单个附件的最大字节数（100 MB）。</summary>
     public const long MaxBytes = 100L * 1024 * 1024;
 
-    /// <summary>单张图片的最大字节数（10 MB，多模态输入用）。</summary>
+    /// <summary>单张图片发送时的最大字节数（10 MB，限制 Data URL / 请求体大小）。</summary>
     public const long MaxImageBytes = 10L * 1024 * 1024;
+
+    /// <summary>允许进入压缩流程的原始图片上限（50 MB），避免超大文件解码耗尽内存。</summary>
+    public const long MaxImageInputBytes = 50L * 1024 * 1024;
 
     /// <summary>可交由 AI 直接识别的图片扩展名。</summary>
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -46,8 +49,8 @@ public static class AttachmentHelper
         => !string.IsNullOrEmpty(extension) && ImageExtensions.Contains(extension);
 
     /// <summary>
-    /// 把图片附件读取为 data URL（供多模态识图）。达到上限或读取失败时返回 false。
-    /// 优先使用内容寻址后的 <see cref="Attachment.StoredPath"/>，回退到原始 <see cref="Attachment.SourcePath"/>。
+    /// 把图片附件压缩后读取为 data URL（供多模态识图）。优先使用内容寻址后的
+    /// <see cref="Attachment.StoredPath"/>，回退到原始 <see cref="Attachment.SourcePath"/>。
     /// </summary>
     public static bool TryBuildImageDataUrl(Attachment a, out string dataUrl, out string error)
     {
@@ -64,32 +67,64 @@ public static class AttachmentHelper
         try
         {
             var info = new FileInfo(path);
-            if (info.Length > MaxImageBytes)
+            if (info.Length > MaxImageInputBytes)
             {
-                error = LocalizationService.Instance.Format("Common_Attachment_ImageTooLarge", FormatSize(info.Length), FormatSize(MaxImageBytes));
+                error = LocalizationService.Instance.Format(
+                    "Common_Attachment_ImageTooLarge", FormatSize(info.Length), FormatSize(MaxImageInputBytes));
                 return false;
             }
 
-            var mime = GetImageMime(a.FileExtension ?? Path.GetExtension(path));
-            var bytes = File.ReadAllBytes(path);
-            dataUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            var compressed = ImageCompressionHelper.TryCompressImage(path, out var formatName, out var compressionError);
+            var extension = !string.IsNullOrEmpty(a.FileExtension) ? a.FileExtension : Path.GetExtension(path);
+            string mime;
+
+            if (compressed is not null)
+            {
+                mime = formatName == "PNG" ? "image/png" : "image/jpeg";
+                Serilog.Log.Information(
+                    "图片已优化：{File} | 格式：{Format} | 原始：{OriginalKb} KB → 压缩后：{NewKb} KB",
+                    a.FileName, formatName, info.Length / 1024, compressed.Length / 1024);
+            }
+            else if (string.Equals(extension, ".webp", StringComparison.OrdinalIgnoreCase)
+                     && info.Length <= MaxImageBytes)
+            {
+                // WPF 没有内置 WebP 解码器：保留原图，避免把原本可用的附件直接判失败。
+                compressed = File.ReadAllBytes(path);
+                mime = "image/webp";
+                Serilog.Log.Information("图片压缩不可用，使用原图：{File}", a.FileName);
+            }
+            else
+            {
+                error = LocalizationService.Instance.Format(
+                    "Common_Attachment_ImageCompressFailed", compressionError ?? "unknown");
+                return false;
+            }
+
+            var dataUrlValue = $"data:{mime};base64,{Convert.ToBase64String(compressed)}";
+            if (dataUrlValue.Length > MaxImageBytes)
+            {
+                error = LocalizationService.Instance.Format(
+                    "Common_Attachment_ImageTooLarge", FormatSize(dataUrlValue.Length), FormatSize(MaxImageBytes));
+                return false;
+            }
+
+            dataUrl = dataUrlValue;
             return true;
         }
         catch (Exception ex)
         {
-            error = ex.Message;
+            error = LocalizationService.Instance.Format("Common_Attachment_ImageCompressFailed", ex.Message);
             return false;
         }
     }
 
-    private static string GetImageMime(string? extension) => extension?.ToLowerInvariant() switch
-    {
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".gif" => "image/gif",
-        ".webp" => "image/webp",
-        ".bmp" => "image/bmp",
-        _ => "image/png",
-    };
+    /// <summary>在后台线程执行图片压缩，避免大图解码阻塞 UI。</summary>
+    public static Task<(bool Success, string DataUrl, string Error)> TryBuildImageDataUrlAsync(Attachment a)
+        => Task.Run(() =>
+        {
+            var success = TryBuildImageDataUrl(a, out var dataUrl, out var error);
+            return (success, dataUrl, error);
+        });
 
     /// <summary>
     /// 弹出多选文件对话框。选中的文件以原始路径暂存在 <see cref="Attachment.StoredPath"/> / <see cref="Attachment.SourcePath"/>，

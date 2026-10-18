@@ -40,6 +40,15 @@ public class OpenAiService : IAiService
     /// <summary>流式响应允许的最长“无新数据”间隔，持续有数据时不会触发。</summary>
     private static readonly TimeSpan StreamIdleTimeout = TimeSpan.FromSeconds(120);
 
+    /// <summary>附件注入 system 消息的识别标记（由 ChatGenerationService.BuildAttachmentContext 生成）。</summary>
+    private const string AttachmentContextMarker = "用户上传了以下附件";
+
+    /// <summary>附件原始路径行前缀。</summary>
+    private const string AttachmentPathPrefix = "原始路径：";
+
+    /// <summary>发给 API 时附件上下文最多保留的字符数，完整内容仍保留在数据库中。</summary>
+    private const int MaxAttachmentContextChars = 3000;
+
     public OpenAiService(HttpClient httpClient, AiSettings settings,
         ToolRegistry toolRegistry, SystemPromptBuilder systemPromptBuilder,
         ILogger<OpenAiService> logger)
@@ -60,7 +69,8 @@ public class OpenAiService : IAiService
         var requestBody = await BuildRequestBodyAsync(messages, stream: false, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-        _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
+        var requestModel = requestBody["model"]?.GetValue<string>() ?? _settings.Model;
+        _logger.LogInformation("POST {Url} model={Model}", url, requestModel);
 
         using var response = await SendWithRetryAsync(
             () => CreateHttpRequest(url, requestBody.ToJsonString()),
@@ -76,14 +86,21 @@ public class OpenAiService : IAiService
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
+    public IAsyncEnumerable<StreamEvent> ChatStreamAsync(
+        IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default)
+        => ChatStreamAsync(messages, new AiRequestOptions(), cancellationToken);
+
     public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
+        AiRequestOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var requestBody = await BuildRequestBodyAsync(messages, stream: true, new AiRequestOptions(), cancellationToken);
+        var requestBody = await BuildRequestBodyAsync(messages, stream: true, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-        _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
+        var requestModel = requestBody["model"]?.GetValue<string>() ?? _settings.Model;
+        _logger.LogInformation("POST stream {Url} model={Model}", url, requestModel);
 
         // 只在这里重试“建立请求 + 拿到成功响应头”的阶段。
         // 一旦开始 yield 流式事件，就不能安全重试（否则会重复输出已发送的内容）。
@@ -321,10 +338,64 @@ public class OpenAiService : IAiService
     private static string TruncateForLog(string text, int max = 500)
         => string.IsNullOrEmpty(text) ? string.Empty : text.Length <= max ? text : text[..max] + "…";
 
-    /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
-    private string ResolveModel(JsonObject root)
+    /// <summary>
+    /// 对附件注入的 system 内容做 API 侧降级：保留开头 3000 字符，
+    /// 并在末尾列出所有附件的原始路径，供模型按需调用 read_file。
+    /// 数据库中的完整内容不变。
+    /// </summary>
+    private static string TruncateAttachmentContext(string content)
     {
-        var model = _settings.Model;
+        if (content.Length <= MaxAttachmentContextChars)
+            return content;
+
+        var paths = ExtractAttachmentPaths(content);
+        var sb = new StringBuilder(content[..MaxAttachmentContextChars]);
+
+        sb.AppendLine();
+        sb.AppendLine();
+        sb.AppendLine($"[附件内容过长，已折叠其余 {content.Length - MaxAttachmentContextChars} 个字符。]");
+
+        if (paths.Count > 0)
+        {
+            sb.AppendLine("【附件原始路径】");
+            foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+                sb.AppendLine($"- {path}");
+
+            sb.AppendLine("如需更多细节，可调用 read_file 读取上述原始路径；" +
+                          "PDF、Word、Excel、PPT 等文档会自动转换为 Markdown；" +
+                          "大文件可用 keyword 或 start_line/end_line 分段读取。");
+        }
+        else
+        {
+            sb.AppendLine("如需更多细节，请依靠用户的后续提问。");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>从附件 system 内容中提取所有“原始路径：...”行。</summary>
+    private static List<string> ExtractAttachmentPaths(string content)
+    {
+        var paths = new List<string>();
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (!line.StartsWith(AttachmentPathPrefix, StringComparison.Ordinal))
+                continue;
+
+            var path = line[AttachmentPathPrefix.Length..].Trim();
+            if (path.Length > 0)
+                paths.Add(path);
+        }
+
+        return paths;
+    }
+
+    /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
+    private string ResolveModel(JsonObject root, string currentModel)
+    {
+        var model = currentModel;
         if (!_settings.DeepThinking)
             return model;
 
@@ -351,6 +422,28 @@ public class OpenAiService : IAiService
         return model;
     }
 
+    /// <summary>
+    /// o1/o3/o4 等推理模型不支持 temperature/top_p/penalty，且使用 max_completion_tokens。
+    /// 命中时从请求体中移除不兼容参数。
+    /// </summary>
+    private static void ApplyReasoningModelParameterCompat(JsonObject root, string model)
+    {
+        var lower = model.ToLowerInvariant();
+        if (!(lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4")))
+            return;
+
+        root.Remove("temperature");
+        root.Remove("top_p");
+        root.Remove("frequency_penalty");
+        root.Remove("presence_penalty");
+
+        if (root.TryGetPropertyValue("max_tokens", out var maxTokens) && maxTokens is not null)
+        {
+            root.Remove("max_tokens");
+            root["max_completion_tokens"] = maxTokens.DeepClone();
+        }
+    }
+
     private async Task<JsonObject> BuildRequestBodyAsync(IEnumerable<ChatMessage> messages, bool stream,
         AiRequestOptions options, CancellationToken ct)
     {
@@ -363,7 +456,13 @@ public class OpenAiService : IAiService
             ["frequency_penalty"] = _settings.FrequencyPenalty,
             ["presence_penalty"] = _settings.PresencePenalty,
         };
-        root["model"] = options.DeepThinking ? ResolveModel(root) : _settings.Model;
+        var targetModel = options.IsBackgroundTask
+            ? _settings.EffectiveBackgroundModel
+            : _settings.Model;
+
+        root["model"] = options.DeepThinking ? ResolveModel(root, targetModel) : targetModel;
+
+        ApplyReasoningModelParameterCompat(root, root["model"]?.GetValue<string>() ?? targetModel);
 
         if (!string.IsNullOrEmpty(options.ResponseFormat))
         {
@@ -375,7 +474,22 @@ public class OpenAiService : IAiService
 
         var messagesArray = new JsonArray();
 
-        var systemPrompt = await _systemPromptBuilder.BuildAsync(options, ct);
+        // 用当前用户输入做长期事实的相关性检索（工具循环期间最后一条 user 仍是本轮输入）。
+        var messageList = messages as IList<ChatMessage> ?? messages.ToList();
+        var activeMessageList = messageList.Where(m => m.IsActive).ToList();
+        var queryText = activeMessageList.LastOrDefault(m => m.Role == "user")?.Content;
+
+        // 渐进披露：核心工具 + 会话已解锁组 + 根据当前输入自动命中的组。
+        var activeGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (options.ActiveToolGroups is not null)
+        {
+            foreach (var group in options.ActiveToolGroups)
+                activeGroups.Add(group);
+        }
+        foreach (var group in ToolGroups.MatchGroups(queryText))
+            activeGroups.Add(group);
+
+        var systemPrompt = await _systemPromptBuilder.BuildAsync(options, queryText, ct);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
         {
             messagesArray.Add(new JsonObject
@@ -389,8 +503,17 @@ public class OpenAiService : IAiService
         // 避免出现 "Messages with role 'tool' must be a response to a preceding message with 'tool_calls'"。
         HashSet<string>? pendingToolCallIds = null;
 
-        foreach (var msg in messages)
+        // 最近一次工具返回的截图路径，以及当前请求末尾是否为工具消息。
+        // 工具刚结束时把图片追加成一条运行期 user 消息，让模型真正“看”到画面。
+        string? latestScreenshotPath = null;
+        var lastMessageIsTool = false;
+
+        foreach (var msg in messageList)
         {
+            // 非激活版本只在 UI 中保留，不参与模型上下文。
+            if (!msg.IsActive)
+                continue;
+
             if (msg.Role == "assistant")
             {
                 if (string.IsNullOrEmpty(msg.Content) &&
@@ -438,6 +561,8 @@ public class OpenAiService : IAiService
                 }
 
                 messagesArray.Add(obj);
+                lastMessageIsTool = false;
+                latestScreenshotPath = null;
             }
             else if (msg.Role == "tool")
             {
@@ -454,11 +579,17 @@ public class OpenAiService : IAiService
                     ["tool_call_id"] = msg.ToolCallId,
                 };
                 messagesArray.Add(obj);
+                lastMessageIsTool = true;
+
+                if (ToolResult.TryExtractImagePath(msg.Content, out var screenshotPath))
+                    latestScreenshotPath = screenshotPath;
             }
             else
             {
                 // user / system 等：重置工具上下文
                 pendingToolCallIds = null;
+                lastMessageIsTool = false;
+                latestScreenshotPath = null;
 
                 var obj = new JsonObject { ["role"] = msg.Role };
 
@@ -478,6 +609,13 @@ public class OpenAiService : IAiService
                     }
                     obj["content"] = parts;
                 }
+                else if (msg.Role == "system" &&
+                         msg.Content.Contains(AttachmentContextMarker, StringComparison.Ordinal))
+                {
+                    // 附件正文在数据库里保持完整，只在发给 API 时降级，
+                    // 避免长文档每一轮都重复占满上下文。
+                    obj["content"] = TruncateAttachmentContext(msg.Content);
+                }
                 else
                 {
                     obj["content"] = msg.Content;
@@ -486,10 +624,17 @@ public class OpenAiService : IAiService
                 messagesArray.Add(obj);
             }
         }
+        // 工具轮刚结束（末尾是 tool 消息）时，把最近一张截图作为 user 图片追加到请求末尾。
+        // 仅存在于本次请求，不写入历史，也不会在 UI 里多出一条用户消息。
+        if (lastMessageIsTool && !string.IsNullOrEmpty(latestScreenshotPath))
+            await AppendScreenshotMessageAsync(messagesArray, latestScreenshotPath, ct);
+
         root["messages"] = messagesArray;
 
         var registeredTools = options.IncludeTools
-            ? _toolRegistry.GetEnabledTools().ToList()
+            ? _toolRegistry.GetEnabledTools()
+                .Where(tool => ToolGroups.ShouldInclude(tool.Name, activeGroups))
+                .ToList()
             : new List<ITool>();
         if (registeredTools.Count > 0)
         {
@@ -518,5 +663,53 @@ public class OpenAiService : IAiService
         }
 
         return root;
+    }
+
+    /// <summary>
+    /// 把工具生成的截图以 data URL 形式追加为一条 user 消息。
+    /// 标准 OpenAI 协议不允许 tool 消息携带图片，因此只能在工具轮结束后补一条 user 消息。
+    /// </summary>
+    private async Task AppendScreenshotMessageAsync(JsonArray messagesArray, string path, CancellationToken ct)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+
+            var info = new FileInfo(path);
+            if (info.Length <= 0 || info.Length > AttachmentHelper.MaxImageBytes)
+            {
+                _logger.LogWarning("截图不可用或过大，跳过多模态注入: {Path} ({Size} bytes)", path, info.Length);
+                return;
+            }
+
+            var bytes = await File.ReadAllBytesAsync(path, ct);
+            var dataUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+
+            messagesArray.Add(new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "text",
+                        ["text"] = ToolLocalization.Text("Tool_ReadScreen_Msg_ImageInjected"),
+                    },
+                    new JsonObject
+                    {
+                        ["type"] = "image_url",
+                        ["image_url"] = new JsonObject { ["url"] = dataUrl },
+                    },
+                },
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "注入截图到多模态请求失败: {Path}", path);
+        }
     }
 }

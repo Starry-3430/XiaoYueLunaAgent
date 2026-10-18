@@ -51,6 +51,8 @@ public class DatabaseInitializer
         AddToolCallsJsonColumn(conn);
         AddToolCallIdColumn(conn);
         AddErrorMessageColumn(conn);
+        AddMessageVersionColumns(conn);
+        AddLastFollowUpColumn(conn);
         MigrateLogicalDates(conn);
         _logger.LogInformation("数据库初始化完成：{Path}", _dbPath);
     }
@@ -189,6 +191,44 @@ public class DatabaseInitializer
         }
     }
 
+    /// <summary>消息版本化：标记当前激活版本，并把同一次提问的回复归入同一版本组。</summary>
+    private void AddMessageVersionColumns(SqliteConnection conn)
+    {
+        try
+        {
+            conn.Execute("ALTER TABLE Messages ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+
+        try
+        {
+            conn.Execute("ALTER TABLE Messages ADD COLUMN VersionGroupId TEXT");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+
+        // 索引必须在列迁移之后创建，兼容已存在的旧数据库。
+        conn.Execute("CREATE INDEX IF NOT EXISTS IX_Messages_VersionGroupId ON Messages(VersionGroupId)");
+    }
+
+    /// <summary>任务跟进去重标记：记录最后一次主动跟进的 UTC 时间（按天去重）。</summary>
+    private void AddLastFollowUpColumn(SqliteConnection conn)
+    {
+        try
+        {
+            conn.Execute("ALTER TABLE Tasks ADD COLUMN LastFollowUpUtc TEXT");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+    }
+
     /// <summary>
     /// 一次性迁移：早期 Attachments 表以 MessageId 关联消息（且从未启用写入）。
     /// 现改为按 SessionId/TurnId 关联轮次，并新增 FileExtension/FileSize/ConvertedMarkdown 列。
@@ -221,6 +261,8 @@ public class DatabaseInitializer
             Role          TEXT NOT NULL,
             Content       TEXT NOT NULL,
             ContentType   TEXT NOT NULL DEFAULT 'text',
+            IsActive      INTEGER NOT NULL DEFAULT 1,
+            VersionGroupId TEXT,
             CreatedAtUtc  TEXT NOT NULL,
             LogicalDate   TEXT NOT NULL
         );
@@ -284,6 +326,7 @@ public class DatabaseInitializer
             Priority          INTEGER NOT NULL DEFAULT 0,
             ReminderCount     INTEGER NOT NULL DEFAULT 0,
             LastRemindedAtUtc TEXT,
+            LastFollowUpUtc   TEXT,
             CreatedAtUtc      TEXT NOT NULL,
             UpdatedAtUtc      TEXT NOT NULL
         );
@@ -330,5 +373,60 @@ public class DatabaseInitializer
             UpdatedAtUtc TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS IX_Facts_Key ON Facts(Key);
+
+        -- 长期事实全文索引：使用普通 FTS5 表 + 触发器维护。
+        -- 中文用 trigram 分词，支持 3 字及以上子串匹配；2 字关键词由仓储层用 LIKE 兜底。
+        CREATE VIRTUAL TABLE IF NOT EXISTS FactsFts USING fts5(
+            Key, Value, tokenize='trigram'
+        );
+
+        DROP TRIGGER IF EXISTS Facts_ai;
+        DROP TRIGGER IF EXISTS Facts_ad;
+        DROP TRIGGER IF EXISTS Facts_au;
+
+        CREATE TRIGGER Facts_ai
+            AFTER INSERT ON Facts
+        BEGIN
+            INSERT INTO FactsFts(rowid, Key, Value)
+            VALUES (new.Id, new.Key, new.Value);
+        END;
+
+        CREATE TRIGGER Facts_ad
+            AFTER DELETE ON Facts
+        BEGIN
+            DELETE FROM FactsFts WHERE rowid = old.Id;
+        END;
+
+        CREATE TRIGGER Facts_au
+            AFTER UPDATE ON Facts
+        BEGIN
+            DELETE FROM FactsFts WHERE rowid = old.Id;
+            INSERT INTO FactsFts(rowid, Key, Value)
+            VALUES (new.Id, new.Key, new.Value);
+        END;
+
+        -- 回填已有事实（幂等）：首次升级或索引缺失时补齐。
+        INSERT INTO FactsFts(rowid, Key, Value)
+        SELECT Id, Key, Value FROM Facts
+        WHERE Id NOT IN (SELECT rowid FROM FactsFts);
+
+        -- 持久化的“始终允许”权限（仅记录允许记住的只读工具）
+        CREATE TABLE IF NOT EXISTS ToolPermissions (
+            ToolName     TEXT PRIMARY KEY,
+            AllowedAtUtc TEXT NOT NULL
+        );
+
+        -- 工具执行审计日志
+        CREATE TABLE IF NOT EXISTS ToolAuditLogs (
+            Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            SessionId         TEXT NOT NULL,
+            ToolName          TEXT NOT NULL,
+            ArgumentsSummary  TEXT,
+            PermissionResult  TEXT NOT NULL, -- NotRequired / AllowOnce / AllowPersistent / Deny
+            ExecutionResult   TEXT NOT NULL, -- Success / Failed / Denied / Timeout / Canceled
+            ErrorMessage      TEXT,
+            CreatedAtUtc      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_ToolAuditLogs_CreatedAtUtc ON ToolAuditLogs(CreatedAtUtc);
         """;
 }

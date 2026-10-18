@@ -81,6 +81,9 @@ public partial class AiConnectionViewModel : ObservableObject
     private string _model = string.Empty;
 
     [ObservableProperty]
+    private string _backgroundModel = string.Empty;
+
+    [ObservableProperty]
     private string _customModel = string.Empty;
 
     [ObservableProperty]
@@ -184,6 +187,7 @@ public partial class AiConnectionViewModel : ObservableObject
             Nickname = _settings.Nickname;
             UserName = _settings.UserName;
             Model = _settings.Model;
+            BackgroundModel = _settings.BackgroundModel;
 
             ResponseLanguageSetting.SelectedOption =
                 ResponseLanguageSetting.Options.FirstOrDefault(o => o.Value == _settings.ResponseLanguage)
@@ -289,6 +293,8 @@ public partial class AiConnectionViewModel : ObservableObject
     partial void OnUserNameChanged(string value) => ScheduleSave();
     partial void OnModelChanged(string value) => ScheduleSave();
 
+    partial void OnBackgroundModelChanged(string value) => ScheduleSave();
+
     private void ScheduleSave()
     {
         if (_loading) return;
@@ -371,6 +377,7 @@ public partial class AiConnectionViewModel : ObservableObject
         {
             _settings.Provider = ProviderSetting.SelectedOption?.Value ?? "custom";
             _settings.Model = Model;
+            _settings.BackgroundModel = BackgroundModel;
             _settings.BaseUrl = BaseUrl;
             _settings.ApiKey = ApiKey;
             _settings.MaxTokens = MaxTokens;

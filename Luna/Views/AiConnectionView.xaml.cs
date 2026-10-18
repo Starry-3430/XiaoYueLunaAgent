@@ -12,6 +12,8 @@ namespace Luna.Views;
 /// </summary>
 public partial class AiConnectionView : UserControl
 {
+    private Window? _hostWindow;
+
     public AiConnectionView()
     {
         InitializeComponent();
@@ -24,7 +26,38 @@ public partial class AiConnectionView : UserControl
         {
             if (DataContext is AiConnectionViewModel vm && ApiKeyBox.Password != vm.ApiKey)
                 ApiKeyBox.Password = vm.ApiKey;
+
+            AttachHostWindow();
         };
+        Unloaded += (_, _) => DetachHostWindow();
+    }
+
+    /// <summary>页面所在的窗口失去激活（如点击其它应用）时，关闭所有下拉弹出层。</summary>
+    private void AttachHostWindow()
+    {
+        var window = Window.GetWindow(this);
+        if (window is null || ReferenceEquals(_hostWindow, window)) return;
+
+        DetachHostWindow();
+        _hostWindow = window;
+        _hostWindow.Deactivated += HostWindow_Deactivated;
+    }
+
+    private void DetachHostWindow()
+    {
+        if (_hostWindow is null) return;
+        _hostWindow.Deactivated -= HostWindow_Deactivated;
+        _hostWindow = null;
+    }
+
+    private void HostWindow_Deactivated(object? sender, EventArgs e) => CloseDropdowns();
+
+    private void CloseDropdowns()
+    {
+        if (DataContext is not AiConnectionViewModel vm) return;
+        vm.ProviderSetting.IsOpen = false;
+        vm.ModelSetting.IsOpen = false;
+        vm.ResponseLanguageSetting.IsOpen = false;
     }
 
     /// <summary>API Key 输入变化时同步到视图模型。</summary>
@@ -60,13 +93,7 @@ public partial class AiConnectionView : UserControl
     }
 
     /// <summary>点击下拉框以外区域时，关闭所有下拉弹出层。</summary>
-    private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (DataContext is not AiConnectionViewModel vm) return;
-        vm.ProviderSetting.IsOpen = false;
-        vm.ModelSetting.IsOpen = false;
-        vm.ResponseLanguageSetting.IsOpen = false;
-    }
+    private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e) => CloseDropdowns();
 
     /// <summary>点击下拉触发框：切换其弹出层的展开状态。</summary>
     private void SelectToggle_Click(object sender, MouseButtonEventArgs e)

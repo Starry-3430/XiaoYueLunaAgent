@@ -11,8 +11,8 @@ namespace Luna.Services;
 /// </summary>
 public class SystemPromptBuilder
 {
-    /// <summary>注入系统提示词的长期事实条数上限。</summary>
-    private const int MaxFacts = 20;
+    /// <summary>按当前用户输入相关性检索后，注入系统提示词的长期事实条数上限。</summary>
+    private const int MaxRelevantFacts = 5;
 
     /// <summary>单条事实 Value 的最大字数。</summary>
     private const int MaxFactValueLength = 100;
@@ -32,8 +32,12 @@ public class SystemPromptBuilder
         _logger = logger;
     }
 
-    /// <summary>按请求参数拼装最终的系统提示词；不需要时返回空字符串。</summary>
-    public async Task<string> BuildAsync(AiRequestOptions options, CancellationToken ct = default)
+    /// <summary>
+    /// 按请求参数拼装最终的系统提示词；不需要时返回空字符串。
+    /// <paramref name="queryText"/> 为当前用户输入，用于相关性检索长期事实。
+    /// </summary>
+    public async Task<string> BuildAsync(AiRequestOptions options, string? queryText = null,
+        CancellationToken ct = default)
     {
         if (!options.IncludeSystemPrompt)
             return string.Empty;
@@ -52,7 +56,7 @@ public class SystemPromptBuilder
         if (options.IncludeUserEnvironment)
             prompt += "\n\n" + UserEnvironment.BuildPromptSection(_settings.ResponseLanguage);
 
-        var factsSection = await BuildFactsSectionAsync(ct);
+        var factsSection = await BuildFactsSectionAsync(queryText, ct);
         if (!string.IsNullOrEmpty(factsSection))
             prompt += "\n\n" + factsSection;
 
@@ -67,28 +71,37 @@ public class SystemPromptBuilder
         .Replace("{user}", _settings.UserName)
         .Replace("{User}", _settings.UserName);
 
-    /// <summary>把长期事实拼成【关于用户】段落；没有事实或读取失败时返回空字符串。</summary>
-    private async Task<string> BuildFactsSectionAsync(CancellationToken ct)
+    /// <summary>
+    /// 从当前用户输入检索最相关的长期事实并拼成【关于用户】段落。
+    /// 关键词检索无结果时由仓储层回退到最近更新的事实；读取失败时返回空字符串。
+    /// </summary>
+    private async Task<string> BuildFactsSectionAsync(string? queryText, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(queryText))
+            return string.Empty;
+
         List<Fact> facts;
         try
         {
-            // 已按 UpdatedAtUtc 倒序
-            facts = await _facts.GetAllAsync();
+            // 关键词相关性检索；无匹配时仓储层回退到最近更新的 5 条。
+            facts = await _facts.SearchRelevantAsync(queryText, MaxRelevantFacts);
+            ct.ThrowIfCancellationRequested();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "读取长期事实失败，跳过 Facts 注入");
+            _logger.LogWarning(ex, "检索长期事实失败，跳过 Facts 注入");
             return string.Empty;
         }
 
         if (facts.Count == 0)
             return string.Empty;
 
-        // 最多 20 条，单条 Value 截断；累计 token 超限时从末尾丢弃
+        // 单条 Value 截断；累计 token 超限时从末尾丢弃
         var selected = new List<string>();
         var totalTokens = 0;
-        foreach (var fact in facts.Take(MaxFacts))
+        foreach (var fact in facts)
         {
             var line = $"- {fact.Key}：{Truncate(fact.Value, MaxFactValueLength)}";
             var lineTokens = EstimateTokens(line);
@@ -103,11 +116,11 @@ public class SystemPromptBuilder
 
         var sb = new StringBuilder();
         sb.AppendLine("【关于用户】");
-        sb.AppendLine("以下是从以往对话中记住的关于用户的长期事实，回答时可直接参考，无需再调用工具查询：");
+        sb.AppendLine("以下是从以往对话中检索到的、与当前话题相关的长期事实，回答时可直接参考，无需再调用工具查询：");
         foreach (var line in selected)
             sb.AppendLine(line);
 
-        _logger.LogInformation("已向系统提示词注入 {Count} 条长期事实", selected.Count);
+        _logger.LogInformation("已向系统提示词注入 {Count} 条相关长期事实", selected.Count);
         return sb.ToString().TrimEnd();
     }
 

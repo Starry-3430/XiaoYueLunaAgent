@@ -44,6 +44,16 @@ public class SessionRepository
             new { Id = id, Title = title });
     }
 
+    /// <summary>是否已存在指定标题的会话（用于早报等幂等写入）。</summary>
+    public async Task<bool> ExistsByTitleAsync(string title)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        var count = await conn.ExecuteScalarAsync<long>(
+            "SELECT COUNT(1) FROM Sessions WHERE Title = @Title",
+            new { Title = title });
+        return count > 0;
+    }
+
     public async Task TouchAsync(string id)
     {
         using var conn = new SqliteConnection(_db.ConnectionString);

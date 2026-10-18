@@ -121,6 +121,23 @@
     <value>浏览…</value>
   </data>
 
+  <!-- 工具授权 -->
+  <data name="Settings_ToolPermissions_Title" xml:space="preserve">
+    <value>工具授权</value>
+  </data>
+  <data name="Settings_ToolPermissions_Desc" xml:space="preserve">
+    <value>Luna 会记住你选择“始终允许（记住）”的只读工具授权。清除后，这些工具下次执行时会重新询问。</value>
+  </data>
+  <data name="Settings_ToolPermissions_Clear" xml:space="preserve">
+    <value>清除记住的授权</value>
+  </data>
+  <data name="Settings_ToolPermissions_Cleared" xml:space="preserve">
+    <value>已清除</value>
+  </data>
+  <data name="Settings_ToolPermissions_ClearFailed" xml:space="preserve">
+    <value>清除失败</value>
+  </data>
+
   <!-- 软件更新 -->
   <data name="Settings_Update_Title" xml:space="preserve">
     <value>软件更新</value>

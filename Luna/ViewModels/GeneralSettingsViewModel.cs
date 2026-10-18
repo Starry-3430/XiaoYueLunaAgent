@@ -18,6 +18,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly SettingsService _settingsService;
     private readonly HotkeyService _hotkeyService;
     private readonly StartupService _startupService;
+    private readonly ToolPermissionService _toolPermission;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
 
@@ -61,15 +62,20 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _updateStatus = string.Empty;
 
+    [ObservableProperty]
+    private string _toolPermissionStatus = string.Empty;
+
     private readonly DispatcherTimer _saveStatusTimer;
 
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
-        HotkeyService hotkeyService, StartupService startupService, ILogger<GeneralSettingsViewModel> logger)
+        HotkeyService hotkeyService, StartupService startupService,
+        ToolPermissionService toolPermission, ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
         _startupService = startupService;
+        _toolPermission = toolPermission;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -295,6 +301,23 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void ResetProxyUsername() => ProxyUsername = string.Empty;
+
+    /// <summary>清除所有“始终允许（记住）”的持久化工具权限。</summary>
+    [RelayCommand]
+    private async Task ClearPersistentToolPermissionsAsync()
+    {
+        var loc = LocalizationService.Instance;
+        try
+        {
+            await _toolPermission.ClearPersistentPermissionsAsync();
+            ToolPermissionStatus = loc["Settings_ToolPermissions_Cleared"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清除持久化工具权限失败");
+            ToolPermissionStatus = loc["Settings_ToolPermissions_ClearFailed"];
+        }
+    }
 
     /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
     [RelayCommand]

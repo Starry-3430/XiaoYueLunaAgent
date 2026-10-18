@@ -24,6 +24,9 @@ public sealed partial class SessionRuntime : ObservableObject
 
     public ObservableCollection<ChatMessage> Messages { get; } = new();
 
+    /// <summary>本会话已解锁的工具组（渐进披露）。</summary>
+    public HashSet<string> ActiveToolGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -50,6 +53,7 @@ public sealed class ChatGenerationService
     private readonly AttachmentRepository _attachmentRepo;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
+    private readonly ToolPermissionRepository _auditRepo;
     private readonly TurnSummaryService _turnSummaryService;
     private readonly SessionTitleService _sessionTitleService;
     private readonly DiaryService _diaryService;
@@ -60,9 +64,30 @@ public sealed class ChatGenerationService
     // 仅作为“防死循环”的安全上限；正常的多步工具调用（如代码执行）不会触及。
     private const int MaxSafetyToolRounds = 200;
 
+    // 单轮对话的最大执行时间：防止模型卡死或不断刷工具。
+    private static readonly TimeSpan MaxTurnDuration = TimeSpan.FromMinutes(10);
+
+    // 连续出现相同工具调用（工具名 + 参数）的次数上限。
+    private const int MaxRepeatedToolCalls = 2;
+
+    // 只读/无副作用工具的最大并发数：太高容易触发搜索接口限流。
+    private const int MaxConcurrentToolCalls = 3;
+
+    /// <summary>
+    /// 可安全并发执行的只读/无副作用工具白名单。
+    /// 不在名单内的工具（如 write_file、powershell、send_notification、read_screen、ask_user）
+    /// 会被视为屏障，串行执行，避免顺序依赖或共享状态冲突。
+    /// </summary>
+    private static readonly HashSet<string> ConcurrentTools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "read_file", "file_tree", "search_files", "read_clipboard",
+        "web_search", "fetch_url", "list_tasks", "list_facts", "diary_search", "turn_search",
+    };
+
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
-        ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
+        ToolPermissionService toolPermission, ToolPermissionRepository auditRepo,
+        TurnSummaryService turnSummaryService,
         SessionTitleService sessionTitleService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
@@ -72,6 +97,7 @@ public sealed class ChatGenerationService
         _attachmentRepo = attachmentRepo;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
+        _auditRepo = auditRepo;
         _turnSummaryService = turnSummaryService;
         _sessionTitleService = sessionTitleService;
         _diaryService = diaryService;
@@ -97,7 +123,10 @@ public sealed class ChatGenerationService
             runtime.Messages.Clear();
             foreach (var m in msgs)
                 runtime.Messages.Add(MapToChatMessage(m));
+            AssignVersionMetadata(runtime.Messages);
+            await RepairVersionGroupsAsync(runtime.Messages);
             MarkFinalReplies(runtime.Messages);
+            UpdateRewriteEligibility(runtime.Messages);
             runtime.Loaded = true;
         }
         finally
@@ -169,10 +198,12 @@ public sealed class ChatGenerationService
                 await _attachmentRepo.AddAsync(attachment);
             }
 
-            // 图片：直接作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
+            // 图片：压缩后作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
             foreach (var attachment in attachments.Where(AttachmentHelper.IsImage))
             {
-                if (AttachmentHelper.TryBuildImageDataUrl(attachment, out var dataUrl, out var imageError))
+                var (success, dataUrl, imageError) =
+                    await AttachmentHelper.TryBuildImageDataUrlAsync(attachment);
+                if (success)
                     userChatMessage.Images.Add(dataUrl);
                 else
                     _logger.LogWarning("图片附件无法作为图像发送：{File}（{Error}）", attachment.FileName, imageError);
@@ -209,6 +240,7 @@ public sealed class ChatGenerationService
 
         // 用户消息与附件上下文已经入库：立即通知会话列表，
         // 这样主界面在生成过程中打开/已打开时都能马上看到这次新对话。
+        UpdateRewriteEligibility(runtime.Messages);
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
 
         try
@@ -265,7 +297,7 @@ public sealed class ChatGenerationService
         return string.Join("\n", lines);
     }
 
-    /// <summary>重写某条 AI 回复：截断其后内容并重新生成。</summary>
+    /// <summary>重写最后一条 AI 回复：旧版本保留并隐藏，生成一个新版本。</summary>
     public async Task RewriteAsync(string sessionId, ChatMessage msg)
     {
         var runtime = await GetOrLoadAsync(sessionId);
@@ -273,88 +305,140 @@ public sealed class ChatGenerationService
 
         var messages = runtime.Messages;
         var index = messages.IndexOf(msg);
-        if (index < 0) return;
+        if (index < 0 || msg.Role != "assistant") return;
 
-        string userText = "";
-        int userIndex = -1;
-        for (var i = index - 1; i >= 0; i--)
+        // 目前只支持重写最后一条“激活”的回复，避免破坏其后的有效上下文。
+        if (messages.Skip(index + 1).Any(m => m.IsActive))
         {
-            if (messages[i].Role == "user")
-            {
-                userText = messages[i].Content;
-                userIndex = i;
-                break;
-            }
+            _logger.LogWarning("目前仅支持重写最后一条 AI 回复");
+            return;
         }
 
-        if (string.IsNullOrEmpty(userText) || userIndex < 0) return;
+        var versionGroupId = msg.VersionGroupId ?? Guid.NewGuid().ToString("N");
+        var existingVersions = messages
+            .Where(m => m.Role == "assistant" &&
+                        string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
+            .OrderBy(m => m.DbId)
+            .ToList();
 
-        var userDbId = messages[userIndex].DbId;
-        var userImages = messages[userIndex].Images.ToList(); // 保留原用户消息携带的图片，重写时继续作为图像发送
+        if (!existingVersions.Contains(msg))
+            existingVersions.Add(msg);
 
-        // 重写前先保留该轮次注入的附件上下文（system 消息），重写后原样带回去
-        var attachmentContexts = new List<string>();
-        for (var i = userIndex + 1; i < messages.Count; i++)
+        var totalVersions = existingVersions.Count + 1;
+
+        // 先把旧版本全部隐藏并归组；内存中保留，供 UI 切换。
+        for (var i = 0; i < existingVersions.Count; i++)
         {
-            if (messages[i].Role == "system" && !string.IsNullOrWhiteSpace(messages[i].Content))
-                attachmentContexts.Add(messages[i].Content);
-        }
+            var version = existingVersions[i];
+            version.VersionGroupId = versionGroupId;
+            version.VersionIndex = i + 1;
+            version.TotalVersions = totalVersions;
+            version.IsActive = false;
 
-        while (messages.Count > userIndex)
-            messages.RemoveAt(userIndex);
+            if (version.DbId > 0)
+                await _messageRepo.UpdateMessageVersionAsync(version.DbId, false, versionGroupId);
+        }
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
+        var messageCountBefore = messages.Count;
 
-        if (userDbId > 0)
+        var success = false;
+        try
         {
-            await _messageRepo.DeleteAfterAsync(sessionId, userDbId);
-            // 复用的用户消息重新归属到新轮次，并清理旧轮次残留摘要
-            await _messageRepo.ReassignTurnAsync(userDbId, turnId, logicalDate);
-            await _turnSummaryService.DeleteOrphanedAsync(sessionId);
+            success = await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate,
+                versionGroupId, totalVersions, totalVersions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "重写 AI 回复失败");
         }
 
-        var newUserMessage = new ChatMessage { Role = "user", Content = userText, DbId = userDbId };
-        foreach (var image in userImages)
-            newUserMessage.Images.Add(image);
-        messages.Add(newUserMessage);
-
-        // 重新注入保留的附件上下文（引用与转换内容），使重写仍能基于文件作答
-        foreach (var context in attachmentContexts)
+        if (!success)
         {
-            var contextDbId = 0L;
-            if (userDbId > 0)
+            // 清理本次失败尝试新增的消息：数据库标记为非激活，内存中移除，避免挡住后续重写。
+
+            for (var i = messages.Count - 1; i >= messageCountBefore; i--)
             {
-                contextDbId = await _messageRepo.InsertAsync(new Message
+                var added = messages[i];
+                if (added.DbId > 0)
                 {
-                    SessionId = sessionId,
-                    TurnId = turnId,
-                    Role = "system",
-                    Content = context,
-                    CreatedAtUtc = DateTime.UtcNow,
-                    LogicalDate = logicalDate,
-                });
+                    await _messageRepo.UpdateMessageVersionAsync(
+                        added.DbId, false, added.VersionGroupId);
+                }
+                messages.RemoveAt(i);
             }
 
-            messages.Add(new ChatMessage
+            // 恢复旧版本，避免会话没有可见回复。
+            msg.IsActive = true;
+            foreach (var version in existingVersions)
             {
-                Role = "system",
-                Content = context,
-                AttachmentSummary = ExtractAttachmentSummary(context),
-                DbId = contextDbId,
-            });
-        }
+                version.TotalVersions = existingVersions.Count;
+                if (version.DbId > 0)
+                {
+                    await _messageRepo.UpdateMessageVersionAsync(
+                        version.DbId, ReferenceEquals(version, msg), versionGroupId);
+                }
+            }
 
-        await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate);
+            if (existingVersions.Count == 1)
+            {
+                msg.VersionIndex = 1;
+                msg.TotalVersions = 1;
+            }
+
+            UpdateRewriteEligibility(messages);
+        }
     }
 
-    private async Task RunAiLoopAsync(SessionRuntime runtime, string sessionId, string turnId, string logicalDate)
+    /// <summary>在同一版本组内左右切换当前激活的回复，并同步数据库状态。</summary>
+    public async Task SwitchVersionAsync(string sessionId, ChatMessage msg, int direction)
+    {
+        var runtime = await GetOrLoadAsync(sessionId);
+        if (runtime.IsBusy) return;
+
+        var messages = runtime.Messages;
+        if (string.IsNullOrEmpty(msg.VersionGroupId) || !messages.Contains(msg)) return;
+
+        var versions = messages
+            .Where(m => m.Role == "assistant" &&
+                        string.Equals(m.VersionGroupId, msg.VersionGroupId, StringComparison.Ordinal))
+            .OrderBy(m => m.VersionIndex)
+            .ToList();
+        if (versions.Count <= 1) return;
+
+        var targetIndex = msg.VersionIndex + direction;
+        if (targetIndex < 1 || targetIndex > versions.Count) return;
+
+        var target = versions.FirstOrDefault(m => m.VersionIndex == targetIndex);
+        if (target is null || ReferenceEquals(target, msg)) return;
+
+        foreach (var version in versions)
+            version.IsActive = ReferenceEquals(version, target);
+
+        foreach (var version in versions.Where(v => v.DbId > 0))
+            await _messageRepo.UpdateMessageVersionAsync(
+                version.DbId, version.IsActive, version.VersionGroupId);
+
+        MarkFinalReplies(messages);
+        UpdateRewriteEligibility(messages);
+    }
+
+    private async Task<bool> RunAiLoopAsync(SessionRuntime runtime, string sessionId, string turnId, string logicalDate,
+        string? versionGroupId = null, int versionIndex = 1, int totalVersions = 1)
     {
         runtime.IsBusy = true;
         runtime.Status = LocalizationService.Instance["Common_Status_Thinking"];
         runtime.Cts = new CancellationTokenSource();
         var ct = runtime.Cts.Token;
         var messages = runtime.Messages;
+
+        // 单轮执行时间预算：覆盖模型流式输出与全部工具调用的总耗时。
+        var turnStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // 工具死循环检测：记录上一轮调用签名与连续重复次数。
+        string? lastToolCallSignature = null;
+        var repeatedToolCallCount = 0;
 
         var replyContent = "";
         var replyReasoning = "";
@@ -367,6 +451,12 @@ public sealed class ChatGenerationService
             var round = 0;
             while (!ct.IsCancellationRequested)
             {
+                if (turnStopwatch.Elapsed > MaxTurnDuration)
+                {
+                    _logger.LogWarning("单轮执行超时（{Max} 分钟），强制结束", MaxTurnDuration.TotalMinutes);
+                    throw new TimeoutException(LocalizationService.Instance["Common_TurnTimeout"]);
+                }
+
                 if (++round > MaxSafetyToolRounds)
                 {
                     _logger.LogWarning("工具轮次达到安全上限 {Max}，提前结束", MaxSafetyToolRounds);
@@ -380,8 +470,10 @@ public sealed class ChatGenerationService
 
                 // 以快照调用接口，避免流式枚举期间集合被界面/其它逻辑修改
                 var snapshot = messages.ToList();
+                var activeGroups = runtime.ActiveToolGroups
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var (content, reasoning, pendingToolCalls, finishReason) =
-                    await StreamOneRoundAsync(uiReply, snapshot, ct);
+                    await StreamOneRoundAsync(uiReply, snapshot, activeGroups, ct);
 
                 if (pendingToolCalls.Count == 0)
                 {
@@ -400,11 +492,40 @@ public sealed class ChatGenerationService
                     replyContent = content;
                     replyReasoning = reasoning;
                     replyFinishReason = finishReason;
+
+                    if (versionGroupId is not null)
+                    {
+                        uiReply.VersionGroupId = versionGroupId;
+                        uiReply.VersionIndex = versionIndex;
+                        uiReply.TotalVersions = totalVersions;
+                    }
+
                     lastAssistantMsg = uiReply;
                     break;
                 }
 
                 if (ct.IsCancellationRequested) break;
+
+                // 死循环检测：连续多次出现完全相同的工具名与参数时直接中断。
+                var currentSignature = string.Join("|", pendingToolCalls.Values
+                    .OrderBy(x => x.ToolName)
+                    .ThenBy(x => x.ArgumentsJson)
+                    .Select(x => $"{x.ToolName}:{x.ArgumentsJson}"));
+
+                if (currentSignature == lastToolCallSignature)
+                {
+                    repeatedToolCallCount++;
+                    if (repeatedToolCallCount >= MaxRepeatedToolCalls)
+                    {
+                        _logger.LogWarning("检测到工具死循环，强制中断：{Signature}", currentSignature);
+                        throw new InvalidOperationException(LocalizationService.Instance["Common_ToolLoopDetected"]);
+                    }
+                }
+                else
+                {
+                    lastToolCallSignature = currentSignature;
+                    repeatedToolCallCount = 0;
+                }
 
                 runtime.Status = LocalizationService.Instance.Format("Common_Status_RunningTools", pendingToolCalls.Count);
 
@@ -412,57 +533,127 @@ public sealed class ChatGenerationService
                     kvp.Value.Status = ToolCallStatus.Running;
 
                 var sortedCalls = pendingToolCalls.OrderBy(kv => kv.Key).ToList();
-                foreach (var (index, entry) in sortedCalls)
-                {
-                    if (ct.IsCancellationRequested) break;
 
+                // 批量审批：先扫描所有调用，把需要确认的工具聚合为一次弹窗。
+                var toolsNeedingConfirmation = new List<(ITool Tool, ToolCallEntry Entry)>();
+                var autoAllowedEntries = new HashSet<ToolCallEntry>();
+                foreach (var (_, entry) in sortedCalls)
+                {
                     var tool = _toolRegistry.GetTool(entry.ToolName);
-                    if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
+                    if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName)) continue;
+                    if (!ToolPermissionService.NeedsConfirmation(tool)) continue;
+                    if (await _toolPermission.IsAlwaysAllowedAsync(sessionId, tool.Name))
                     {
-                        entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = LocalizationService.Instance["Common_Tool_NotEnabled"];
-                        _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
+                        autoAllowedEntries.Add(entry);
                         continue;
                     }
+                    if (IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson)) continue;
 
-                    // 中/高风险工具在执行前需要用户授权；
-                    // 读取用户主动上传的附件时直接放行，不弹窗。
-                    if (ToolPermissionService.NeedsConfirmation(tool) &&
-                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name) &&
-                        !IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson))
+                    toolsNeedingConfirmation.Add((tool, entry));
+                }
+
+                var permissionResults = new Dictionary<ToolCallEntry, string>();
+                var deniedEntries = new HashSet<ToolCallEntry>();
+                if (toolsNeedingConfirmation.Count > 0)
+                {
+                    var decision = _toolPermission.RequestBatchConfirmation(
+                        sessionId, toolsNeedingConfirmation);
+
+                    if (decision == ToolPermissionDecision.Deny)
                     {
-                        var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
-                        if (decision == ToolPermissionDecision.Deny)
+                        foreach (var (tool, entry) in toolsNeedingConfirmation)
                         {
                             entry.Status = ToolCallStatus.Failed;
                             entry.ResultJson = "User Denied";
-                            _logger.LogInformation("用户拒绝执行工具 {Name}", entry.ToolName);
-                            continue;
-                        }
-                        if (decision == ToolPermissionDecision.AllowAlways)
-                            _toolPermission.AllowForConversation(sessionId, tool.Name);
-                    }
+                            deniedEntries.Add(entry);
+                            permissionResults[entry] = "Deny";
 
-                    try
-                    {
-                        using var argsDoc = JsonDocument.Parse(
-                            string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
-                        var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
-                        entry.ResultJson = TruncateResult(result.Content);
-                        entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
-                        if (result.IsError)
-                            _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
-                        else
-                            _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
+                            await AuditAsync(sessionId, tool.Name, entry.ArgumentsJson, "Deny", "Denied");
+                        }
+
+                        _logger.LogInformation("用户拒绝执行工具（共 {Count} 个）", toolsNeedingConfirmation.Count);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        entry.Status = ToolCallStatus.Failed;
-                        entry.ResultJson = LocalizationService.Instance.Format("Common_Tool_ExecFailed", ex.Message);
-                        _logger.LogError(ex, "工具 {Name} 执行失败", entry.ToolName);
+                        var permissionResult = decision == ToolPermissionDecision.AllowOnce
+                            ? "AllowOnce"
+                            : "AllowPersistent";
+
+                        foreach (var (_, entry) in toolsNeedingConfirmation)
+                            permissionResults[entry] = permissionResult;
+
+                        if (decision == ToolPermissionDecision.AllowAlways)
+                        {
+                            await _toolPermission.ApplyDecisionAsync(
+                                sessionId, toolsNeedingConfirmation.Select(x => x.Tool), decision);
+                        }
                     }
                 }
 
+                // ====== 分组并发执行 ======
+                // 只有连续的只读工具会并行；遇到写操作/命令等屏障时先等待前面的批次完成。
+                using var concurrencySemaphore = new SemaphoreSlim(MaxConcurrentToolCalls);
+                var completedEntries = new HashSet<ToolCallEntry>();
+                var executableCalls = sortedCalls
+                    .Select(call => call.Value)
+                    .Where(entry => !deniedEntries.Contains(entry));
+                var batches = GroupCallsIntoBatches(executableCalls);
+
+                foreach (var batch in batches)
+                {
+                    if (ct.IsCancellationRequested) break;
+
+                    var tasks = new List<Task<(ToolCallEntry Entry, ToolResult Result)>>(batch.Count);
+                    foreach (var entry in batch)
+                        tasks.Add(ExecuteToolIsolatedAsync(entry, concurrencySemaphore, ct));
+
+                    var results = await Task.WhenAll(tasks);
+
+                    // 结果在 UI 线程按原顺序写回条目，避免跨线程绑定问题。
+                    foreach (var (entry, result) in results)
+                    {
+                        entry.ResultJson = TruncateResult(result.Content);
+                        entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
+                        completedEntries.Add(entry);
+
+                        // enable_tool_group 本身不执行业务，只把组名写入会话运行时，
+                        // 下一轮 StreamOneRoundAsync 会把该组工具一起下发给模型。
+                        if (!result.IsError &&
+                            string.Equals(entry.ToolName, "enable_tool_group", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var group = ToolArgumentFormatter.TryGetStringArgument(entry.ArgumentsJson, "group_name");
+                            if (!string.IsNullOrWhiteSpace(group))
+                            {
+                                runtime.ActiveToolGroups.Add(group.Trim().ToLowerInvariant());
+                                _logger.LogInformation("已解锁工具组：{Group}", group);
+                            }
+                        }
+
+                        var permissionResult = permissionResults.GetValueOrDefault(entry,
+                            autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
+                        var executionResult = result.IsTimeout ? "Timeout"
+                            : result.IsCanceled ? "Canceled"
+                            : result.IsError ? "Failed"
+                            : "Success";
+                        await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
+                            permissionResult, executionResult, result.IsError ? result.Content : null);
+                    }
+                }
+
+                // 取消导致未执行的调用也要给出结果，保证每条 tool_call 都有对应的 tool 消息。
+                foreach (var (_, entry) in sortedCalls)
+                {
+                    if (completedEntries.Contains(entry) || deniedEntries.Contains(entry)) continue;
+                    entry.Status = ToolCallStatus.Failed;
+                    entry.ResultJson = LocalizationService.Instance["Common_Canceled"];
+
+                    var permissionResult = permissionResults.GetValueOrDefault(entry,
+                        autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
+                    await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
+                        permissionResult, "Canceled", entry.ResultJson);
+                }
+
+                // 所有结果按原始调用顺序写入会话，包含被用户拒绝的占位结果。
                 foreach (var (_, entry) in sortedCalls)
                 {
                     messages.Add(new ChatMessage
@@ -549,7 +740,7 @@ public sealed class ChatGenerationService
             if (truncated)
                 lastAssistantMsg.ErrorMessage = OutputTruncatedNotice;
 
-            await _messageRepo.InsertAsync(new Message
+            var id = await _messageRepo.InsertAsync(new Message
             {
                 SessionId = sessionId,
                 TurnId = turnId,
@@ -558,9 +749,12 @@ public sealed class ChatGenerationService
                 ReasoningContent = replyReasoning,
                 ErrorMessage = truncated ? OutputTruncatedNotice : string.Empty,
                 ContentType = truncated ? "error" : "text",
+                IsActive = lastAssistantMsg.IsActive,
+                VersionGroupId = lastAssistantMsg.VersionGroupId,
                 CreatedAtUtc = DateTime.UtcNow,
                 LogicalDate = logicalDate,
             });
+            lastAssistantMsg.DbId = id;
 
             // 成功结束后异步生成轮次摘要，不阻塞界面
             _turnSummaryService.Trigger(sessionId, turnId, logicalDate);
@@ -580,6 +774,8 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = LocalizationService.Instance["Common_Status_Ready"];
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+        UpdateRewriteEligibility(messages);
+        return lastAssistantMsg is not null && !string.IsNullOrWhiteSpace(lastAssistantMsg.Content);
     }
 
     /// <summary>达到输出上限被截断时展示在 AI 输出末尾的提示。</summary>
@@ -617,7 +813,8 @@ public sealed class ChatGenerationService
     }
 
     private async Task<(string content, string reasoning, Dictionary<int, ToolCallEntry> pendingToolCalls, string? finishReason)>
-        StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages, CancellationToken ct)
+        StreamOneRoundAsync(ChatMessage uiReply, IReadOnlyList<ChatMessage> messages,
+            IReadOnlySet<string> activeToolGroups, CancellationToken ct)
     {
         var lockObj = new object();
         var buffer = new List<StreamEvent>();
@@ -625,6 +822,7 @@ public sealed class ChatGenerationService
         var reasoningBuf = new StringBuilder();
         var pendingToolCalls = new Dictionary<int, ToolCallEntry>();
         string? finishReason = null;
+        var requestOptions = new AiRequestOptions { ActiveToolGroups = activeToolGroups };
         // 批次定时器用 Input 优先级：高于 Background 的 Markdown pump，
         // 这样文档变大、pump 变重时也不会把流式文本的更新节奏饿死（避免 16ms 拖成几百 ms 的大块）。
         var timer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
@@ -698,7 +896,7 @@ public sealed class ChatGenerationService
 
             var consumeTask = Task.Run(async () =>
             {
-                await foreach (var evt in _aiService.ChatStreamAsync(messages, ct))
+                await foreach (var evt in _aiService.ChatStreamAsync(messages, requestOptions, ct))
                 {
                     lock (lockObj)
                         buffer.Add(evt);
@@ -735,6 +933,8 @@ public sealed class ChatGenerationService
             DbId = m.Id,
             ToolCallId = m.ToolCallId,
             ErrorMessage = m.ErrorMessage,
+            IsActive = m.IsActive,
+            VersionGroupId = m.VersionGroupId,
         };
 
         if (m.Role == "system")
@@ -772,14 +972,69 @@ public sealed class ChatGenerationService
 
     private static void MarkFinalReplies(ObservableCollection<ChatMessage> messages)
     {
-        for (var i = 0; i < messages.Count; i++)
+        foreach (var message in messages)
+            message.IsFinalReply = false;
+
+        var active = messages.Where(m => m.IsActive).ToList();
+        for (var i = 0; i < active.Count; i++)
         {
-            var m = messages[i];
+            var m = active[i];
             if (m.Role != "assistant") continue;
 
-            var isTurnEnd = i == messages.Count - 1 || messages[i + 1].Role == "user";
+            var isTurnEnd = i == active.Count - 1 || active[i + 1].Role == "user";
             if (isTurnEnd && (!string.IsNullOrEmpty(m.Content) || !string.IsNullOrEmpty(m.ErrorMessage)))
                 m.IsFinalReply = true;
+        }
+    }
+
+    /// <summary>
+    /// 只有“最后一条激活的最终 AI 回复”允许重写，避免历史消息上出现无效按钮。
+    /// </summary>
+    private static void UpdateRewriteEligibility(ObservableCollection<ChatMessage> messages)
+    {
+        var lastActive = messages.LastOrDefault(m => m.IsActive);
+        var target = lastActive is { Role: "assistant", IsFinalReply: true } ? lastActive : null;
+
+        foreach (var message in messages)
+            message.CanRewrite = ReferenceEquals(message, target);
+    }
+
+    /// <summary>按版本分组计算 V1/V2 序号与总数，保证重启后 UI 显示正确。</summary>
+    private static void AssignVersionMetadata(ObservableCollection<ChatMessage> messages)
+    {
+        var groups = messages
+            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
+
+        foreach (var group in groups)
+        {
+            var versions = group.OrderBy(m => m.DbId).ToList();
+            for (var i = 0; i < versions.Count; i++)
+            {
+                versions[i].VersionIndex = i + 1;
+                versions[i].TotalVersions = versions.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 崩溃恢复：如果某个版本组没有任何激活版本（例如重写途中应用退出），
+    /// 自动激活最新版本，避免会话完全没有可见回复。
+    /// </summary>
+    private async Task RepairVersionGroupsAsync(IReadOnlyList<ChatMessage> messages)
+    {
+        var groups = messages
+            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
+
+        foreach (var group in groups)
+        {
+            if (group.Any(m => m.IsActive)) continue;
+
+            var latest = group.OrderByDescending(m => m.DbId).First();
+            latest.IsActive = true;
+            if (latest.DbId > 0)
+                await _messageRepo.UpdateMessageVersionAsync(latest.DbId, true, latest.VersionGroupId);
         }
     }
 
@@ -787,6 +1042,89 @@ public sealed class ChatGenerationService
     {
         if (string.IsNullOrEmpty(toolName)) return "";
         return _toolRegistry.GetTool(toolName)?.DisplayName ?? toolName;
+    }
+
+    /// <summary>
+    /// 把工具调用按“可并发”与“屏障”切分为连续批次。
+    /// 例如 [读A, 读B, 写C, 读D] → [[读A, 读B], [写C], [读D]]。
+    /// </summary>
+    private static List<List<ToolCallEntry>> GroupCallsIntoBatches(IEnumerable<ToolCallEntry> calls)
+    {
+        var batches = new List<List<ToolCallEntry>>();
+        List<ToolCallEntry>? currentBatch = null;
+
+        foreach (var entry in calls)
+        {
+            if (ConcurrentTools.Contains(entry.ToolName))
+            {
+                currentBatch ??= [];
+                currentBatch.Add(entry);
+                continue;
+            }
+
+            // 屏障工具：先把已累积的并发批次收尾，再让屏障单独成批（保证前后顺序）。
+            if (currentBatch is { Count: > 0 })
+            {
+                batches.Add(currentBatch);
+                currentBatch = null;
+            }
+
+            batches.Add([entry]);
+        }
+
+        if (currentBatch is { Count: > 0 })
+            batches.Add(currentBatch);
+
+        return batches;
+    }
+
+    /// <summary>
+    /// 执行单个工具（受并发信号量限制），只返回结果，不修改会话/条目状态。
+    /// 条目状态由调用方在 UI 线程统一写回，避免跨线程绑定问题。
+    /// </summary>
+    private async Task<(ToolCallEntry Entry, ToolResult Result)> ExecuteToolIsolatedAsync(
+        ToolCallEntry entry, SemaphoreSlim semaphore, CancellationToken ct)
+    {
+        var acquired = false;
+        try
+        {
+            await semaphore.WaitAsync(ct);
+            acquired = true;
+            ct.ThrowIfCancellationRequested();
+
+            var tool = _toolRegistry.GetTool(entry.ToolName);
+            if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
+            {
+                _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
+                return (entry, ToolResult.Error(LocalizationService.Instance["Common_Tool_NotEnabled"]));
+            }
+
+            using var argsDoc = JsonDocument.Parse(
+                string.IsNullOrWhiteSpace(entry.ArgumentsJson) ? "{}" : entry.ArgumentsJson);
+            var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
+
+            if (result.IsError)
+                _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
+            else
+                _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
+
+            return (entry, result);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return (entry, ToolResult.Canceled(LocalizationService.Instance["Common_Canceled"]));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "工具 {Name} 执行失败", entry.ToolName);
+            return (entry, ToolResult.Error(
+                LocalizationService.Instance.Format("Common_Tool_ExecFailed", ex.Message)));
+        }
+        finally
+        {
+            if (acquired)
+                semaphore.Release();
+        }
     }
 
     /// <summary>
@@ -834,8 +1172,23 @@ public sealed class ChatGenerationService
         ct.ThrowIfCancellationRequested();
 
         _logger.LogWarning("工具 {Name} 超过 {Seconds} 秒未完成，已中止", tool.Name, timeout.TotalSeconds);
-        return ToolResult.Error(LocalizationService.Instance.Format(
+        return ToolResult.Timeout(LocalizationService.Instance.Format(
             "Common_Tool_Timeout", tool.DisplayName, timeout.TotalSeconds));
+    }
+
+    /// <summary>写入工具审计日志；失败只记录警告，不影响工具执行与对话。</summary>
+    private async Task AuditAsync(string sessionId, string toolName, string argumentsJson,
+        string permissionResult, string executionResult, string? errorMessage = null)
+    {
+        try
+        {
+            await _auditRepo.AddAuditLogAsync(sessionId, toolName, argumentsJson,
+                permissionResult, executionResult, errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "写入工具审计日志失败：{Tool}", toolName);
+        }
     }
 
     private static string TruncateResult(string result, int maxLen = 5000)
