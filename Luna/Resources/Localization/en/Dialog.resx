@@ -133,4 +133,9 @@ Continue?</value>
   <data name="Dialog_ToolPermission_BatchBody" xml:space="preserve">
     <value>The following {0} sensitive operations require your confirmation:</value>
   </data>
+
+  <!-- ask_user -->
+  <data name="Dialog_AskUser_Title" xml:space="preserve">
+    <value>A question from Luna</value>
+  </data>
 </root>

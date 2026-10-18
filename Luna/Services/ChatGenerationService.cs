@@ -71,7 +71,7 @@ public sealed class ChatGenerationService
 
     /// <summary>
     /// 可安全并发执行的只读/无副作用工具白名单。
-    /// 不在名单内的工具（如 write_file、powershell、send_notification、read_screen）
+    /// 不在名单内的工具（如 write_file、powershell、send_notification、read_screen、ask_user）
     /// 会被视为屏障，串行执行，避免顺序依赖或共享状态冲突。
     /// </summary>
     private static readonly HashSet<string> ConcurrentTools = new(StringComparer.OrdinalIgnoreCase)

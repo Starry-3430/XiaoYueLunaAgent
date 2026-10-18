@@ -202,6 +202,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, ListFactsTool>();
                 services.AddSingleton<ITool, CompleteTaskTool>();
                 services.AddSingleton<ITool, DeleteTaskTool>();
+                services.AddSingleton<ITool, AskUserTool>();
                 services.AddSingleton<ToolRegistry>();
 
                 // SQLite 数据库路径与 DatabaseService 注册

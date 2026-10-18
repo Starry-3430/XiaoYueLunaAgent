@@ -133,4 +133,9 @@
   <data name="Dialog_ToolPermission_BatchBody" xml:space="preserve">
     <value>以下 {0} 项敏感操作需要确认：</value>
   </data>
+
+  <!-- ask_user -->
+  <data name="Dialog_AskUser_Title" xml:space="preserve">
+    <value>AI 向你提问</value>
+  </data>
 </root>
