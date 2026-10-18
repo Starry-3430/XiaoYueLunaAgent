@@ -1,8 +1,12 @@
 // 工具：截取屏幕/当前窗口（Win32 原生 API 声明）。
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows.Forms;
+using Microsoft.Extensions.Logging;
+using static Luna.Services.Tools.ToolLocalization;
 
 namespace Luna.Services.Tools;
 
@@ -81,5 +85,81 @@ public static class ScreenCaptureCore
 
         original.Dispose();
         return resized;
+    }
+}
+
+/// <summary>截取当前屏幕画面。归属“截图”开关（screenshot），执行前需用户确认。</summary>
+public class ReadScreenTool : ITool
+{
+    private static readonly JsonElement Schema = ToolSchema.Parse("""
+    {
+        "type": "object",
+        "properties": {
+            "mode": {
+                "type": "string",
+                "enum": ["active_window", "fullscreen"],
+                "description": "${mode}"
+            }
+        }
+    }
+    """.Replace("${mode}", Param("Tool_ReadScreen_Param_Mode")));
+
+    private readonly ILogger<ReadScreenTool> _logger;
+
+    public string Name => "read_screen";
+    public string DisplayName => ToolLocalization.DisplayName(Name);
+    public string Description => ToolLocalization.Description(Name);
+    public JsonElement ParametersSchema => Schema;
+
+    // 隐私级别极高，必须弹窗确认
+    public ToolRiskLevel Risk => ToolRiskLevel.Medium;
+    public string SettingsKey => "screenshot";
+
+    public ReadScreenTool(ILogger<ReadScreenTool> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
+    {
+        var mode = "active_window";
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("mode", out var m))
+            mode = m.GetString() ?? "active_window";
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // 1. 截图并压缩
+                using var bitmap = ScreenCaptureCore.Capture(mode);
+
+                // 2. 保存到临时目录
+                var cacheDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Luna", "cache", "screenshots");
+                Directory.CreateDirectory(cacheDir);
+
+                var filePath = Path.Combine(cacheDir, $"screen_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg");
+
+                // 3. 以 JPEG 格式保存，质量 80%
+                using var encoderParams = new EncoderParameters(1);
+                encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 80L);
+                var jpegCodec = ImageCodecInfo.GetImageEncoders()
+                    .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
+                    ?? throw new InvalidOperationException("未找到 JPEG 编码器");
+
+                bitmap.Save(filePath, jpegCodec, encoderParams);
+                _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
+
+                return ToolResult.Ok(Text("Tool_ReadScreen_Msg_Captured", mode, filePath));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "屏幕截图失败");
+                return ToolResult.Error(Text("Tool_ReadScreen_Msg_Failed", ex.Message));
+            }
+        }, ct);
     }
 }

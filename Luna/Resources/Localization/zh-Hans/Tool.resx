@@ -53,6 +53,8 @@
   <data name="Tool_FileOpen_Description" xml:space="preserve"><value>打开指定文件或启动应用程序</value></data>
   <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>截图</value></data>
   <data name="Tool_Screenshot_Description" xml:space="preserve"><value>截取屏幕截图</value></data>
+  <data name="Tool_ReadScreen_DisplayName" xml:space="preserve"><value>读取屏幕</value></data>
+  <data name="Tool_ReadScreen_Description" xml:space="preserve"><value>截取当前活动窗口或整个屏幕</value></data>
   <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>窗口管理</value></data>
   <data name="Tool_WindowManager_Description" xml:space="preserve"><value>管理窗口位置、大小和状态</value></data>
   <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>音量/亮度</value></data>
@@ -112,6 +114,7 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取指定文本文件的内容（仅限允许的目录、扩展名与大小）</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
+  <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>截取当前用户的屏幕画面。当你需要看用户当前的界面、或者排查报错弹窗时调用。</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>获取指定目录的文件树结构（支持深度与条目数限制）</value></data>
@@ -164,6 +167,11 @@
 
   <!-- read_clipboard -->
   <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>读取剪贴板失败：{0}</value></data>
+
+  <!-- read_screen -->
+  <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>截图模式：active_window（截取当前焦点窗口，推荐），fullscreen（截取整个屏幕）。默认 active_window。</value></data>
+  <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>已捕获屏幕画面（模式：{0}），图片保存在：{1}</value></data>
+  <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>截图失败：{0}</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>要执行的 Python 代码（仅支持 Python）。沙箱为尽力而为：禁止联网与文件系统访问（正则黑名单拦截 import socket/urllib/requests、open()、os./shutil/pathlib/subprocess 等）</value></data>
