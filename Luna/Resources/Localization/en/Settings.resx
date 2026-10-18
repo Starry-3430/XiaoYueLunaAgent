@@ -121,6 +121,35 @@
     <value>Browse…</value>
   </data>
 
+  <!-- 数据备份 -->
+  <data name="Settings_Backup_Title" xml:space="preserve">
+    <value>Data Backup</value>
+  </data>
+  <data name="Settings_Backup_Desc" xml:space="preserve">
+    <value>Export diaries, facts, conversations, tasks and attachments to a ZIP file.</value>
+  </data>
+  <data name="Settings_Backup_ExportButton" xml:space="preserve">
+    <value>Export backup</value>
+  </data>
+  <data name="Settings_Backup_DialogTitle" xml:space="preserve">
+    <value>Save Luna backup</value>
+  </data>
+  <data name="Settings_Backup_Filter" xml:space="preserve">
+    <value>ZIP archive (*.zip)|*.zip</value>
+  </data>
+  <data name="Settings_Backup_Exporting" xml:space="preserve">
+    <value>Exporting…</value>
+  </data>
+  <data name="Settings_Backup_Exported" xml:space="preserve">
+    <value>Backup saved: {0}</value>
+  </data>
+  <data name="Settings_Backup_Failed" xml:space="preserve">
+    <value>Backup failed: {0}</value>
+  </data>
+  <data name="Settings_Backup_Cancelled" xml:space="preserve">
+    <value>Backup cancelled.</value>
+  </data>
+
   <!-- 工具授权 -->
   <data name="Settings_ToolPermissions_Title" xml:space="preserve">
     <value>Tool Permissions</value>

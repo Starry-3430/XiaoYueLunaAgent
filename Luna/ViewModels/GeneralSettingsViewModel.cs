@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using Luna.Models;
 using Luna.Localization;
 using Luna.Services;
@@ -19,6 +20,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly HotkeyService _hotkeyService;
     private readonly StartupService _startupService;
     private readonly ToolPermissionService _toolPermission;
+    private readonly DataExportService _exportService;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
 
@@ -65,17 +67,26 @@ public partial class GeneralSettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _toolPermissionStatus = string.Empty;
 
+    [ObservableProperty]
+    private string _backupStatus = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
+    private bool _isExporting;
+
     private readonly DispatcherTimer _saveStatusTimer;
 
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
         HotkeyService hotkeyService, StartupService startupService,
-        ToolPermissionService toolPermission, ILogger<GeneralSettingsViewModel> logger)
+        ToolPermissionService toolPermission, DataExportService exportService,
+        ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
         _startupService = startupService;
         _toolPermission = toolPermission;
+        _exportService = exportService;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -318,6 +329,47 @@ public partial class GeneralSettingsViewModel : ObservableObject
             ToolPermissionStatus = loc["Settings_ToolPermissions_ClearFailed"];
         }
     }
+
+    /// <summary>将日记、事实、会话、待办与附件导出为 ZIP 备份。</summary>
+    [RelayCommand(CanExecute = nameof(CanExportData))]
+    private async Task ExportDataAsync()
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new SaveFileDialog
+        {
+            Title = loc["Settings_Backup_DialogTitle"],
+            Filter = loc["Settings_Backup_Filter"],
+            FileName = $"Luna_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip",
+            DefaultExt = ".zip",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        IsExporting = true;
+        BackupStatus = loc["Settings_Backup_Exporting"];
+        try
+        {
+            await _exportService.ExportAllAsync(dialog.FileName);
+            BackupStatus = loc.Format("Settings_Backup_Exported", dialog.FileName);
+            _logger.LogInformation("数据备份完成：{Path}", dialog.FileName);
+        }
+        catch (OperationCanceledException)
+        {
+            BackupStatus = loc["Settings_Backup_Cancelled"];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "数据备份失败");
+            BackupStatus = loc.Format("Settings_Backup_Failed", ex.Message);
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
+    private bool CanExportData() => !IsExporting;
 
     /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
     [RelayCommand]

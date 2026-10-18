@@ -121,6 +121,35 @@
     <value>浏览…</value>
   </data>
 
+  <!-- 数据备份 -->
+  <data name="Settings_Backup_Title" xml:space="preserve">
+    <value>数据备份</value>
+  </data>
+  <data name="Settings_Backup_Desc" xml:space="preserve">
+    <value>将日记、长期事实、对话、待办和附件导出为 ZIP 文件。</value>
+  </data>
+  <data name="Settings_Backup_ExportButton" xml:space="preserve">
+    <value>导出备份</value>
+  </data>
+  <data name="Settings_Backup_DialogTitle" xml:space="preserve">
+    <value>保存 Luna 备份</value>
+  </data>
+  <data name="Settings_Backup_Filter" xml:space="preserve">
+    <value>ZIP 压缩包 (*.zip)|*.zip</value>
+  </data>
+  <data name="Settings_Backup_Exporting" xml:space="preserve">
+    <value>正在导出…</value>
+  </data>
+  <data name="Settings_Backup_Exported" xml:space="preserve">
+    <value>备份已保存：{0}</value>
+  </data>
+  <data name="Settings_Backup_Failed" xml:space="preserve">
+    <value>备份失败：{0}</value>
+  </data>
+  <data name="Settings_Backup_Cancelled" xml:space="preserve">
+    <value>备份已取消。</value>
+  </data>
+
   <!-- 工具授权 -->
   <data name="Settings_ToolPermissions_Title" xml:space="preserve">
     <value>工具授权</value>

@@ -364,6 +364,27 @@
             </Grid>
         </Border>
 
+        <!-- 数据备份 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc Settings_Backup_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_Backup_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding BackupStatus}" Foreground="#78A29F" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               MaxWidth="320" TextWrapping="Wrap"/>
+                    <Button Content="{loc:Loc Settings_Backup_ExportButton}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding ExportDataCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 工具授权 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>

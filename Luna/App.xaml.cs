@@ -222,6 +222,7 @@ public partial class App : Application
                 services.AddSingleton<ToolPermissionRepository>();
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
+                services.AddSingleton<DataExportService>();
                 services.AddSingleton<TurnSummaryService>();
                 services.AddSingleton<SessionTitleService>();
                 services.AddSingleton<ChatGenerationService>();
