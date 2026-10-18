@@ -10,7 +10,7 @@ namespace Luna.Services.Tools;
 public class EnableToolGroupTool : ITool
 {
     private const string SchemaTemplate =
-        """{"type":"object","properties":{"group_name":{"type":"string","enum":["filesystem","network","system","memory_modify"],"description":"$group$"}},"required":["group_name"]}""";
+        """{"type":"object","properties":{"group_name":{"type":"string","enum":["info","filesystem","system_dev","memory_organize"],"description":"$group$"}},"required":["group_name"]}""";
 
     public string Name => "enable_tool_group";
     public string DisplayName => ToolLocalization.DisplayName(Name);

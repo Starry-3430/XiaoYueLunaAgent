@@ -6,10 +6,10 @@ namespace Luna.Services.Tools;
 /// </summary>
 public static class ToolGroups
 {
+    public const string Info = "info";
     public const string FileSystem = "filesystem";
-    public const string Network = "network";
-    public const string System = "system";
-    public const string MemoryModify = "memory_modify";
+    public const string SystemDev = "system_dev";
+    public const string MemoryOrganize = "memory_organize";
 
     /// <summary>始终下发的核心工具。</summary>
     public static readonly HashSet<string> Core = new(StringComparer.OrdinalIgnoreCase)
@@ -26,15 +26,15 @@ public static class ToolGroups
             {
                 "write_file", "search_files", "file_tree", "file_open", "read_screen",
             },
-            [Network] = new(StringComparer.OrdinalIgnoreCase)
+            [Info] = new(StringComparer.OrdinalIgnoreCase)
             {
                 "web_search", "fetch_url",
             },
-            [System] = new(StringComparer.OrdinalIgnoreCase)
+            [SystemDev] = new(StringComparer.OrdinalIgnoreCase)
             {
                 "powershell", "code_execute", "git",
             },
-            [MemoryModify] = new(StringComparer.OrdinalIgnoreCase)
+            [MemoryOrganize] = new(StringComparer.OrdinalIgnoreCase)
             {
                 "remember_fact", "forget_fact", "add_task", "complete_task", "delete_task",
             },
@@ -51,20 +51,20 @@ public static class ToolGroups
                 "screenshot", "screenshots", "save file", "write file", "read file", "open file",
                 "path", "disk",
             ],
-            [Network] =
+            [Info] =
             [
                 "搜索", "搜一下", "搜一搜", "查找", "查一下", "查查", "帮我查", "帮我找",
                 "联网", "上网", "天气", "新闻", "网址", "网页", "链接",
                 "search", "searching", "web", "website", "websites", "url", "http",
                 "news", "weather", "look up", "google", "bing", "browse", "fetch", "download",
             ],
-            [System] =
+            [SystemDev] =
             [
                 "运行", "执行", "命令", "脚本", "代码", "终端",
                 "cmd", "powershell", "shell", "script", "scripts", "terminal",
                 "execute", "executing", "run ", "running", "git", "commit", "branch", "bash", "console",
             ],
-            [MemoryModify] =
+            [MemoryOrganize] =
             [
                 "记住", "忘掉", "忘记", "待办", "提醒", "任务",
                 "remember", "forget", "todo", "task", "tasks", "remind", "reminders", "fact", "facts",
