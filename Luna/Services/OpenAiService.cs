@@ -353,8 +353,8 @@ public class OpenAiService : IAiService
             foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
                 sb.AppendLine($"- {path}");
 
-            sb.AppendLine("如需更多细节，可调用 read_file 读取上述原始路径（仅支持文本类文件）；" +
-                          "如果工具不支持该文件类型，请基于已提供的内容回答，或请用户提供具体片段。");
+            sb.AppendLine("如需更多细节，可调用 read_file 读取上述原始路径；" +
+                          "PDF、Word、Excel、PPT 等文档会自动转换为 Markdown。");
         }
         else
         {

@@ -45,8 +45,8 @@
   <data name="Tool_Powershell_Description" xml:space="preserve"><value>Run PowerShell commands.</value></data>
   <data name="Tool_SearchFiles_DisplayName" xml:space="preserve"><value>File Search</value></data>
   <data name="Tool_SearchFiles_Description" xml:space="preserve"><value>Search files by name, preferring the Windows Search index.</value></data>
-  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File</value></data>
-  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read the contents of a specified file.</value></data>
+  <data name="Tool_ReadFile_DisplayName" xml:space="preserve"><value>Read File / Document</value></data>
+  <data name="Tool_ReadFile_Description" xml:space="preserve"><value>Read text files, or convert PDF / Word / Excel / PPT documents to Markdown.</value></data>
   <data name="Tool_WriteFile_DisplayName" xml:space="preserve"><value>Write File</value></data>
   <data name="Tool_WriteFile_Description" xml:space="preserve"><value>Write file contents or create new files.</value></data>
   <data name="Tool_FileOpen_DisplayName" xml:space="preserve"><value>Open File / App</value></data>
@@ -109,7 +109,7 @@
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
-  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read the contents of a text file (restricted by allowed directories, extensions and size).</value></data>
+  <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. Prefer this tool for user-uploaded documents or when you need the document body.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
@@ -274,10 +274,11 @@ Offending segment: {0}</value></data>
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>… (output truncated)</value></data>
 
   <!-- read_file -->
-  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; common text/code extensions are supported.</value></data>
+  <data name="Tool_ReadFile_Param_Path" xml:space="preserve"><value>Path of the file to read. Relative paths are based on the working directory; supports text/code files plus PDF, Word, Excel, PPT, HTML and similar documents.</value></data>
   <data name="Tool_ReadFile_Msg_Cancelled" xml:space="preserve"><value>File read cancelled.</value></data>
   <data name="Tool_ReadFile_Msg_Failed" xml:space="preserve"><value>Failed to read the file: {0}</value></data>
   <data name="Tool_ReadFile_Msg_Binary" xml:space="preserve"><value>The file is not readable text (it may be binary or encrypted), so it was not read.</value></data>
+  <data name="Tool_ReadFile_Msg_Empty" xml:space="preserve"><value>No text content could be extracted from this document.</value></data>
 
   <!-- remember_fact -->
   <data name="Tool_RememberFact_Param_Key" xml:space="preserve"><value>Fact identifier: an English phrase with underscores, e.g. preferred_language, editor_theme</value></data>

@@ -9,8 +9,10 @@ using static Luna.Services.Tools.ToolLocalization;
 namespace Luna.Services.Tools;
 
 /// <summary>
-/// 读取文本文件。可访问全盘任意位置，受 <see cref="FileSandbox"/> 限制：只限制大小；
-/// 读取后按内容判断是否为可读文本，二进制/加密文件会被拒绝。风险等级 Medium，执行前需要用户确认。
+/// 读取文件。文本/代码直接读取；PDF、Word、Excel、PPT、HTML 等文档先通过
+/// <see cref="IDocumentConverterService"/>（MarkItDown）转换为 Markdown 再返回。
+/// 可访问全盘任意位置，受 <see cref="FileSandbox"/> 的大小限制。
+/// 风险等级 Medium，执行前需要用户确认（用户上传的附件除外）。
 /// </summary>
 public class ReadFileTool : ITool
 {
@@ -23,6 +25,20 @@ public class ReadFileTool : ITool
     /// <summary>UTF-8 解码后替换字符（U+FFFD）的比例上限，超过视为二进制/加密。</summary>
     private const int MaxReplacementPercent = 10;
 
+    /// <summary>需要先经 MarkItDown 转换的文档扩展名。</summary>
+    private static readonly HashSet<string> DocumentExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx", ".ppt",
+        ".html", ".htm", ".epub", ".rtf", ".odt", ".ods", ".odp",
+    };
+
+    /// <summary>文档转换读取的最大文件大小（100 MB，与附件上限一致）。</summary>
+    private const long DocumentMaxBytes = 100L * 1024 * 1024;
+
+    /// <summary>MarkItDown 转换失败时返回的友好文本前缀。</summary>
+    private const string ConversionFailurePrefix = "> **文档转换失败**：";
+
+    private readonly IDocumentConverterService _documentConverter;
     private readonly ILogger<ReadFileTool> _logger;
 
     public string Name => "read_file";
@@ -31,8 +47,12 @@ public class ReadFileTool : ITool
     public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$path$", Param("Tool_ReadFile_Param_Path")));
     public ToolRiskLevel Risk => ToolRiskLevel.Medium;
 
-    public ReadFileTool(ILogger<ReadFileTool> logger)
+    /// <summary>文档转换可能较慢，给读文件工具更长的兜底时间。</summary>
+    public TimeSpan ExecutionTimeout => TimeSpan.FromSeconds(120);
+
+    public ReadFileTool(IDocumentConverterService documentConverter, ILogger<ReadFileTool> logger)
     {
+        _documentConverter = documentConverter;
         _logger = logger;
     }
 
@@ -42,11 +62,16 @@ public class ReadFileTool : ITool
         if (string.IsNullOrWhiteSpace(path))
             return ToolResult.Error(Text("Tool_Msg_MissingParam", "path"));
 
-        if (!FileSandbox.TryResolveExisting(path, out var fullPath, out var error))
+        var isDocument = DocumentExtensions.Contains(Path.GetExtension(path));
+        var maxBytes = isDocument ? DocumentMaxBytes : FileSandbox.MaxBytes;
+        if (!FileSandbox.TryResolveExisting(path, out var fullPath, out var error, maxBytes))
             return ToolResult.Error(error);
 
         try
         {
+            if (isDocument)
+                return await ReadDocumentAsync(fullPath, ct);
+
             var bytes = await File.ReadAllBytesAsync(fullPath, ct);
             if (!TryDecodeText(bytes, out var content))
             {
@@ -66,6 +91,21 @@ public class ReadFileTool : ITool
             _logger.LogError(ex, "读取文件失败：{Path}", fullPath);
             return ToolResult.Error(Text("Tool_ReadFile_Msg_Failed", ex.Message));
         }
+    }
+
+    /// <summary>把 PDF/Office 等文档交给 MarkItDown 转成 Markdown 后返回。</summary>
+    private async Task<ToolResult> ReadDocumentAsync(string fullPath, CancellationToken ct)
+    {
+        var markdown = await _documentConverter.ConvertToMarkdownAsync(fullPath, ct);
+
+        if (markdown.StartsWith(ConversionFailurePrefix, StringComparison.Ordinal))
+            return ToolResult.Error(markdown);
+
+        if (string.IsNullOrWhiteSpace(markdown))
+            return ToolResult.Error(Text("Tool_ReadFile_Msg_Empty"));
+
+        _logger.LogInformation("文档读取成功：{Path}，长度 {Length}", fullPath, markdown.Length);
+        return ToolResult.Ok(markdown);
     }
 
     private static string ExtractPath(JsonElement args)
