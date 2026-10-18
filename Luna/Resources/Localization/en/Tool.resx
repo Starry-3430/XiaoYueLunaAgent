@@ -112,6 +112,11 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read the contents of a text file (restricted by allowed directories, extensions and size).</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>Get news summaries or current date and month information.</value></data>
+  <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
@@ -131,6 +136,10 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>Execution cancelled.</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>User denied execution.</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>, </value></data>
+  <data name="Tool_Screenshot_Msg_Cancelled" xml:space="preserve"><value>Screenshot cancelled.</value></data>
+  <data name="Tool_Screenshot_Msg_InvalidSize" xml:space="preserve"><value>The virtual desktop size is invalid or too large.</value></data>
+  <data name="Tool_Screenshot_Msg_Saved" xml:space="preserve"><value>Screenshot saved: {0}</value></data>
+  <data name="Tool_Screenshot_Msg_Failed" xml:space="preserve"><value>Screenshot failed: {0}</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>Path is empty.</value></data>

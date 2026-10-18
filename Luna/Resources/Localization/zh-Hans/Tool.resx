@@ -112,6 +112,11 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取指定文本文件的内容（仅限允许的目录、扩展名与大小）</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>获取新闻摘要或当前日期、月份信息</value></data>
+  <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>截取整个虚拟桌面并保存为 PNG 文件</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>列出并管理可见窗口的位置、大小和状态</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>调节系统音量、静音状态或屏幕亮度</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>查看、复制或清空 Luna 运行期间采集的文本剪贴板历史</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>获取指定目录的文件树结构（支持深度与条目数限制）</value></data>
@@ -131,6 +136,10 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>执行被取消。</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>用户拒绝执行。</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>、</value></data>
+  <data name="Tool_Screenshot_Msg_Cancelled" xml:space="preserve"><value>截图操作被取消。</value></data>
+  <data name="Tool_Screenshot_Msg_InvalidSize" xml:space="preserve"><value>虚拟桌面尺寸无效或过大。</value></data>
+  <data name="Tool_Screenshot_Msg_Saved" xml:space="preserve"><value>截图已保存：{0}</value></data>
+  <data name="Tool_Screenshot_Msg_Failed" xml:space="preserve"><value>截图失败：{0}</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>路径为空。</value></data>
