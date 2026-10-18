@@ -397,4 +397,26 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_GitAction" xml:space="preserve"><value>Action</value></data>
   <data name="Tool_Arg_Args" xml:space="preserve"><value>Arguments</value></data>
   <data name="Tool_Arg_CommitMessage" xml:space="preserve"><value>Commit message</value></data>
+
+  <!-- ask_user -->
+  <data name="Tool_AskUser_DisplayName" xml:space="preserve"><value>Ask User</value></data>
+  <data name="Tool_AskUser_Description" xml:space="preserve"><value>Ask the user for missing information or a decision.</value></data>
+  <data name="Tool_AskUser_AiDescription" xml:space="preserve"><value>Ask the user when essential information is missing, the request is ambiguous, or the user must choose between options. Blocks until the user answers. On timeout, the first option is selected automatically; a text prompt returns a timeout result.</value></data>
+  <data name="Tool_AskUser_Param_Question" xml:space="preserve"><value>The question to ask. Be clear and specific.</value></data>
+  <data name="Tool_AskUser_Param_Options" xml:space="preserve"><value>Optional choices. If provided, the user picks one; the first choice is used automatically if the user does not respond. Otherwise a text box is shown.</value></data>
+  <data name="Tool_AskUser_Msg_Answer" xml:space="preserve"><value>The user's answer: {0}</value></data>
+  <data name="Tool_AskUser_Msg_Cancelled" xml:space="preserve"><value>The user cancelled the answer.</value></data>
+  <data name="Tool_AskUser_Msg_Closed" xml:space="preserve"><value>The user closed the question dialog.</value></data>
+  <data name="Tool_AskUser_Msg_Empty" xml:space="preserve"><value>The user provided no content.</value></data>
+  <data name="Tool_AskUser_Msg_Timeout" xml:space="preserve"><value>The user did not answer in time.</value></data>
+  <data name="Tool_AskUser_Msg_TimeoutDefault" xml:space="preserve"><value>The user did not answer in time; the default option was selected: {0}</value></data>
+  <data name="Tool_AskUser_Msg_Unavailable" xml:space="preserve"><value>Unable to show the question dialog right now.</value></data>
+  <data name="Tool_AskUser_Msg_Failed" xml:space="preserve"><value>Failed to show the question dialog: {0}</value></data>
+
+  <!-- enable_tool_group -->
+  <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>Unlock Tool Group</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information), filesystem (file operations), system_dev (system &amp; dev: PowerShell/code/Git), memory_organize (memory &amp; tasks).</value></data>
+  <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>The tool group to unlock: info, filesystem, system_dev, or memory_organize.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>Tool group unlocked: {0}. Available tools: {1}. Use them in the next round.</value></data>
+  <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>Unknown tool group: {0}.</value></data>
 </root>

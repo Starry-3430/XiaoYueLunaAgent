@@ -86,6 +86,7 @@ public class TurnSummaryService
                 IncludeTools = false,
                 IncludeSystemPrompt = false,
                 DeepThinking = false,
+                IsBackgroundTask = true,
                 ResponseFormat = "json_object",
             });
 
@@ -115,7 +116,7 @@ public class TurnSummaryService
                 TurnIndex = turnIndex,
                 LogicalDate = logicalDate,
                 SummaryJson = summaryJson,
-                Model = _settings.Model,
+                Model = _settings.EffectiveBackgroundModel,
                 TokenCount = (int?)null,
                 CreatedAtUtc = DateTime.UtcNow.ToString("O"),
             });

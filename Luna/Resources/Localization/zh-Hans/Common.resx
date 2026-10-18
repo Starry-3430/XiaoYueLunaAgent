@@ -95,4 +95,5 @@
   <data name="Common_Attachment_AnyFile" xml:space="preserve"><value>所有文件</value></data>
   <data name="Common_Attachment_ImageMissing" xml:space="preserve"><value>图片文件不存在。</value></data>
   <data name="Common_Attachment_ImageTooLarge" xml:space="preserve"><value>图片过大（{0}），超过上限 {1}。</value></data>
+  <data name="Common_Attachment_ImageCompressFailed" xml:space="preserve"><value>图片处理失败：{0}</value></data>
 </root>

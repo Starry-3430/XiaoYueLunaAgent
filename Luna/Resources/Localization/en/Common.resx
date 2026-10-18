@@ -95,4 +95,5 @@
   <data name="Common_Attachment_AnyFile" xml:space="preserve"><value>All files</value></data>
   <data name="Common_Attachment_ImageMissing" xml:space="preserve"><value>Image file does not exist.</value></data>
   <data name="Common_Attachment_ImageTooLarge" xml:space="preserve"><value>Image too large ({0}); the limit is {1}.</value></data>
+  <data name="Common_Attachment_ImageCompressFailed" xml:space="preserve"><value>Image processing failed: {0}</value></data>
 </root>

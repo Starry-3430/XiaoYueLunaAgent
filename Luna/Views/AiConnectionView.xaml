@@ -249,6 +249,23 @@
             </Grid>
         </Border>
 
+        <!-- 后台任务模型 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc AiConnection_BackgroundModel_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc AiConnection_BackgroundModel_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <TextBox Grid.Column="1" Style="{StaticResource SettingsInputWide}"
+                         Text="{Binding BackgroundModel, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
         <!-- Base URL -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>

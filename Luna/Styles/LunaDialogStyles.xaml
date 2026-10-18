@@ -1,7 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- 弹窗卡片：窗口阴影与圆角交由 DWM 原生处理 -->
+    <!-- 弹窗卡片：透明窗口 + 圆角边框 -->
     <Style x:Key="DialogBorder" TargetType="Border">
         <Setter Property="Background" Value="#FAFAF0"/>
         <Setter Property="CornerRadius" Value="8"/>
@@ -27,6 +27,36 @@
         <Setter Property="TextElement.FontSize" Value="14"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="Margin" Value="0,0,0,20"/>
+    </Style>
+
+    <!-- 对话框输入框：与设置页一致的圆角样式 -->
+    <Style x:Key="DialogInput" TargetType="TextBox">
+        <Setter Property="Background" Value="#D4D0BA"/>
+        <Setter Property="Foreground" Value="#5B4833"/>
+        <Setter Property="CaretBrush" Value="#5B4833"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="MinHeight" Value="72"/>
+        <Setter Property="MaxHeight" Value="160"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="AcceptsReturn" Value="True"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

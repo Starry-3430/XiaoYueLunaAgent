@@ -206,6 +206,7 @@ public class DiaryService
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
                     DeepThinking = false,
+                    IsBackgroundTask = true,
                 });
         }
         catch (Exception ex)
@@ -234,7 +235,7 @@ public class DiaryService
         {
             LogicalDate = date,
             Content = content,
-            Model = _settings.Model,
+            Model = _settings.EffectiveBackgroundModel,
             SourceSessionIds = sessionIds,
             SourceTurnIds = turnIds,
             TokenCount = null,
@@ -295,6 +296,7 @@ public class DiaryService
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
                     DeepThinking = false,
+                    IsBackgroundTask = true,
                 });
 
             shortened = shortened.Trim();

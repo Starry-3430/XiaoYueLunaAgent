@@ -35,6 +35,15 @@ public sealed record AiRequestOptions
     /// <summary>是否启用深度思考模型切换；默认跟随设置。</summary>
     public bool DeepThinking { get; init; } = true;
 
+    /// <summary>
+    /// 是否为后台任务（标题、摘要、日记、早报等）。
+    /// 为 true 且配置了 <see cref="AiSettings.BackgroundModel"/> 时使用后台模型。
+    /// </summary>
+    public bool IsBackgroundTask { get; init; }
+
+    /// <summary>当前会话已解锁的工具组（由 enable_tool_group 或关键词自动激活）。</summary>
+    public IReadOnlySet<string>? ActiveToolGroups { get; init; }
+
     /// <summary>response_format.type，例如 "json_object"；null 时不发送该参数。</summary>
     public string? ResponseFormat { get; init; }
 }
@@ -48,5 +57,10 @@ public interface IAiService
 
     IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<StreamEvent> ChatStreamAsync(
+        IEnumerable<ChatMessage> messages,
+        AiRequestOptions options,
         CancellationToken cancellationToken = default);
 }

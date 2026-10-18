@@ -381,5 +381,24 @@ public class DatabaseInitializer
         INSERT INTO FactsFts(rowid, Key, Value)
         SELECT Id, Key, Value FROM Facts
         WHERE Id NOT IN (SELECT rowid FROM FactsFts);
+
+        -- 持久化的“始终允许”权限（仅记录允许记住的只读工具）
+        CREATE TABLE IF NOT EXISTS ToolPermissions (
+            ToolName     TEXT PRIMARY KEY,
+            AllowedAtUtc TEXT NOT NULL
+        );
+
+        -- 工具执行审计日志
+        CREATE TABLE IF NOT EXISTS ToolAuditLogs (
+            Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            SessionId         TEXT NOT NULL,
+            ToolName          TEXT NOT NULL,
+            ArgumentsSummary  TEXT,
+            PermissionResult  TEXT NOT NULL, -- NotRequired / AllowOnce / AllowPersistent / Deny
+            ExecutionResult   TEXT NOT NULL, -- Success / Failed / Denied / Timeout / Canceled
+            ErrorMessage      TEXT,
+            CreatedAtUtc      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_ToolAuditLogs_CreatedAtUtc ON ToolAuditLogs(CreatedAtUtc);
         """;
 }

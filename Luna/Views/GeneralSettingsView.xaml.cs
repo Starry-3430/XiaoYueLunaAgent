@@ -19,6 +19,8 @@ namespace Luna.Views;
 /// </summary>
 public partial class GeneralSettingsView : UserControl
 {
+    private Window? _hostWindow;
+
     public GeneralSettingsView()
     {
         InitializeComponent();
@@ -31,7 +33,39 @@ public partial class GeneralSettingsView : UserControl
         {
             if (DataContext is GeneralSettingsViewModel vm && ProxyPasswordBox.Password != vm.ProxyPassword)
                 ProxyPasswordBox.Password = vm.ProxyPassword;
+
+            AttachHostWindow();
         };
+        Unloaded += (_, _) => DetachHostWindow();
+    }
+
+    /// <summary>页面所在的窗口失去激活（如点击其它应用）时，关闭所有下拉弹出层。</summary>
+    private void AttachHostWindow()
+    {
+        var window = Window.GetWindow(this);
+        if (window is null || ReferenceEquals(_hostWindow, window)) return;
+
+        DetachHostWindow();
+        _hostWindow = window;
+        _hostWindow.Deactivated += HostWindow_Deactivated;
+    }
+
+    private void DetachHostWindow()
+    {
+        if (_hostWindow is null) return;
+        _hostWindow.Deactivated -= HostWindow_Deactivated;
+        _hostWindow = null;
+    }
+
+    private void HostWindow_Deactivated(object? sender, EventArgs e) => CloseDropdowns();
+
+    private void CloseDropdowns()
+    {
+        if (DataContext is not GeneralSettingsViewModel vm) return;
+        vm.ProxyTypeSetting.IsOpen = false;
+        vm.FontSetting.IsOpen = false;
+        vm.LanguageSetting.IsOpen = false;
+        vm.StartupSetting.IsOpen = false;
     }
 
     private void ProxyPassword_PasswordChanged(object sender, RoutedEventArgs e) => OnProxyPasswordChanged();
@@ -66,15 +100,10 @@ public partial class GeneralSettingsView : UserControl
     /// <summary>点击下拉框以外区域时，关闭弹出层。</summary>
     private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (DataContext is not GeneralSettingsViewModel vm) return;
-
         // 点击弹层内部（如滚动条）时不关闭
         if (IsInsidePopup(e.OriginalSource as DependencyObject)) return;
 
-        vm.ProxyTypeSetting.IsOpen = false;
-        vm.FontSetting.IsOpen = false;
-        vm.LanguageSetting.IsOpen = false;
-        vm.StartupSetting.IsOpen = false;
+        CloseDropdowns();
     }
 
     private static bool IsInsidePopup(DependencyObject? source)

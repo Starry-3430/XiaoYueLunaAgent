@@ -69,7 +69,8 @@ public class OpenAiService : IAiService
         var requestBody = await BuildRequestBodyAsync(messages, stream: false, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-        _logger.LogInformation("POST {Url} model={Model}", url, _settings.Model);
+        var requestModel = requestBody["model"]?.GetValue<string>() ?? _settings.Model;
+        _logger.LogInformation("POST {Url} model={Model}", url, requestModel);
 
         using var response = await SendWithRetryAsync(
             () => CreateHttpRequest(url, requestBody.ToJsonString()),
@@ -85,14 +86,21 @@ public class OpenAiService : IAiService
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
     }
 
+    public IAsyncEnumerable<StreamEvent> ChatStreamAsync(
+        IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken = default)
+        => ChatStreamAsync(messages, new AiRequestOptions(), cancellationToken);
+
     public async IAsyncEnumerable<StreamEvent> ChatStreamAsync(
         IEnumerable<ChatMessage> messages,
+        AiRequestOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var requestBody = await BuildRequestBodyAsync(messages, stream: true, new AiRequestOptions(), cancellationToken);
+        var requestBody = await BuildRequestBodyAsync(messages, stream: true, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
-        _logger.LogInformation("POST stream {Url} model={Model}", url, _settings.Model);
+        var requestModel = requestBody["model"]?.GetValue<string>() ?? _settings.Model;
+        _logger.LogInformation("POST stream {Url} model={Model}", url, requestModel);
 
         // 只在这里重试“建立请求 + 拿到成功响应头”的阶段。
         // 一旦开始 yield 流式事件，就不能安全重试（否则会重复输出已发送的内容）。
@@ -385,9 +393,9 @@ public class OpenAiService : IAiService
     }
 
     /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
-    private string ResolveModel(JsonObject root)
+    private string ResolveModel(JsonObject root, string currentModel)
     {
-        var model = _settings.Model;
+        var model = currentModel;
         if (!_settings.DeepThinking)
             return model;
 
@@ -414,6 +422,28 @@ public class OpenAiService : IAiService
         return model;
     }
 
+    /// <summary>
+    /// o1/o3/o4 等推理模型不支持 temperature/top_p/penalty，且使用 max_completion_tokens。
+    /// 命中时从请求体中移除不兼容参数。
+    /// </summary>
+    private static void ApplyReasoningModelParameterCompat(JsonObject root, string model)
+    {
+        var lower = model.ToLowerInvariant();
+        if (!(lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4")))
+            return;
+
+        root.Remove("temperature");
+        root.Remove("top_p");
+        root.Remove("frequency_penalty");
+        root.Remove("presence_penalty");
+
+        if (root.TryGetPropertyValue("max_tokens", out var maxTokens) && maxTokens is not null)
+        {
+            root.Remove("max_tokens");
+            root["max_completion_tokens"] = maxTokens.DeepClone();
+        }
+    }
+
     private async Task<JsonObject> BuildRequestBodyAsync(IEnumerable<ChatMessage> messages, bool stream,
         AiRequestOptions options, CancellationToken ct)
     {
@@ -426,7 +456,13 @@ public class OpenAiService : IAiService
             ["frequency_penalty"] = _settings.FrequencyPenalty,
             ["presence_penalty"] = _settings.PresencePenalty,
         };
-        root["model"] = options.DeepThinking ? ResolveModel(root) : _settings.Model;
+        var targetModel = options.IsBackgroundTask
+            ? _settings.EffectiveBackgroundModel
+            : _settings.Model;
+
+        root["model"] = options.DeepThinking ? ResolveModel(root, targetModel) : targetModel;
+
+        ApplyReasoningModelParameterCompat(root, root["model"]?.GetValue<string>() ?? targetModel);
 
         if (!string.IsNullOrEmpty(options.ResponseFormat))
         {
@@ -441,6 +477,16 @@ public class OpenAiService : IAiService
         // 用当前用户输入做长期事实的相关性检索（工具循环期间最后一条 user 仍是本轮输入）。
         var messageList = messages as IList<ChatMessage> ?? messages.ToList();
         var queryText = messageList.LastOrDefault(m => m.Role == "user")?.Content;
+
+        // 渐进披露：核心工具 + 会话已解锁组 + 根据当前输入自动命中的组。
+        var activeGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (options.ActiveToolGroups is not null)
+        {
+            foreach (var group in options.ActiveToolGroups)
+                activeGroups.Add(group);
+        }
+        foreach (var group in ToolGroups.MatchGroups(queryText))
+            activeGroups.Add(group);
 
         var systemPrompt = await _systemPromptBuilder.BuildAsync(options, queryText, ct);
         if (!string.IsNullOrWhiteSpace(systemPrompt))
@@ -581,7 +627,9 @@ public class OpenAiService : IAiService
         root["messages"] = messagesArray;
 
         var registeredTools = options.IncludeTools
-            ? _toolRegistry.GetEnabledTools().ToList()
+            ? _toolRegistry.GetEnabledTools()
+                .Where(tool => ToolGroups.ShouldInclude(tool.Name, activeGroups))
+                .ToList()
             : new List<ITool>();
         if (registeredTools.Count > 0)
         {
