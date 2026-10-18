@@ -60,6 +60,12 @@ public sealed class ChatGenerationService
     // 仅作为“防死循环”的安全上限；正常的多步工具调用（如代码执行）不会触及。
     private const int MaxSafetyToolRounds = 200;
 
+    // 单轮对话的最大执行时间：防止模型卡死或不断刷工具。
+    private static readonly TimeSpan MaxTurnDuration = TimeSpan.FromMinutes(10);
+
+    // 连续出现相同工具调用（工具名 + 参数）的次数上限。
+    private const int MaxRepeatedToolCalls = 2;
+
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
@@ -356,6 +362,13 @@ public sealed class ChatGenerationService
         var ct = runtime.Cts.Token;
         var messages = runtime.Messages;
 
+        // 单轮执行时间预算：覆盖模型流式输出与全部工具调用的总耗时。
+        var turnStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // 工具死循环检测：记录上一轮调用签名与连续重复次数。
+        string? lastToolCallSignature = null;
+        var repeatedToolCallCount = 0;
+
         var replyContent = "";
         var replyReasoning = "";
         string? replyFinishReason = null;
@@ -367,6 +380,12 @@ public sealed class ChatGenerationService
             var round = 0;
             while (!ct.IsCancellationRequested)
             {
+                if (turnStopwatch.Elapsed > MaxTurnDuration)
+                {
+                    _logger.LogWarning("单轮执行超时（{Max} 分钟），强制结束", MaxTurnDuration.TotalMinutes);
+                    throw new TimeoutException(LocalizationService.Instance["Common_TurnTimeout"]);
+                }
+
                 if (++round > MaxSafetyToolRounds)
                 {
                     _logger.LogWarning("工具轮次达到安全上限 {Max}，提前结束", MaxSafetyToolRounds);
@@ -406,15 +425,79 @@ public sealed class ChatGenerationService
 
                 if (ct.IsCancellationRequested) break;
 
+                // 死循环检测：连续多次出现完全相同的工具名与参数时直接中断。
+                var currentSignature = string.Join("|", pendingToolCalls.Values
+                    .OrderBy(x => x.ToolName)
+                    .ThenBy(x => x.ArgumentsJson)
+                    .Select(x => $"{x.ToolName}:{x.ArgumentsJson}"));
+
+                if (currentSignature == lastToolCallSignature)
+                {
+                    repeatedToolCallCount++;
+                    if (repeatedToolCallCount >= MaxRepeatedToolCalls)
+                    {
+                        _logger.LogWarning("检测到工具死循环，强制中断：{Signature}", currentSignature);
+                        throw new InvalidOperationException(LocalizationService.Instance["Common_ToolLoopDetected"]);
+                    }
+                }
+                else
+                {
+                    lastToolCallSignature = currentSignature;
+                    repeatedToolCallCount = 0;
+                }
+
                 runtime.Status = LocalizationService.Instance.Format("Common_Status_RunningTools", pendingToolCalls.Count);
 
                 foreach (var kvp in pendingToolCalls)
                     kvp.Value.Status = ToolCallStatus.Running;
 
                 var sortedCalls = pendingToolCalls.OrderBy(kv => kv.Key).ToList();
-                foreach (var (index, entry) in sortedCalls)
+
+                // 批量审批：先扫描所有调用，把需要确认的工具聚合为一次弹窗。
+                var toolsNeedingConfirmation = new List<(ITool Tool, ToolCallEntry Entry)>();
+                foreach (var (_, entry) in sortedCalls)
+                {
+                    var tool = _toolRegistry.GetTool(entry.ToolName);
+                    if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName)) continue;
+                    if (!ToolPermissionService.NeedsConfirmation(tool)) continue;
+                    if (_toolPermission.IsAlwaysAllowed(sessionId, tool.Name)) continue;
+                    if (IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson)) continue;
+
+                    toolsNeedingConfirmation.Add((tool, entry));
+                }
+
+                var deniedEntries = new HashSet<ToolCallEntry>();
+                if (toolsNeedingConfirmation.Count > 0)
+                {
+                    var decision = _toolPermission.RequestBatchConfirmation(
+                        sessionId, toolsNeedingConfirmation);
+
+                    if (decision == ToolPermissionDecision.Deny)
+                    {
+                        foreach (var (_, entry) in toolsNeedingConfirmation)
+                        {
+                            entry.Status = ToolCallStatus.Failed;
+                            entry.ResultJson = "User Denied";
+                            deniedEntries.Add(entry);
+                        }
+
+                        _logger.LogInformation("用户拒绝执行工具（共 {Count} 个）", toolsNeedingConfirmation.Count);
+                    }
+                    else if (decision == ToolPermissionDecision.AllowAlways)
+                    {
+                        // “始终允许”只缓存普通工具；powershell 等每次都必须确认的工具不进入白名单。
+                        foreach (var (tool, _) in toolsNeedingConfirmation)
+                        {
+                            if (!ToolPermissionService.IsAlwaysConfirm(tool))
+                                _toolPermission.AllowForConversation(sessionId, tool.Name);
+                        }
+                    }
+                }
+
+                foreach (var (_, entry) in sortedCalls)
                 {
                     if (ct.IsCancellationRequested) break;
+                    if (deniedEntries.Contains(entry)) continue;
 
                     var tool = _toolRegistry.GetTool(entry.ToolName);
                     if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName))
@@ -423,24 +506,6 @@ public sealed class ChatGenerationService
                         entry.ResultJson = LocalizationService.Instance["Common_Tool_NotEnabled"];
                         _logger.LogWarning("未启用或未注册的工具: {Name}", entry.ToolName);
                         continue;
-                    }
-
-                    // 中/高风险工具在执行前需要用户授权；
-                    // 读取用户主动上传的附件时直接放行，不弹窗。
-                    if (ToolPermissionService.NeedsConfirmation(tool) &&
-                        !_toolPermission.IsAlwaysAllowed(sessionId, tool.Name) &&
-                        !IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson))
-                    {
-                        var decision = _toolPermission.RequestConfirmation(tool, entry.ArgumentsJson);
-                        if (decision == ToolPermissionDecision.Deny)
-                        {
-                            entry.Status = ToolCallStatus.Failed;
-                            entry.ResultJson = "User Denied";
-                            _logger.LogInformation("用户拒绝执行工具 {Name}", entry.ToolName);
-                            continue;
-                        }
-                        if (decision == ToolPermissionDecision.AllowAlways)
-                            _toolPermission.AllowForConversation(sessionId, tool.Name);
                     }
 
                     try
