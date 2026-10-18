@@ -127,6 +127,10 @@ public sealed class DataImportService
         await CopyBlobsAsync(ct);
         await UpdateAttachmentPathsAsync(dbPath, ct);
 
+        // 备份数据库未引用的旧附件属于孤儿文件，恢复后统一清理。
+        try { await _fileStorage.CleanupOrphansAsync(ct); }
+        catch (Exception ex) { _logger.LogWarning(ex, "清理恢复后多余附件失败"); }
+
         // 先把待恢复数据库改名，确保即使目录清理失败，下次启动也不会重复覆盖。
         try { File.Move(stagedDb, stagedDb + ".done", overwrite: true); }
         catch (Exception ex) { _logger.LogWarning(ex, "标记已应用的备份失败"); }

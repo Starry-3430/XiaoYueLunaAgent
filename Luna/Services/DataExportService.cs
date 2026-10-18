@@ -43,6 +43,8 @@ public sealed class DataExportService
         if (!string.IsNullOrEmpty(targetDirectory))
             Directory.CreateDirectory(targetDirectory);
 
+        EnsureSufficientDiskSpace(targetPath);
+
         var tempDir = Path.Combine(Path.GetTempPath(), "LunaExport_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
 
@@ -319,5 +321,89 @@ public sealed class DataExportService
         public string? StoredPath { get; set; }
         public string? ConvertedMarkdown { get; set; }
         public string CreatedAtUtc { get; set; } = string.Empty;
+    }
+
+    private void EnsureSufficientDiskSpace(string targetPath)
+    {
+        try
+        {
+            var dbPath = new SqliteConnectionStringBuilder(_db.ConnectionString).DataSource;
+            long dbBytes = 0;
+            if (!string.IsNullOrEmpty(dbPath))
+            {
+                if (File.Exists(dbPath)) dbBytes += new FileInfo(dbPath).Length;
+                var walPath = dbPath + "-wal";
+                if (File.Exists(walPath)) dbBytes += new FileInfo(walPath).Length;
+            }
+
+            long attachmentBytes = 0;
+            try
+            {
+                using var conn = new SqliteConnection($"{_db.ConnectionString};Mode=ReadOnly;Pooling=False");
+                conn.Open();
+                attachmentBytes = conn.ExecuteScalar<long>(
+                    "SELECT COALESCE(SUM(FileSize), 0) FROM Attachments");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "无法统计附件大小，磁盘空间检查仅按数据库大小估算");
+            }
+
+            // 数据库快照 + 可读 JSON + 附件文件 + 一定压缩余量
+            var required = Math.Max(
+                dbBytes * 2 + attachmentBytes + 64L * 1024 * 1024,
+                128L * 1024 * 1024);
+
+            EnsureDriveSpace(Path.GetTempPath(), required, "临时目录");
+            EnsureDriveSpace(targetPath, required, "备份目标位置");
+        }
+        catch (IOException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "无法检查备份磁盘空间，继续导出");
+        }
+    }
+
+    private static void EnsureDriveSpace(string path, long requiredBytes, string label)
+    {
+        string? root;
+        try { root = Path.GetPathRoot(Path.GetFullPath(path)); }
+        catch { return; }
+        if (string.IsNullOrEmpty(root)) return;
+
+        DriveInfo drive;
+        long available;
+        try
+        {
+            drive = new DriveInfo(root);
+            if (!drive.IsReady) return;
+            available = drive.AvailableFreeSpace;
+        }
+        catch
+        {
+            return;
+        }
+
+        if (available < requiredBytes)
+        {
+            throw new IOException(
+                $"{label}磁盘空间不足：至少需要 {FormatBytes(requiredBytes)}，当前可用 {FormatBytes(available)}。");
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        var value = (double)bytes;
+        var index = 0;
+        while (value >= 1024 && index < units.Length - 1)
+        {
+            value /= 1024;
+            index++;
+        }
+        return $"{value:0.#} {units[index]}";
     }
 }
