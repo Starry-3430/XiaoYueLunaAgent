@@ -109,12 +109,17 @@
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>Search the internet and return the titles, URLs and content snippets of relevant web pages.</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>Get BBC news summaries or the local current date, time and month information.</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
+  <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
@@ -134,6 +139,35 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>Execution cancelled.</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>User denied execution.</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>, </value></data>
+  <data name="Tool_ClipboardHistory_Msg_Empty" xml:space="preserve"><value>No clipboard history yet. Luna only records text captured while this tool is enabled.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Cleared" xml:space="preserve"><value>Clipboard history cleared.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Copied" xml:space="preserve"><value>Copied clipboard history #{0} to the current clipboard.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_NotFound" xml:space="preserve"><value>Clipboard history #{0} was not found.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_InvalidAction" xml:space="preserve"><value>action must be list, copy or clear.</value></data>
+  <data name="Tool_ClipboardHistory_Msg_List" xml:space="preserve"><value>Clipboard history:</value></data>
+  <data name="Tool_NewsCalendar_Msg_InvalidMode" xml:space="preserve"><value>mode must be news or calendar.</value></data>
+  <data name="Tool_NewsCalendar_Msg_HttpFailed" xml:space="preserve"><value>Failed to fetch news: HTTP {0}</value></data>
+  <data name="Tool_NewsCalendar_Msg_NoResults" xml:space="preserve"><value>No news items were returned.</value></data>
+  <data name="Tool_NewsCalendar_Msg_NewsHeading" xml:space="preserve"><value>News summary (BBC RSS):</value></data>
+  <data name="Tool_NewsCalendar_Msg_Cancelled" xml:space="preserve"><value>News request cancelled.</value></data>
+  <data name="Tool_NewsCalendar_Msg_Failed" xml:space="preserve"><value>Failed to fetch news: {0}</value></data>
+  <data name="Tool_WindowManager_Msg_InvalidAction" xml:space="preserve"><value>action must be list, minimize, maximize, restore, move, resize or close.</value></data>
+  <data name="Tool_WindowManager_Msg_NotFound" xml:space="preserve"><value>No matching visible window. Provide title or hwnd.</value></data>
+  <data name="Tool_WindowManager_Msg_MoveArgs" xml:space="preserve"><value>move requires x and y.</value></data>
+  <data name="Tool_WindowManager_Msg_ResizeArgs" xml:space="preserve"><value>resize requires width and height of at least 100x80.</value></data>
+  <data name="Tool_WindowManager_Msg_ListEmpty" xml:space="preserve"><value>No visible windows found.</value></data>
+  <data name="Tool_WindowManager_Msg_ListHeading" xml:space="preserve"><value>Visible windows:</value></data>
+  <data name="Tool_WindowManager_Msg_Done" xml:space="preserve"><value>Window action {0} completed.</value></data>
+  <data name="Tool_WindowManager_Msg_Failed" xml:space="preserve"><value>Window operation failed: {0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target must be volume or brightness.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>Cannot access the default audio output device.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>Volume: {0:0.#}%; muted: {1}.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>Setting brightness requires value (0-100).</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>Brightness operation cancelled.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>Brightness adjustment failed; this monitor may not support software control.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessFailed" xml:space="preserve"><value>Brightness adjustment failed: {0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessSet" xml:space="preserve"><value>Screen brightness set to {0}%.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_VolumeFailed" xml:space="preserve"><value>Volume operation failed: {0}</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>Path is empty.</value></data>

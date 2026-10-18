@@ -109,11 +109,15 @@
   <data name="Tool_WebSearch_AiDescription" xml:space="preserve"><value>在互联网上搜索信息，返回相关网页的标题、URL 和内容摘要</value></data>
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
+  <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>获取 BBC 新闻摘要，或查询本地当前日期、时间和月份信息</value></data>
   <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取文件内容。文本/代码文件直接读取；PDF、Word、Excel、PPT、HTML 等文档会通过 MarkItDown 自动转换为 Markdown 后返回。大文本文件请用 keyword 搜索，或用 start_line/end_line 分段读取；不要为了读取文件内容而调用 PowerShell。</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>使用 Windows 默认程序打开文件、目录或启动应用程序</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>列出并管理可见窗口的位置、大小和状态；管理操作需要确认</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>查询或调节系统音量、静音状态和显示器亮度；设置操作需要确认</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>查看、复制或清空 Luna 启用期间采集的文本剪贴板历史；仅保存在内存中</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>截取当前用户的屏幕画面。当你需要看用户当前的界面、或者排查报错弹窗时调用。</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
@@ -134,6 +138,37 @@
   <data name="Tool_Msg_Cancelled" xml:space="preserve"><value>执行被取消。</value></data>
   <data name="Tool_Msg_UserDenied" xml:space="preserve"><value>用户拒绝执行。</value></data>
   <data name="Tool_Msg_ListSeparator" xml:space="preserve"><value>、</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Empty" xml:space="preserve"><value>暂无剪贴板历史。Luna 只记录启用该工具后发现的文本内容。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Cleared" xml:space="preserve"><value>剪贴板历史已清空。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_Copied" xml:space="preserve"><value>已将剪贴板历史 #{0} 复制到当前剪贴板。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_NotFound" xml:space="preserve"><value>找不到剪贴板历史 #{0}。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_InvalidAction" xml:space="preserve"><value>action 必须是 list、copy 或 clear。</value></data>
+  <data name="Tool_ClipboardHistory_Msg_List" xml:space="preserve"><value>剪贴板历史：</value></data>
+  <data name="Tool_NewsCalendar_Msg_InvalidMode" xml:space="preserve"><value>mode 必须是 news 或 calendar。</value></data>
+  <data name="Tool_NewsCalendar_Msg_HttpFailed" xml:space="preserve"><value>新闻获取失败：HTTP {0}</value></data>
+  <data name="Tool_NewsCalendar_Msg_NoResults" xml:space="preserve"><value>没有获取到新闻条目。</value></data>
+  <data name="Tool_NewsCalendar_Msg_NewsHeading" xml:space="preserve"><value>新闻摘要（BBC RSS）：</value></data>
+  <data name="Tool_NewsCalendar_Msg_Cancelled" xml:space="preserve"><value>新闻获取被取消。</value></data>
+  <data name="Tool_NewsCalendar_Msg_Failed" xml:space="preserve"><value>新闻获取失败：{0}</value></data>
+  <data name="Tool_WindowManager_Msg_InvalidAction" xml:space="preserve"><value>action 必须是 list、minimize、maximize、restore、move、resize 或 close。</value></data>
+  <data name="Tool_WindowManager_Msg_NotFound" xml:space="preserve"><value>未找到匹配的可见窗口，请提供 title 或 hwnd。</value></data>
+  <data name="Tool_WindowManager_Msg_MoveArgs" xml:space="preserve"><value>move 需要 x 和 y。</value></data>
+  <data name="Tool_WindowManager_Msg_ResizeArgs" xml:space="preserve"><value>resize 需要至少 100x80 的 width 和 height。</value></data>
+  <data name="Tool_WindowManager_Msg_ListEmpty" xml:space="preserve"><value>没有找到可见窗口。</value></data>
+  <data name="Tool_WindowManager_Msg_ListHeading" xml:space="preserve"><value>可见窗口：</value></data>
+  <data name="Tool_WindowManager_Msg_Done" xml:space="preserve"><value>已对窗口执行 {0} 操作。</value></data>
+  <data name="Tool_WindowManager_Msg_Failed" xml:space="preserve"><value>窗口操作失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target 必须是 volume 或 brightness。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>无法访问默认音频输出设备。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>音量：{0:0.#}%；静音：{1}。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>brightness 设置需要 value（0-100）。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>亮度操作被取消。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>亮度设置失败，当前显示器可能不支持软件调节。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessFailed" xml:space="preserve"><value>亮度设置失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_BrightnessSet" xml:space="preserve"><value>屏幕亮度已设置为 {0}%。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_VolumeFailed" xml:space="preserve"><value>音量操作失败：{0}</value></data>
+  <data name="Tool_VolumeBrightness_Msg_TargetVolume" xml:space="preserve"><value>volume</value></data>
+  <data name="Tool_VolumeBrightness_Msg_TargetBrightness" xml:space="preserve"><value>brightness</value></data>
 
   <!-- 文件沙箱 -->
   <data name="Tool_Fs_PathEmpty" xml:space="preserve"><value>路径为空。</value></data>
