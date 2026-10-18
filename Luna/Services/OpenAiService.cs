@@ -389,6 +389,11 @@ public class OpenAiService : IAiService
         // 避免出现 "Messages with role 'tool' must be a response to a preceding message with 'tool_calls'"。
         HashSet<string>? pendingToolCallIds = null;
 
+        // 最近一次工具返回的截图路径，以及当前请求末尾是否为工具消息。
+        // 工具刚结束时把图片追加成一条运行期 user 消息，让模型真正“看”到画面。
+        string? latestScreenshotPath = null;
+        var lastMessageIsTool = false;
+
         foreach (var msg in messages)
         {
             if (msg.Role == "assistant")
@@ -438,6 +443,8 @@ public class OpenAiService : IAiService
                 }
 
                 messagesArray.Add(obj);
+                lastMessageIsTool = false;
+                latestScreenshotPath = null;
             }
             else if (msg.Role == "tool")
             {
@@ -454,11 +461,17 @@ public class OpenAiService : IAiService
                     ["tool_call_id"] = msg.ToolCallId,
                 };
                 messagesArray.Add(obj);
+                lastMessageIsTool = true;
+
+                if (ToolResult.TryExtractImagePath(msg.Content, out var screenshotPath))
+                    latestScreenshotPath = screenshotPath;
             }
             else
             {
                 // user / system 等：重置工具上下文
                 pendingToolCallIds = null;
+                lastMessageIsTool = false;
+                latestScreenshotPath = null;
 
                 var obj = new JsonObject { ["role"] = msg.Role };
 
@@ -486,6 +499,11 @@ public class OpenAiService : IAiService
                 messagesArray.Add(obj);
             }
         }
+        // 工具轮刚结束（末尾是 tool 消息）时，把最近一张截图作为 user 图片追加到请求末尾。
+        // 仅存在于本次请求，不写入历史，也不会在 UI 里多出一条用户消息。
+        if (lastMessageIsTool && !string.IsNullOrEmpty(latestScreenshotPath))
+            await AppendScreenshotMessageAsync(messagesArray, latestScreenshotPath, ct);
+
         root["messages"] = messagesArray;
 
         var registeredTools = options.IncludeTools
@@ -518,5 +536,53 @@ public class OpenAiService : IAiService
         }
 
         return root;
+    }
+
+    /// <summary>
+    /// 把工具生成的截图以 data URL 形式追加为一条 user 消息。
+    /// 标准 OpenAI 协议不允许 tool 消息携带图片，因此只能在工具轮结束后补一条 user 消息。
+    /// </summary>
+    private async Task AppendScreenshotMessageAsync(JsonArray messagesArray, string path, CancellationToken ct)
+    {
+        try
+        {
+            if (!File.Exists(path)) return;
+
+            var info = new FileInfo(path);
+            if (info.Length <= 0 || info.Length > AttachmentHelper.MaxImageBytes)
+            {
+                _logger.LogWarning("截图不可用或过大，跳过多模态注入: {Path} ({Size} bytes)", path, info.Length);
+                return;
+            }
+
+            var bytes = await File.ReadAllBytesAsync(path, ct);
+            var dataUrl = $"data:image/jpeg;base64,{Convert.ToBase64String(bytes)}";
+
+            messagesArray.Add(new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["type"] = "text",
+                        ["text"] = ToolLocalization.Text("Tool_ReadScreen_Msg_ImageInjected"),
+                    },
+                    new JsonObject
+                    {
+                        ["type"] = "image_url",
+                        ["image_url"] = new JsonObject { ["url"] = dataUrl },
+                    },
+                },
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "注入截图到多模态请求失败: {Path}", path);
+        }
     }
 }

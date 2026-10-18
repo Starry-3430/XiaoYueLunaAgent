@@ -172,6 +172,7 @@
   <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>Capture mode: active_window (current focused window, recommended) or fullscreen (entire screen). Default: active_window.</value></data>
   <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>Captured the screen (mode: {0}). Image saved at: {1}</value></data>
   <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>Screenshot failed: {0}</value></data>
+  <data name="Tool_ReadScreen_Msg_ImageInjected" xml:space="preserve"><value>Here is the screenshot just captured:</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>Python code to run (Python only). Best-effort sandbox: networking and file-system access are blocked (regex blocklist for import socket/urllib/requests, open(), os./shutil/pathlib/subprocess, etc.).</value></data>
@@ -362,6 +363,7 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
   <data name="Tool_Arg_Content" xml:space="preserve"><value>Content</value></data>
   <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>Write mode</value></data>
+  <data name="Tool_Arg_Mode" xml:space="preserve"><value>Mode</value></data>
   <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>Create</value></data>
   <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>Overwrite</value></data>
   <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>Append</value></data>

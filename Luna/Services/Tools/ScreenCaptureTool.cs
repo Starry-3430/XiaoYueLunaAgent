@@ -21,6 +21,23 @@ internal static class Win32Api
     [DllImport("dwmapi.dll")]
     public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+
+    /// <summary>DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2（-4）。</summary>
+    private static readonly IntPtr DpiAwarenessContextPerMonitorV2 = new(-4);
+
+    /// <summary>把当前线程切到 Per-Monitor V2，返回原上下文（失败时返回 IntPtr.Zero）。</summary>
+    public static IntPtr EnterPerMonitorDpiAwareness() =>
+        SetThreadDpiAwarenessContext(DpiAwarenessContextPerMonitorV2);
+
+    /// <summary>恢复线程原有的 DPI 上下文。</summary>
+    public static void RestoreDpiAwareness(IntPtr previous)
+    {
+        if (previous != IntPtr.Zero)
+            SetThreadDpiAwarenessContext(previous);
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
@@ -45,30 +62,40 @@ public static class ScreenCaptureCore
 {
     public static Bitmap Capture(string mode)
     {
-        Rectangle bounds;
-
-        if (mode == "active_window")
+        // 在截图线程上临时切到 Per-Monitor V2，保证窗口边界、虚拟屏幕与 CopyFromScreen
+        // 使用同一套物理像素坐标（避免高 DPI 下只截到左上角或图像被拉伸）。
+        var previousDpi = Win32Api.EnterPerMonitorDpiAwareness();
+        try
         {
-            var hwnd = Win32Api.GetForegroundWindow();
-            if (hwnd == IntPtr.Zero)
-                throw new InvalidOperationException("无法获取当前活动窗口");
+            Rectangle bounds;
 
-            var rect = Win32Api.GetWindowBounds(hwnd);
-            bounds = new Rectangle(rect.Left, rect.Top, rect.Width, rect.Height);
+            if (mode == "active_window")
+            {
+                var hwnd = Win32Api.GetForegroundWindow();
+                if (hwnd == IntPtr.Zero)
+                    throw new InvalidOperationException("无法获取当前活动窗口");
+
+                var rect = Win32Api.GetWindowBounds(hwnd);
+                bounds = new Rectangle(rect.Left, rect.Top, rect.Width, rect.Height);
+            }
+            else
+            {
+                // 全屏：获取所有显示器的并集区域（多屏兼容）
+                bounds = SystemInformation.VirtualScreen;
+            }
+
+            // 创建画布并截图
+            var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
+            using var g = Graphics.FromImage(bitmap);
+            g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+
+            // 缩放限制（最大宽度 1920，防止 AI 拒绝请求）
+            return ResizeIfNeeded(bitmap, 1920);
         }
-        else
+        finally
         {
-            // 全屏：获取所有显示器的并集区域（多屏兼容）
-            bounds = SystemInformation.VirtualScreen;
+            Win32Api.RestoreDpiAwareness(previousDpi);
         }
-
-        // 创建画布并截图
-        var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
-        using var g = Graphics.FromImage(bitmap);
-        g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-
-        // 缩放限制（最大宽度 1920，防止 AI 拒绝请求）
-        return ResizeIfNeeded(bitmap, 1920);
     }
 
     private static Bitmap ResizeIfNeeded(Bitmap original, int maxWidth)
@@ -153,7 +180,7 @@ public class ReadScreenTool : ITool
                 bitmap.Save(filePath, jpegCodec, encoderParams);
                 _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
 
-                return ToolResult.Ok(Text("Tool_ReadScreen_Msg_Captured", mode, filePath));
+                return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
             }
             catch (Exception ex)
             {

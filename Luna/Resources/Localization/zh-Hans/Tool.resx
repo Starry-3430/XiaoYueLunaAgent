@@ -172,6 +172,7 @@
   <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>截图模式：active_window（截取当前焦点窗口，推荐），fullscreen（截取整个屏幕）。默认 active_window。</value></data>
   <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>已捕获屏幕画面（模式：{0}），图片保存在：{1}</value></data>
   <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>截图失败：{0}</value></data>
+  <data name="Tool_ReadScreen_Msg_ImageInjected" xml:space="preserve"><value>这是刚才截取的屏幕画面：</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>要执行的 Python 代码（仅支持 Python）。沙箱为尽力而为：禁止联网与文件系统访问（正则黑名单拦截 import socket/urllib/requests、open()、os./shutil/pathlib/subprocess 等）</value></data>
@@ -362,6 +363,7 @@
   <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
   <data name="Tool_Arg_Content" xml:space="preserve"><value>内容</value></data>
   <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>写入模式</value></data>
+  <data name="Tool_Arg_Mode" xml:space="preserve"><value>模式</value></data>
   <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>创建</value></data>
   <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>覆盖</value></data>
   <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>追加</value></data>
