@@ -228,6 +228,8 @@ public partial class App : Application
                 // 后台调度器：在数据库与主窗口就绪后手动启动（见 OnStartup）。
                 services.AddSingleton<ReminderPollJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<ReminderPollJob>());
+                services.AddSingleton<TaskFollowUpJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
                 services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();

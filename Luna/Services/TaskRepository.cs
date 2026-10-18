@@ -92,4 +92,37 @@ public class TaskRepository
               SET RemindAtUtc = @RemindAtUtc, LastRemindedAtUtc = NULL, UpdatedAtUtc = @Now
               WHERE Id = @Id", new { Id = id, RemindAtUtc = remindAtUtc, Now = DateTime.UtcNow });
     }
+
+    /// <summary>
+    /// 获取需要跟进的待办：状态为 pending，且（已逾期 或 24 小时内到期），
+    /// 并且今天（本地日期）还没有被跟进过。
+    /// </summary>
+    public async Task<List<TaskItem>> GetFollowUpCandidatesAsync(DateTime nowUtc)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+
+        // 与现有 RemindAtUtc 查询保持一致，使用 DateTime 参数而非手写 "O" 字符串，
+        // 避免与 Microsoft.Data.Sqlite 实际存储格式不一致导致比较错误。
+        var threshold = nowUtc.AddHours(24);
+        var dayStartUtc = nowUtc.ToLocalTime().Date.ToUniversalTime();
+
+        var rows = await conn.QueryAsync<TaskItem>(
+            @"SELECT * FROM Tasks
+              WHERE Status = 'pending'
+                AND DueAtUtc IS NOT NULL
+                AND DueAtUtc <= @Threshold
+                AND (LastFollowUpUtc IS NULL OR LastFollowUpUtc < @DayStartUtc)
+              ORDER BY DueAtUtc ASC",
+            new { Threshold = threshold, DayStartUtc = dayStartUtc });
+        return rows.ToList();
+    }
+
+    /// <summary>标记任务今天已被跟进，避免同一天重复催办。</summary>
+    public async Task MarkFollowUpAsync(string id, DateTime nowUtc)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.ExecuteAsync(
+            "UPDATE Tasks SET LastFollowUpUtc = @Now WHERE Id = @Id",
+            new { Id = id, Now = nowUtc });
+    }
 }

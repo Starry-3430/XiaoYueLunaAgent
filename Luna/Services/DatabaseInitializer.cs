@@ -51,6 +51,7 @@ public class DatabaseInitializer
         AddToolCallsJsonColumn(conn);
         AddToolCallIdColumn(conn);
         AddErrorMessageColumn(conn);
+        AddLastFollowUpColumn(conn);
         MigrateLogicalDates(conn);
         _logger.LogInformation("数据库初始化完成：{Path}", _dbPath);
     }
@@ -189,6 +190,19 @@ public class DatabaseInitializer
         }
     }
 
+    /// <summary>任务跟进去重标记：记录最后一次主动跟进的 UTC 时间（按天去重）。</summary>
+    private void AddLastFollowUpColumn(SqliteConnection conn)
+    {
+        try
+        {
+            conn.Execute("ALTER TABLE Tasks ADD COLUMN LastFollowUpUtc TEXT");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+    }
+
     /// <summary>
     /// 一次性迁移：早期 Attachments 表以 MessageId 关联消息（且从未启用写入）。
     /// 现改为按 SessionId/TurnId 关联轮次，并新增 FileExtension/FileSize/ConvertedMarkdown 列。
@@ -284,6 +298,7 @@ public class DatabaseInitializer
             Priority          INTEGER NOT NULL DEFAULT 0,
             ReminderCount     INTEGER NOT NULL DEFAULT 0,
             LastRemindedAtUtc TEXT,
+            LastFollowUpUtc   TEXT,
             CreatedAtUtc      TEXT NOT NULL,
             UpdatedAtUtc      TEXT NOT NULL
         );

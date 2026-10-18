@@ -54,6 +54,12 @@
   <data name="Common_TurnTimeout" xml:space="preserve"><value>This turn took too long and was stopped automatically.</value></data>
   <data name="Common_ToolLoopDetected" xml:space="preserve"><value>The AI appears to be stuck in a tool-call loop and was stopped automatically.</value></data>
 
+  <!-- 主动任务跟进 -->
+  <data name="Common_TaskFollowUp_Title" xml:space="preserve"><value>Task follow-up</value></data>
+  <data name="Common_TaskFollowUp_Overdue" xml:space="preserve"><value>{0} (overdue, was due {1})</value></data>
+  <data name="Common_TaskFollowUp_DueSoon" xml:space="preserve"><value>{0} (due {1})</value></data>
+  <data name="Common_TaskFollowUp_More" xml:space="preserve"><value>and {0} more task(s) waiting.</value></data>
+
   <!-- 注入提示词的运行环境 -->
   <data name="Common_UserEnv_Title" xml:space="preserve"><value>## Current Environment and User Folders</value></data>
   <data name="Common_UserEnv_Home" xml:space="preserve"><value>- User / home directory: {0}</value></data>
