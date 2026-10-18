@@ -69,7 +69,7 @@ public class AskUserTool : ITool
 
             var result = defaultOption is not null
                 ? ToolResult.Ok(Text("Tool_AskUser_Msg_TimeoutDefault", defaultOption))
-                : ToolResult.Error(Text("Tool_AskUser_Msg_Timeout"));
+                : ToolResult.Timeout(Text("Tool_AskUser_Msg_Timeout"));
             tcs.TrySetResult(result);
 
             var current = dialog;
@@ -85,7 +85,7 @@ public class AskUserTool : ITool
 
         using var registration = ct.Register(() =>
         {
-            tcs.TrySetResult(ToolResult.Error(Text("Tool_AskUser_Msg_Cancelled")));
+            tcs.TrySetResult(ToolResult.Canceled(Text("Tool_AskUser_Msg_Cancelled")));
 
             // 取消时关闭仍然打开的弹窗；BeginInvoke 避免从计时器线程直接操作 UI。
             var current = dialog;
@@ -125,7 +125,7 @@ public class AskUserTool : ITool
                     StyleKey = "StyleCancel",
                     Command = new RelayCommand(() =>
                     {
-                        tcs.TrySetResult(ToolResult.Error(Text("Tool_AskUser_Msg_Cancelled")));
+                        tcs.TrySetResult(ToolResult.Canceled(Text("Tool_AskUser_Msg_Cancelled")));
                         dlg.Close();
                     }),
                 },
@@ -171,7 +171,7 @@ public class AskUserTool : ITool
 
             // 用户直接点右上角 X 关闭也视为取消。
             dlg.Closed += (_, _) => tcs.TrySetResult(
-                ToolResult.Error(Text("Tool_AskUser_Msg_Closed")));
+                ToolResult.Canceled(Text("Tool_AskUser_Msg_Closed")));
 
             if (state.TextBox is not null)
                 dlg.ContentRendered += (_, _) => state.TextBox.Focus();

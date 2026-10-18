@@ -218,6 +218,7 @@ public partial class App : Application
                 services.AddSingleton<SearchRepository>();
                 services.AddSingleton<TaskRepository>();
                 services.AddSingleton<FactRepository>();
+                services.AddSingleton<ToolPermissionRepository>();
                 services.AddSingleton<AttachmentRepository>();
                 services.AddSingleton<FileStorageService>();
                 services.AddSingleton<TurnSummaryService>();

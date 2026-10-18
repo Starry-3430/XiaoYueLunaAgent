@@ -119,7 +119,7 @@ Continue?</value>
     <value>Allow once</value>
   </data>
   <data name="Dialog_ToolPermission_AllowAlways" xml:space="preserve">
-    <value>Always allow in this conversation</value>
+    <value>Always allow (remember)</value>
   </data>
   <data name="Dialog_ToolPermission_Deny" xml:space="preserve">
     <value>Deny</value>

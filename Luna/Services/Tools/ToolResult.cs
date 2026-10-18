@@ -11,9 +11,21 @@ public sealed class ToolResult
     /// <summary>是否为错误结果（用于 UI 标记为失败）。</summary>
     public bool IsError { get; init; }
 
+    /// <summary>是否因工具执行超时而失败。</summary>
+    public bool IsTimeout { get; init; }
+
+    /// <summary>是否因取消而失败。</summary>
+    public bool IsCanceled { get; init; }
+
     public static ToolResult Ok(string content) => new() { Content = content };
 
     public static ToolResult Error(string content) => new() { Content = content, IsError = true };
+
+    public static ToolResult Timeout(string content) =>
+        new() { Content = content, IsError = true, IsTimeout = true };
+
+    public static ToolResult Canceled(string content) =>
+        new() { Content = content, IsError = true, IsCanceled = true };
 
     /// <summary>成功结果，并在文本末尾附带可供模型识图的图片路径标记。</summary>
     public static ToolResult OkWithImage(string content, string imagePath) =>

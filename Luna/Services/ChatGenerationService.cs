@@ -50,6 +50,7 @@ public sealed class ChatGenerationService
     private readonly AttachmentRepository _attachmentRepo;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
+    private readonly ToolPermissionRepository _auditRepo;
     private readonly TurnSummaryService _turnSummaryService;
     private readonly SessionTitleService _sessionTitleService;
     private readonly DiaryService _diaryService;
@@ -82,7 +83,8 @@ public sealed class ChatGenerationService
 
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
         MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
-        ToolPermissionService toolPermission, TurnSummaryService turnSummaryService,
+        ToolPermissionService toolPermission, ToolPermissionRepository auditRepo,
+        TurnSummaryService turnSummaryService,
         SessionTitleService sessionTitleService,
         DiaryService diaryService, ILogger<ChatGenerationService> logger)
     {
@@ -92,6 +94,7 @@ public sealed class ChatGenerationService
         _attachmentRepo = attachmentRepo;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
+        _auditRepo = auditRepo;
         _turnSummaryService = turnSummaryService;
         _sessionTitleService = sessionTitleService;
         _diaryService = diaryService;
@@ -469,17 +472,23 @@ public sealed class ChatGenerationService
 
                 // 批量审批：先扫描所有调用，把需要确认的工具聚合为一次弹窗。
                 var toolsNeedingConfirmation = new List<(ITool Tool, ToolCallEntry Entry)>();
+                var autoAllowedEntries = new HashSet<ToolCallEntry>();
                 foreach (var (_, entry) in sortedCalls)
                 {
                     var tool = _toolRegistry.GetTool(entry.ToolName);
                     if (tool is null || !_toolRegistry.IsEnabled(entry.ToolName)) continue;
                     if (!ToolPermissionService.NeedsConfirmation(tool)) continue;
-                    if (_toolPermission.IsAlwaysAllowed(sessionId, tool.Name)) continue;
+                    if (await _toolPermission.IsAlwaysAllowedAsync(sessionId, tool.Name))
+                    {
+                        autoAllowedEntries.Add(entry);
+                        continue;
+                    }
                     if (IsUploadedAttachmentRead(tool, runtime, entry.ArgumentsJson)) continue;
 
                     toolsNeedingConfirmation.Add((tool, entry));
                 }
 
+                var permissionResults = new Dictionary<ToolCallEntry, string>();
                 var deniedEntries = new HashSet<ToolCallEntry>();
                 if (toolsNeedingConfirmation.Count > 0)
                 {
@@ -488,22 +497,31 @@ public sealed class ChatGenerationService
 
                     if (decision == ToolPermissionDecision.Deny)
                     {
-                        foreach (var (_, entry) in toolsNeedingConfirmation)
+                        foreach (var (tool, entry) in toolsNeedingConfirmation)
                         {
                             entry.Status = ToolCallStatus.Failed;
                             entry.ResultJson = "User Denied";
                             deniedEntries.Add(entry);
+                            permissionResults[entry] = "Deny";
+
+                            await AuditAsync(sessionId, tool.Name, entry.ArgumentsJson, "Deny", "Denied");
                         }
 
                         _logger.LogInformation("用户拒绝执行工具（共 {Count} 个）", toolsNeedingConfirmation.Count);
                     }
-                    else if (decision == ToolPermissionDecision.AllowAlways)
+                    else
                     {
-                        // “始终允许”只缓存普通工具；powershell 等每次都必须确认的工具不进入白名单。
-                        foreach (var (tool, _) in toolsNeedingConfirmation)
+                        var permissionResult = decision == ToolPermissionDecision.AllowOnce
+                            ? "AllowOnce"
+                            : "AllowPersistent";
+
+                        foreach (var (_, entry) in toolsNeedingConfirmation)
+                            permissionResults[entry] = permissionResult;
+
+                        if (decision == ToolPermissionDecision.AllowAlways)
                         {
-                            if (!ToolPermissionService.IsAlwaysConfirm(tool))
-                                _toolPermission.AllowForConversation(sessionId, tool.Name);
+                            await _toolPermission.ApplyDecisionAsync(
+                                sessionId, toolsNeedingConfirmation.Select(x => x.Tool), decision);
                         }
                     }
                 }
@@ -533,6 +551,15 @@ public sealed class ChatGenerationService
                         entry.ResultJson = TruncateResult(result.Content);
                         entry.Status = result.IsError ? ToolCallStatus.Failed : ToolCallStatus.Success;
                         completedEntries.Add(entry);
+
+                        var permissionResult = permissionResults.GetValueOrDefault(entry,
+                            autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
+                        var executionResult = result.IsTimeout ? "Timeout"
+                            : result.IsCanceled ? "Canceled"
+                            : result.IsError ? "Failed"
+                            : "Success";
+                        await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
+                            permissionResult, executionResult, result.IsError ? result.Content : null);
                     }
                 }
 
@@ -542,6 +569,11 @@ public sealed class ChatGenerationService
                     if (completedEntries.Contains(entry) || deniedEntries.Contains(entry)) continue;
                     entry.Status = ToolCallStatus.Failed;
                     entry.ResultJson = LocalizationService.Instance["Common_Canceled"];
+
+                    var permissionResult = permissionResults.GetValueOrDefault(entry,
+                        autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
+                    await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
+                        permissionResult, "Canceled", entry.ResultJson);
                 }
 
                 // 所有结果按原始调用顺序写入会话，包含被用户拒绝的占位结果。
@@ -939,7 +971,7 @@ public sealed class ChatGenerationService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return (entry, ToolResult.Error(LocalizationService.Instance["Common_Canceled"]));
+            return (entry, ToolResult.Canceled(LocalizationService.Instance["Common_Canceled"]));
         }
         catch (Exception ex)
         {
@@ -999,8 +1031,23 @@ public sealed class ChatGenerationService
         ct.ThrowIfCancellationRequested();
 
         _logger.LogWarning("工具 {Name} 超过 {Seconds} 秒未完成，已中止", tool.Name, timeout.TotalSeconds);
-        return ToolResult.Error(LocalizationService.Instance.Format(
+        return ToolResult.Timeout(LocalizationService.Instance.Format(
             "Common_Tool_Timeout", tool.DisplayName, timeout.TotalSeconds));
+    }
+
+    /// <summary>写入工具审计日志；失败只记录警告，不影响工具执行与对话。</summary>
+    private async Task AuditAsync(string sessionId, string toolName, string argumentsJson,
+        string permissionResult, string executionResult, string? errorMessage = null)
+    {
+        try
+        {
+            await _auditRepo.AddAuditLogAsync(sessionId, toolName, argumentsJson,
+                permissionResult, executionResult, errorMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "写入工具审计日志失败：{Tool}", toolName);
+        }
     }
 
     private static string TruncateResult(string result, int maxLen = 5000)
