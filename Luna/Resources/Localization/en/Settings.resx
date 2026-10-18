@@ -149,6 +149,42 @@
   <data name="Settings_Backup_Cancelled" xml:space="preserve">
     <value>Backup cancelled.</value>
   </data>
+  <data name="Settings_Import_Button" xml:space="preserve">
+    <value>Import backup</value>
+  </data>
+  <data name="Settings_Import_DialogTitle" xml:space="preserve">
+    <value>Select Luna backup</value>
+  </data>
+  <data name="Settings_Import_Filter" xml:space="preserve">
+    <value>ZIP archive (*.zip)|*.zip</value>
+  </data>
+  <data name="Settings_Import_ConfirmTitle" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Settings_Import_ConfirmBody" xml:space="preserve">
+    <value>Restart is required to apply the backup.&#10;&#10;Restoring the backup will overwrite all current data, including chats, diaries, and {0}'s memories of you.&#10;&#10;Continue?</value>
+  </data>
+  <data name="Settings_Import_Importing" xml:space="preserve">
+    <value>Importing…</value>
+  </data>
+  <data name="Settings_Import_Staged" xml:space="preserve">
+    <value>Backup imported. Restart to apply.</value>
+  </data>
+  <data name="Settings_Import_DoneTitle" xml:space="preserve">
+    <value>Restore complete</value>
+  </data>
+  <data name="Settings_Import_DoneBody" xml:space="preserve">
+    <value>Backup restored: {0}&#10;&#10;Restart is required to apply the restore.</value>
+  </data>
+  <data name="Settings_Import_RestartButton" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="Settings_Import_FailedTitle" xml:space="preserve">
+    <value>Import failed</value>
+  </data>
+  <data name="Settings_Import_FailedBody" xml:space="preserve">
+    <value>Failed to import backup: {0}</value>
+  </data>
 
   <!-- 工具授权 -->
   <data name="Settings_ToolPermissions_Title" xml:space="preserve">

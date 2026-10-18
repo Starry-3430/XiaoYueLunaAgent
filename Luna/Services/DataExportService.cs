@@ -112,6 +112,15 @@ public sealed class DataExportService
             tx.Commit();
         }
 
+        // 把数据库一致性快照一并放入备份，导入时可直接恢复。
+        var snapshotPath = Path.Combine(tempDir, "LunaData.db");
+        // 关闭连接池，确保快照文件在打包前释放句柄。
+        using (var snapshot = new SqliteConnection($"Data Source={snapshotPath};Pooling=False"))
+        {
+            await snapshot.OpenAsync(ct);
+            conn.BackupDatabase(snapshot);
+        }
+
         ct.ThrowIfCancellationRequested();
 
         var diaryDir = Path.Combine(tempDir, "Diaries");

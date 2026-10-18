@@ -149,6 +149,42 @@
   <data name="Settings_Backup_Cancelled" xml:space="preserve">
     <value>备份已取消。</value>
   </data>
+  <data name="Settings_Import_Button" xml:space="preserve">
+    <value>导入备份</value>
+  </data>
+  <data name="Settings_Import_DialogTitle" xml:space="preserve">
+    <value>选择 Luna 备份</value>
+  </data>
+  <data name="Settings_Import_Filter" xml:space="preserve">
+    <value>ZIP 压缩包 (*.zip)|*.zip</value>
+  </data>
+  <data name="Settings_Import_ConfirmTitle" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Settings_Import_ConfirmBody" xml:space="preserve">
+    <value>需要重新启动才能恢复备份。&#10;&#10;恢复备份后，将会覆盖当前所有的数据内容，包括聊天记录、日记内容、{0}对你的记忆等。&#10;&#10;确定要继续吗？</value>
+  </data>
+  <data name="Settings_Import_Importing" xml:space="preserve">
+    <value>正在导入…</value>
+  </data>
+  <data name="Settings_Import_Staged" xml:space="preserve">
+    <value>备份已导入，重启后生效。</value>
+  </data>
+  <data name="Settings_Import_DoneTitle" xml:space="preserve">
+    <value>已完成恢复</value>
+  </data>
+  <data name="Settings_Import_DoneBody" xml:space="preserve">
+    <value>备份已恢复：{0}&#10;&#10;需要重新启动才能应用恢复</value>
+  </data>
+  <data name="Settings_Import_RestartButton" xml:space="preserve">
+    <value>重新启动</value>
+  </data>
+  <data name="Settings_Import_FailedTitle" xml:space="preserve">
+    <value>导入失败</value>
+  </data>
+  <data name="Settings_Import_FailedBody" xml:space="preserve">
+    <value>导入备份失败：{0}</value>
+  </data>
 
   <!-- 工具授权 -->
   <data name="Settings_ToolPermissions_Title" xml:space="preserve">

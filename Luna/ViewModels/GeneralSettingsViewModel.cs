@@ -1,11 +1,15 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Net.Http;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using Luna.Controls;
 using Luna.Models;
 using Luna.Localization;
 using Luna.Services;
@@ -21,6 +25,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly StartupService _startupService;
     private readonly ToolPermissionService _toolPermission;
     private readonly DataExportService _exportService;
+    private readonly DataImportService _importService;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
 
@@ -72,14 +77,20 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportDataCommand))]
     private bool _isExporting;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExportDataCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportDataCommand))]
+    private bool _isImporting;
 
     private readonly DispatcherTimer _saveStatusTimer;
 
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
         HotkeyService hotkeyService, StartupService startupService,
         ToolPermissionService toolPermission, DataExportService exportService,
-        ILogger<GeneralSettingsViewModel> logger)
+        DataImportService importService, ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
@@ -87,6 +98,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _startupService = startupService;
         _toolPermission = toolPermission;
         _exportService = exportService;
+        _importService = importService;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -369,7 +381,142 @@ public partial class GeneralSettingsViewModel : ObservableObject
         }
     }
 
-    private bool CanExportData() => !IsExporting;
+    /// <summary>选择 ZIP 备份并暂存，重启后覆盖当前数据。</summary>
+    [RelayCommand(CanExecute = nameof(CanImportData))]
+    private async Task ImportDataAsync()
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new OpenFileDialog
+        {
+            Title = loc["Settings_Import_DialogTitle"],
+            Filter = loc["Settings_Import_Filter"],
+            CheckFileExists = true,
+            Multiselect = false,
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        var nickname = string.IsNullOrWhiteSpace(_settings.Nickname)
+            ? AiSettings.DefaultNickname
+            : _settings.Nickname;
+        if (!ShowImportConfirmation(loc.Format("Settings_Import_ConfirmBody", nickname)))
+            return;
+
+        IsImporting = true;
+        BackupStatus = loc["Settings_Import_Importing"];
+        try
+        {
+            await _importService.StageAsync(dialog.FileName);
+            BackupStatus = loc["Settings_Import_Staged"];
+            _logger.LogInformation("备份已导入，等待重启：{Path}", dialog.FileName);
+            ShowImportCompleted(Path.GetFileName(dialog.FileName));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "导入备份失败");
+            BackupStatus = loc.Format("Settings_Import_FailedBody", ex.Message);
+            ShowImportFailed(ex.Message);
+        }
+        finally
+        {
+            IsImporting = false;
+        }
+    }
+
+    private bool CanExportData() => !IsExporting && !IsImporting;
+
+    private bool CanImportData() => !IsImporting && !IsExporting;
+
+    private bool ShowImportConfirmation(string body)
+    {
+        var loc = LocalizationService.Instance;
+        var confirmed = false;
+        var dialog = new LunaDialog
+        {
+            Owner = GetDialogOwner(),
+            DialogTitle = loc["Settings_Import_ConfirmTitle"],
+            DialogContent = CreateDialogBody(body),
+        };
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_No"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_Yes"],
+                StyleKey = "StyleDangerSoft",
+                Command = new RelayCommand(() =>
+                {
+                    confirmed = true;
+                    dialog.Close();
+                }),
+            },
+        };
+        dialog.ShowDialog();
+        return confirmed;
+    }
+
+    private void ShowImportCompleted(string fileName)
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = GetDialogOwner(),
+            DialogTitle = loc["Settings_Import_DoneTitle"],
+            DialogContent = CreateDialogBody(loc.Format("Settings_Import_DoneBody", fileName)),
+        };
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Settings_Import_RestartButton"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    dialog.Close();
+                    if (Application.Current is App app)
+                        app.Restart();
+                }),
+            },
+        };
+        dialog.ShowDialog();
+    }
+
+    private void ShowImportFailed(string message)
+    {
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = GetDialogOwner(),
+            DialogTitle = loc["Settings_Import_FailedTitle"],
+            DialogContent = CreateDialogBody(loc.Format("Settings_Import_FailedBody", message)),
+        };
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+        };
+        dialog.ShowDialog();
+    }
+
+    private static Window? GetDialogOwner()
+        => Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+           ?? Application.Current.MainWindow;
+
+    private static TextBlock CreateDialogBody(string text) => new()
+    {
+        Text = text,
+        TextWrapping = TextWrapping.Wrap,
+        TextAlignment = TextAlignment.Left,
+        HorizontalAlignment = HorizontalAlignment.Left,
+    };
 
     /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
     [RelayCommand]

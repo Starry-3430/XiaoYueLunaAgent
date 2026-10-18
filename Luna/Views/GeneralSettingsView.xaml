@@ -379,6 +379,8 @@
                     <TextBlock Text="{Binding BackupStatus}" Foreground="#78A29F" FontSize="13"
                                VerticalAlignment="Center" Margin="0,0,12,0"
                                MaxWidth="320" TextWrapping="Wrap"/>
+                    <Button Content="{loc:Loc Settings_Import_Button}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Margin="0,0,6,0" Command="{Binding ImportDataCommand}"/>
                     <Button Content="{loc:Loc Settings_Backup_ExportButton}" Style="{StaticResource SecondaryActionButton}"
                             Padding="12,6" Command="{Binding ExportDataCommand}"/>
                 </StackPanel>
