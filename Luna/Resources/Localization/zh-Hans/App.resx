@@ -16,4 +16,36 @@
   <!-- 托盘菜单 -->
   <data name="App_Tray_OpenMain" xml:space="preserve"><value>主界面</value></data>
   <data name="App_Tray_Close" xml:space="preserve"><value>关闭</value></data>
+
+  <!-- 首次运行欢迎向导 -->
+  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>初次见面，我是你的专属 AI 伴侣。</value></data>
+  <data name="Welcome_Step1_AiNameLabel" xml:space="preserve"><value>给我取个名字吧</value></data>
+  <data name="Welcome_Step1_AiNameDesc" xml:space="preserve"><value>你的 AI 伴侣叫什么？</value></data>
+  <data name="Welcome_Step1_UserNameLabel" xml:space="preserve"><value>我该怎么称呼你呢？</value></data>
+  <data name="Welcome_Step1_UserNameDesc" xml:space="preserve"><value>它会这样称呼你</value></data>
+
+  <data name="Welcome_Step2_Title" xml:space="preserve"><value>连通“大脑”</value></data>
+  <data name="Welcome_Step2_Desc" xml:space="preserve"><value>填写模型服务，之后可以随时在设置中修改。</value></data>
+  <data name="Welcome_Model_Label" xml:space="preserve"><value>模型</value></data>
+  <data name="Welcome_Test_Button" xml:space="preserve"><value>测试连接</value></data>
+  <data name="Welcome_Test_Success" xml:space="preserve"><value>✅ 连通成功</value></data>
+  <data name="Welcome_Test_NoModel" xml:space="preserve"><value>请先填写模型名称</value></data>
+  <data name="Welcome_Advanced_Proxy" xml:space="preserve"><value>配置代理（可选）</value></data>
+  <data name="Welcome_Advanced_BackgroundModel" xml:space="preserve"><value>后台任务模型（可选）</value></data>
+  <data name="Welcome_Advanced_BackgroundModel_Desc" xml:space="preserve"><value>用于生成标题、摘要和日记。留空则使用主聊天模型。</value></data>
+
+  <data name="Welcome_Step3_Title" xml:space="preserve"><value>准备就绪</value></data>
+  <data name="Welcome_Step3_Desc" xml:space="preserve"><value>我已经准备好了。随时叫我，我们开始吧。</value></data>
+  <data name="Welcome_Hotkey_Label" xml:space="preserve"><value>全局唤起</value></data>
+  <data name="Welcome_Hotkey_Desc" xml:space="preserve"><value>按下快捷键，随时打开 Luna。</value></data>
+  <data name="Welcome_Tray_Label" xml:space="preserve"><value>托盘图标</value></data>
+  <data name="Welcome_Tray_Desc" xml:space="preserve"><value>单击打开悬浮输入窗，双击打开主界面，右键查看更多选项。</value></data>
+  <data name="Welcome_ApiSkipped_Note" xml:space="preserve"><value>API 尚未配置。你可以随时在 设置 → AI 连接 中完成。</value></data>
+
+  <data name="Welcome_Skip" xml:space="preserve"><value>跳过引导</value></data>
+  <data name="Welcome_Later" xml:space="preserve"><value>稍后配置</value></data>
+  <data name="Welcome_Back" xml:space="preserve"><value>上一步</value></data>
+  <data name="Welcome_Next" xml:space="preserve"><value>下一步</value></data>
+  <data name="Welcome_Finish" xml:space="preserve"><value>完成并进入</value></data>
+  <data name="Welcome_StepIndicator" xml:space="preserve"><value>第 {0} 步 / 共 3 步</value></data>
 </root>
