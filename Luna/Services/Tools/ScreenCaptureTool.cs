@@ -4,9 +4,12 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Interop;
 using Microsoft.Extensions.Logging;
 using static Luna.Services.Tools.ToolLocalization;
+using WpfApplication = System.Windows.Application;
 
 namespace Luna.Services.Tools;
 
@@ -23,6 +26,12 @@ internal static class Win32Api
 
     [DllImport("user32.dll")]
     private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    public const int SwHide = 0;
+    public const int SwShow = 5;
 
     /// <summary>DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2（-4）。</summary>
     private static readonly IntPtr DpiAwarenessContextPerMonitorV2 = new(-4);
@@ -68,6 +77,7 @@ public static class ScreenCaptureCore
         try
         {
             Rectangle bounds;
+            var virtualScreen = SystemInformation.VirtualScreen;
 
             if (mode == "active_window")
             {
@@ -77,11 +87,17 @@ public static class ScreenCaptureCore
 
                 var rect = Win32Api.GetWindowBounds(hwnd);
                 bounds = new Rectangle(rect.Left, rect.Top, rect.Width, rect.Height);
+
+                // 截图前 Luna 窗口会被移出屏幕；若它仍是前台窗口，边界会落在虚拟屏幕之外。
+                // 此时退化为全屏，避免以负坐标截到黑图/空图。
+                bounds = Rectangle.Intersect(bounds, virtualScreen);
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                    bounds = virtualScreen;
             }
             else
             {
                 // 全屏：获取所有显示器的并集区域（多屏兼容）
-                bounds = SystemInformation.VirtualScreen;
+                bounds = virtualScreen;
             }
 
             // 创建画布并截图
@@ -118,6 +134,12 @@ public static class ScreenCaptureCore
 /// <summary>截取当前屏幕画面。归属“截图”开关（screenshot），执行前需用户确认。</summary>
 public class ReadScreenTool : ITool
 {
+    /// <summary>把 Luna 窗口移出所有屏幕的坐标（足够覆盖多屏向左扩展的情况）。</summary>
+    private const double OffScreenCoordinate = -10000d;
+
+    /// <summary>移走窗口后等待 DWM 重新合成一帧、并让下方窗口重绘的时间。</summary>
+    private const int ScreenshotDelayMs = 500;
+
     private static readonly JsonElement Schema = ToolSchema.Parse("""
     {
         "type": "object",
@@ -153,40 +175,165 @@ public class ReadScreenTool : ITool
         if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("mode", out var m))
             mode = m.GetString() ?? "active_window";
 
-        return await Task.Run(() =>
+        var movedWindows = new Dictionary<Window, WindowSnapshot>();
+
+        try
         {
-            try
+            // 1. 把 Luna 自己的窗口临时移出屏幕（最大化窗口退化为隐藏）
+            movedWindows = await MoveLunaWindowsOffScreenAsync();
+
+            // 2. 等待 DWM 合成新一帧，并让下方窗口获得焦点/重绘
+            await Task.Delay(ScreenshotDelayMs, ct);
+
+            // 3. 在后台线程截图并保存，避免大屏幕截图阻塞 UI
+            return await Task.Run(() =>
             {
-                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    ct.ThrowIfCancellationRequested();
 
-                // 1. 截图并压缩
-                using var bitmap = ScreenCaptureCore.Capture(mode);
+                    using var bitmap = ScreenCaptureCore.Capture(mode);
 
-                // 2. 保存到临时目录
-                var cacheDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Luna", "cache", "screenshots");
-                Directory.CreateDirectory(cacheDir);
+                    var cacheDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "Luna", "cache", "screenshots");
+                    Directory.CreateDirectory(cacheDir);
 
-                var filePath = Path.Combine(cacheDir, $"screen_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg");
+                    var filePath = Path.Combine(cacheDir, $"screen_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg");
 
-                // 3. 以 JPEG 格式保存，质量 80%
-                using var encoderParams = new EncoderParameters(1);
-                encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 80L);
-                var jpegCodec = ImageCodecInfo.GetImageEncoders()
-                    .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
-                    ?? throw new InvalidOperationException("未找到 JPEG 编码器");
+                    // 以 JPEG 格式保存，质量 80%
+                    using var encoderParams = new EncoderParameters(1);
+                    encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 80L);
+                    var jpegCodec = ImageCodecInfo.GetImageEncoders()
+                        .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
+                        ?? throw new InvalidOperationException("未找到 JPEG 编码器");
 
-                bitmap.Save(filePath, jpegCodec, encoderParams);
-                _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
+                    bitmap.Save(filePath, jpegCodec, encoderParams);
+                    _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
 
-                return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
-            }
-            catch (Exception ex)
+                    return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "屏幕截图失败");
+                    return ToolResult.Error(Text("Tool_ReadScreen_Msg_Failed", ex.Message));
+                }
+            }, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return ToolResult.Error(Text("Tool_Msg_Cancelled"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "屏幕截图失败");
+            return ToolResult.Error(Text("Tool_ReadScreen_Msg_Failed", ex.Message));
+        }
+        finally
+        {
+            // 4. 【必须】无论成功、失败还是取消，都恢复 Luna 窗口
+            await RestoreLunaWindowsAsync(movedWindows);
+        }
+    }
+
+    /// <summary>记录窗口原状态，便于截图后恢复。</summary>
+    private readonly record struct WindowSnapshot(
+        WindowState State, double Left, double Top, bool Hidden);
+
+    /// <summary>在 UI 线程上把所有可见的 Luna 窗口移出屏幕；返回恢复所需的状态。</summary>
+    private async Task<Dictionary<Window, WindowSnapshot>> MoveLunaWindowsOffScreenAsync()
+    {
+        var saved = new Dictionary<Window, WindowSnapshot>();
+        var app = WpfApplication.Current;
+        var dispatcher = app?.Dispatcher;
+        if (app is null || dispatcher is null || dispatcher.HasShutdownStarted)
+            return saved;
+
+        try
+        {
+            await dispatcher.InvokeAsync(() =>
             {
-                _logger.LogError(ex, "屏幕截图失败");
-                return ToolResult.Error(Text("Tool_ReadScreen_Msg_Failed", ex.Message));
-            }
-        }, ct);
+                foreach (var window in app.Windows.OfType<Window>().ToList())
+                {
+                    try
+                    {
+                        if (!window.IsVisible || window.WindowState == WindowState.Minimized)
+                            continue;
+
+                        if (window.WindowState == WindowState.Maximized)
+                        {
+                            // 最大化窗口不移动，直接隐藏：移动会污染 RestoreBounds，
+                            // 导致用户以后取消最大化时窗口跑到屏幕外。
+                            var hwnd = new WindowInteropHelper(window).Handle;
+                            if (hwnd == IntPtr.Zero) continue;
+
+                            saved[window] = new WindowSnapshot(window.WindowState, window.Left, window.Top, Hidden: true);
+                            Win32Api.ShowWindow(hwnd, Win32Api.SwHide);
+                        }
+                        else
+                        {
+                            saved[window] = new WindowSnapshot(window.WindowState, window.Left, window.Top, Hidden: false);
+                            window.Left = OffScreenCoordinate;
+                            window.Top = OffScreenCoordinate;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "移出 Luna 窗口失败");
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "移出 Luna 窗口失败");
+        }
+
+        return saved;
+    }
+
+    /// <summary>在 UI 线程上恢复所有被移动/隐藏的 Luna 窗口。</summary>
+    private async Task RestoreLunaWindowsAsync(IReadOnlyDictionary<Window, WindowSnapshot> saved)
+    {
+        if (saved.Count == 0) return;
+
+        var app = WpfApplication.Current;
+        var dispatcher = app?.Dispatcher;
+        if (dispatcher is null || dispatcher.HasShutdownStarted) return;
+
+        try
+        {
+            await dispatcher.InvokeAsync(() =>
+            {
+                foreach (var (window, snapshot) in saved)
+                {
+                    try
+                    {
+                        if (snapshot.Hidden)
+                        {
+                            var hwnd = new WindowInteropHelper(window).Handle;
+                            if (hwnd != IntPtr.Zero)
+                                Win32Api.ShowWindow(hwnd, Win32Api.SwShow);
+                            continue;
+                        }
+
+                        window.Left = snapshot.Left;
+                        window.Top = snapshot.Top;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "恢复 Luna 窗口位置失败");
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "恢复 Luna 窗口位置失败");
+        }
     }
 }
