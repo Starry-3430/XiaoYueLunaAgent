@@ -156,6 +156,7 @@ public sealed class DailyBriefingJob : IBackgroundJob
                 MaxTokens = 600,
                 IncludeTools = false,
                 DeepThinking = false,
+                IsBackgroundTask = true,
             },
             ct);
 

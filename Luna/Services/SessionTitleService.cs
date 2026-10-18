@@ -74,6 +74,7 @@ public class SessionTitleService
                     IncludeSystemPrompt = false,
                     IncludeUserEnvironment = false,
                     DeepThinking = false,
+                    IsBackgroundTask = true,
                 });
 
             title = CleanTitle(raw);

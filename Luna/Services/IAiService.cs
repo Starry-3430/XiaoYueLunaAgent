@@ -35,6 +35,12 @@ public sealed record AiRequestOptions
     /// <summary>是否启用深度思考模型切换；默认跟随设置。</summary>
     public bool DeepThinking { get; init; } = true;
 
+    /// <summary>
+    /// 是否为后台任务（标题、摘要、日记、早报等）。
+    /// 为 true 且配置了 <see cref="AiSettings.BackgroundModel"/> 时使用后台模型。
+    /// </summary>
+    public bool IsBackgroundTask { get; init; }
+
     /// <summary>response_format.type，例如 "json_object"；null 时不发送该参数。</summary>
     public string? ResponseFormat { get; init; }
 }
