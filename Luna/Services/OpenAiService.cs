@@ -40,6 +40,15 @@ public class OpenAiService : IAiService
     /// <summary>流式响应允许的最长“无新数据”间隔，持续有数据时不会触发。</summary>
     private static readonly TimeSpan StreamIdleTimeout = TimeSpan.FromSeconds(120);
 
+    /// <summary>附件注入 system 消息的识别标记（由 ChatGenerationService.BuildAttachmentContext 生成）。</summary>
+    private const string AttachmentContextMarker = "用户上传了以下附件";
+
+    /// <summary>附件原始路径行前缀。</summary>
+    private const string AttachmentPathPrefix = "原始路径：";
+
+    /// <summary>发给 API 时附件上下文最多保留的字符数，完整内容仍保留在数据库中。</summary>
+    private const int MaxAttachmentContextChars = 3000;
+
     public OpenAiService(HttpClient httpClient, AiSettings settings,
         ToolRegistry toolRegistry, SystemPromptBuilder systemPromptBuilder,
         ILogger<OpenAiService> logger)
@@ -321,6 +330,59 @@ public class OpenAiService : IAiService
     private static string TruncateForLog(string text, int max = 500)
         => string.IsNullOrEmpty(text) ? string.Empty : text.Length <= max ? text : text[..max] + "…";
 
+    /// <summary>
+    /// 对附件注入的 system 内容做 API 侧降级：保留开头 3000 字符，
+    /// 并在末尾列出所有附件的原始路径，供模型按需调用 read_file。
+    /// 数据库中的完整内容不变。
+    /// </summary>
+    private static string TruncateAttachmentContext(string content)
+    {
+        if (content.Length <= MaxAttachmentContextChars)
+            return content;
+
+        var paths = ExtractAttachmentPaths(content);
+        var sb = new StringBuilder(content[..MaxAttachmentContextChars]);
+
+        sb.AppendLine();
+        sb.AppendLine();
+        sb.AppendLine($"[附件内容过长，已折叠其余 {content.Length - MaxAttachmentContextChars} 个字符。]");
+
+        if (paths.Count > 0)
+        {
+            sb.AppendLine("【附件原始路径】");
+            foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+                sb.AppendLine($"- {path}");
+
+            sb.AppendLine("如需更多细节，可调用 read_file 读取上述原始路径（仅支持文本类文件）；" +
+                          "如果工具不支持该文件类型，请基于已提供的内容回答，或请用户提供具体片段。");
+        }
+        else
+        {
+            sb.AppendLine("如需更多细节，请依靠用户的后续提问。");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>从附件 system 内容中提取所有“原始路径：...”行。</summary>
+    private static List<string> ExtractAttachmentPaths(string content)
+    {
+        var paths = new List<string>();
+
+        foreach (var rawLine in content.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (!line.StartsWith(AttachmentPathPrefix, StringComparison.Ordinal))
+                continue;
+
+            var path = line[AttachmentPathPrefix.Length..].Trim();
+            if (path.Length > 0)
+                paths.Add(path);
+        }
+
+        return paths;
+    }
+
     /// <summary>开启深度思考时选择合适的模型/推理参数。</summary>
     private string ResolveModel(JsonObject root)
     {
@@ -477,6 +539,13 @@ public class OpenAiService : IAiService
                         });
                     }
                     obj["content"] = parts;
+                }
+                else if (msg.Role == "system" &&
+                         msg.Content.Contains(AttachmentContextMarker, StringComparison.Ordinal))
+                {
+                    // 附件正文在数据库里保持完整，只在发给 API 时降级，
+                    // 避免长文档每一轮都重复占满上下文。
+                    obj["content"] = TruncateAttachmentContext(msg.Content);
                 }
                 else
                 {
