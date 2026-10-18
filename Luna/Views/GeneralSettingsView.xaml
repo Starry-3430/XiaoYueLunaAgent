@@ -364,6 +364,26 @@
             </Grid>
         </Border>
 
+        <!-- 工具授权 -->
+        <Border Style="{StaticResource SettingsCard}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{loc:Loc Settings_ToolPermissions_Title}" Style="{StaticResource SettingsTitle}"/>
+                    <TextBlock Text="{loc:Loc Settings_ToolPermissions_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ToolPermissionStatus}" Foreground="#78A29F" FontSize="13"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Content="{loc:Loc Settings_ToolPermissions_Clear}" Style="{StaticResource SecondaryActionButton}"
+                            Padding="12,6" Command="{Binding ClearPersistentToolPermissionsCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 软件更新 -->
         <Border Style="{StaticResource SettingsCard}">
             <Grid>
