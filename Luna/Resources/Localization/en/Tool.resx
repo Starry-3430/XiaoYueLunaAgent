@@ -53,6 +53,8 @@
   <data name="Tool_FileOpen_Description" xml:space="preserve"><value>Open a specified file or launch an application.</value></data>
   <data name="Tool_Screenshot_DisplayName" xml:space="preserve"><value>Screenshot</value></data>
   <data name="Tool_Screenshot_Description" xml:space="preserve"><value>Capture a screenshot.</value></data>
+  <data name="Tool_ReadScreen_DisplayName" xml:space="preserve"><value>Read Screen</value></data>
+  <data name="Tool_ReadScreen_Description" xml:space="preserve"><value>Capture the active window or the entire screen.</value></data>
   <data name="Tool_WindowManager_DisplayName" xml:space="preserve"><value>Window Manager</value></data>
   <data name="Tool_WindowManager_Description" xml:space="preserve"><value>Manage window position, size and state.</value></data>
   <data name="Tool_VolumeBrightness_DisplayName" xml:space="preserve"><value>Volume / Brightness</value></data>
@@ -112,6 +114,7 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
+  <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
@@ -164,6 +167,12 @@
 
   <!-- read_clipboard -->
   <data name="Tool_ReadClipboard_Msg_Failed" xml:space="preserve"><value>Failed to read the clipboard: {0}</value></data>
+
+  <!-- read_screen -->
+  <data name="Tool_ReadScreen_Param_Mode" xml:space="preserve"><value>Capture mode: active_window (current focused window, recommended) or fullscreen (entire screen). Default: active_window.</value></data>
+  <data name="Tool_ReadScreen_Msg_Captured" xml:space="preserve"><value>Captured the screen (mode: {0}). Image saved at: {1}</value></data>
+  <data name="Tool_ReadScreen_Msg_Failed" xml:space="preserve"><value>Screenshot failed: {0}</value></data>
+  <data name="Tool_ReadScreen_Msg_ImageInjected" xml:space="preserve"><value>Here is the screenshot just captured:</value></data>
 
   <!-- code_execute -->
   <data name="Tool_CodeExecute_Param_Code" xml:space="preserve"><value>Python code to run (Python only). Best-effort sandbox: networking and file-system access are blocked (regex blocklist for import socket/urllib/requests, open(), os./shutil/pathlib/subprocess, etc.).</value></data>
@@ -366,6 +375,7 @@ Its content will be lost.</value></data>
   <data name="Tool_Arg_Url" xml:space="preserve"><value>URL</value></data>
   <data name="Tool_Arg_Content" xml:space="preserve"><value>Content</value></data>
   <data name="Tool_Arg_WriteMode" xml:space="preserve"><value>Write mode</value></data>
+  <data name="Tool_Arg_Mode" xml:space="preserve"><value>Mode</value></data>
   <data name="Tool_Arg_Mode_Create" xml:space="preserve"><value>Create</value></data>
   <data name="Tool_Arg_Mode_Overwrite" xml:space="preserve"><value>Overwrite</value></data>
   <data name="Tool_Arg_Mode_Append" xml:space="preserve"><value>Append</value></data>

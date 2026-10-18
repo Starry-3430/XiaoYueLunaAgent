@@ -191,6 +191,7 @@ public partial class App : Application
                 services.AddSingleton<ITool, SendNotificationTool>();
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, FileOpenTool>();
+                services.AddSingleton<ITool, ReadScreenTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
                 services.AddSingleton<ITool, DiarySearchTool>();
