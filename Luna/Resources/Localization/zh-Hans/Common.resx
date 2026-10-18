@@ -60,6 +60,11 @@
   <data name="Common_TaskFollowUp_DueSoon" xml:space="preserve"><value>{0}（截止 {1}）</value></data>
   <data name="Common_TaskFollowUp_More" xml:space="preserve"><value>还有 {0} 项待办，记得查看。</value></data>
 
+  <!-- 每日早报 -->
+  <data name="Common_DailyBriefing_SessionTitle" xml:space="preserve"><value>🌅 今日早报 ({0})</value></data>
+  <data name="Common_DailyBriefing_NotifyTitle" xml:space="preserve"><value>早安</value></data>
+  <data name="Common_DailyBriefing_NotifyMessage" xml:space="preserve"><value>今日早报已生成，打开 Luna 查看今天的安排。</value></data>
+
   <!-- 注入提示词的运行环境 -->
   <data name="Common_UserEnv_Title" xml:space="preserve"><value>## 当前运行环境与用户目录</value></data>
   <data name="Common_UserEnv_Home" xml:space="preserve"><value>- 用户名/主目录：{0}</value></data>

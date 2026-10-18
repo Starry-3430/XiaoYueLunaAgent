@@ -230,6 +230,8 @@ public partial class App : Application
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<ReminderPollJob>());
                 services.AddSingleton<TaskFollowUpJob>();
                 services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<TaskFollowUpJob>());
+                services.AddSingleton<DailyBriefingJob>();
+                services.AddSingleton<IBackgroundJob>(sp => sp.GetRequiredService<DailyBriefingJob>());
                 services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();
