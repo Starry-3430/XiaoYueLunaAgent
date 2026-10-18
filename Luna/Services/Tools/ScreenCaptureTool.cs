@@ -30,6 +30,10 @@ internal static class Win32Api
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    /// <summary>阻塞到 DWM 完成下一次桌面合成，用于确保窗口移动/隐藏已生效。</summary>
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmFlush();
+
     public const int SwHide = 0;
     public const int SwShow = 5;
 
@@ -69,7 +73,10 @@ internal static class Win32Api
 
 public static class ScreenCaptureCore
 {
-    public static Bitmap Capture(string mode)
+    public static Bitmap Capture(string mode) => ResizeIfNeeded(CaptureRaw(mode), 1920);
+
+    /// <summary>只做屏幕复制，不做缩放；缩放可以等 Luna 窗口恢复后再执行。</summary>
+    public static Bitmap CaptureRaw(string mode)
     {
         // 在截图线程上临时切到 Per-Monitor V2，保证窗口边界、虚拟屏幕与 CopyFromScreen
         // 使用同一套物理像素坐标（避免高 DPI 下只截到左上角或图像被拉伸）。
@@ -104,9 +111,7 @@ public static class ScreenCaptureCore
             var bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
             using var g = Graphics.FromImage(bitmap);
             g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-
-            // 缩放限制（最大宽度 1920，防止 AI 拒绝请求）
-            return ResizeIfNeeded(bitmap, 1920);
+            return bitmap;
         }
         finally
         {
@@ -114,7 +119,7 @@ public static class ScreenCaptureCore
         }
     }
 
-    private static Bitmap ResizeIfNeeded(Bitmap original, int maxWidth)
+    public static Bitmap ResizeIfNeeded(Bitmap original, int maxWidth)
     {
         if (original.Width <= maxWidth) return original;
 
@@ -142,9 +147,6 @@ public class ReadScreenTool : ITool
     /// 工具执行入口本身就在授权完成之后，所以在这里等待即可。
     /// </summary>
     private const int UserInstructionDelayMs = 500;
-
-    /// <summary>窗口移出屏幕后等待 DWM 重新合成的时间；尽量短，减少窗口消失的违和感。</summary>
-    private const int WindowHideSettleMs = 50;
 
     private static readonly JsonElement Schema = ToolSchema.Parse("""
     {
@@ -182,6 +184,7 @@ public class ReadScreenTool : ITool
             mode = m.GetString() ?? "active_window";
 
         var movedWindows = new Dictionary<Window, WindowSnapshot>();
+        Bitmap? rawBitmap = null;
 
         try
         {
@@ -192,47 +195,44 @@ public class ReadScreenTool : ITool
             // 2. 仅在真正截图的瞬间把 Luna 窗口移出屏幕
             movedWindows = await MoveLunaWindowsOffScreenAsync();
 
-            // 3. 极短等待，让 DWM 合成移走窗口后的新一帧
-            await Task.Delay(WindowHideSettleMs, ct);
-
-            // 4. 在后台线程截图并保存，避免大屏幕截图阻塞 UI
-            return await Task.Run(() =>
+            // 3. 窗口消失只持续到“像素拷贝完成”：DwmFlush 等一帧合成后立刻 CopyFromScreen。
+            rawBitmap = await Task.Run(() =>
             {
-                try
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    using var bitmap = ScreenCaptureCore.Capture(mode);
-
-                    var cacheDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "Luna", "cache", "screenshots");
-                    Directory.CreateDirectory(cacheDir);
-
-                    var filePath = Path.Combine(cacheDir, $"screen_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg");
-
-                    // 以 JPEG 格式保存，质量 80%
-                    using var encoderParams = new EncoderParameters(1);
-                    encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 80L);
-                    var jpegCodec = ImageCodecInfo.GetImageEncoders()
-                        .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
-                        ?? throw new InvalidOperationException("未找到 JPEG 编码器");
-
-                    bitmap.Save(filePath, jpegCodec, encoderParams);
-                    _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
-
-                    return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "屏幕截图失败");
-                    return ToolResult.Error(Text("Tool_ReadScreen_Msg_Failed", ex.Message));
-                }
+                ct.ThrowIfCancellationRequested();
+                Win32Api.DwmFlush();
+                return ScreenCaptureCore.CaptureRaw(mode);
             }, ct);
+
+            // 4. 像素已在内存中，立刻恢复 Luna；缩放和 JPEG 编码都放到恢复之后。
+            await RestoreLunaWindowsAsync(movedWindows);
+            movedWindows.Clear();
+
+            var filePath = await Task.Run(() =>
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var cacheDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Luna", "cache", "screenshots");
+                Directory.CreateDirectory(cacheDir);
+
+                var path = Path.Combine(cacheDir, $"screen_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg");
+
+                using var bitmap = ScreenCaptureCore.ResizeIfNeeded(rawBitmap, 1920);
+
+                // 以 JPEG 格式保存，质量 80%
+                using var encoderParams = new EncoderParameters(1);
+                encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 80L);
+                var jpegCodec = ImageCodecInfo.GetImageEncoders()
+                    .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid)
+                    ?? throw new InvalidOperationException("未找到 JPEG 编码器");
+
+                bitmap.Save(path, jpegCodec, encoderParams);
+                return path;
+            }, ct);
+
+            _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
+            return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
         }
         catch (OperationCanceledException)
         {
@@ -245,6 +245,7 @@ public class ReadScreenTool : ITool
         }
         finally
         {
+            rawBitmap?.Dispose();
             // 5. 【必须】无论成功、失败还是取消，都恢复 Luna 窗口
             await RestoreLunaWindowsAsync(movedWindows);
         }
