@@ -20,6 +20,7 @@ public partial class WelcomeViewModel : ObservableObject
 
     private readonly AiSettings _settings;
     private readonly SettingsService _settingsService;
+    private readonly HotkeyService _hotkeyService;
     private readonly HttpClient _httpClient;
     private readonly ILogger<WelcomeViewModel> _logger;
     private bool _loading;
@@ -88,6 +89,11 @@ public partial class WelcomeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTesting;
 
+    [ObservableProperty]
+    private string _hotkeyText = AiSettings.DefaultHotkey;
+
+    public string HotkeyDisplay => HotkeyService.IsCopilotChord(HotkeyText) ? "Copilot" : HotkeyText;
+
     public bool IsStep1 => Step == 1;
     public bool IsStep2 => Step == 2;
     public bool IsStep3 => Step == 3;
@@ -98,8 +104,6 @@ public partial class WelcomeViewModel : ObservableObject
         && !string.IsNullOrWhiteSpace(Model);
 
     public bool ShowApiSkippedNote => IsStep3 && !IsApiConfigured;
-
-    public string HotkeyText => _settings.Hotkey;
 
     public string PrimaryButtonText => Step == 3
         ? LocalizationService.Instance["Welcome_Finish"]
@@ -115,10 +119,11 @@ public partial class WelcomeViewModel : ObservableObject
     public string StepIndicator => LocalizationService.Instance.Format("Welcome_StepIndicator", Step);
 
     public WelcomeViewModel(AiSettings settings, SettingsService settingsService,
-        HttpClient httpClient, ILogger<WelcomeViewModel> logger)
+        HotkeyService hotkeyService, HttpClient httpClient, ILogger<WelcomeViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
+        _hotkeyService = hotkeyService;
         _httpClient = httpClient;
         _logger = logger;
 
@@ -148,6 +153,7 @@ public partial class WelcomeViewModel : ObservableObject
             ProxyPort = settings.ProxyPort;
             ProxyUsername = settings.ProxyUsername;
             ProxyPassword = settings.ProxyPassword;
+            HotkeyText = settings.Hotkey;
 
             ProviderSetting.SelectedOption =
                 ProviderSetting.Options.FirstOrDefault(o => o.Value == settings.Provider)
@@ -277,6 +283,13 @@ public partial class WelcomeViewModel : ObservableObject
             Model = value;
     }
 
+    partial void OnHotkeyTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(HotkeyDisplay));
+        if (_loading) return;
+        _hotkeyService.Update(value);
+    }
+
     partial void OnStepChanged(int value)
     {
         OnPropertyChanged(nameof(ShowApiSkippedNote));
@@ -308,6 +321,9 @@ public partial class WelcomeViewModel : ObservableObject
     {
         if (Step > 1) Step--;
     }
+
+    [RelayCommand]
+    private void ResetHotkey() => HotkeyText = AiSettings.DefaultHotkey;
 
     [RelayCommand]
     private void ToggleProxy() => IsProxyExpanded = !IsProxyExpanded;
@@ -438,6 +454,7 @@ public partial class WelcomeViewModel : ObservableObject
         _settings.ApiKey = ApiKey;
         _settings.Model = Model.Trim();
         _settings.BackgroundModel = BackgroundModel.Trim();
+        _settings.Hotkey = HotkeyText;
 
         ApplyProxyToSettings();
 

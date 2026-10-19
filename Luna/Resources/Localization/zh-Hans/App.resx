@@ -27,7 +27,7 @@
   <data name="Welcome_Step2_Title" xml:space="preserve"><value>连通“大脑”</value></data>
   <data name="Welcome_Step2_Desc" xml:space="preserve"><value>填写模型服务，之后可以随时在设置中修改。</value></data>
   <data name="Welcome_Model_Label" xml:space="preserve"><value>模型</value></data>
-  <data name="Welcome_Test_Button" xml:space="preserve"><value>测试连接</value></data>
+  <data name="Welcome_Test_Button" xml:space="preserve"><value>连接测试</value></data>
   <data name="Welcome_Test_Success" xml:space="preserve"><value>连接成功 ✓</value></data>
   <data name="Welcome_Test_NoModel" xml:space="preserve"><value>请先填写模型名称</value></data>
   <data name="Welcome_Advanced_Proxy" xml:space="preserve"><value>配置代理（可选）</value></data>

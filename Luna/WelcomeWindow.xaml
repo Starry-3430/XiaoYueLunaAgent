@@ -469,10 +469,53 @@
                                     <TextBlock Text="{loc:Loc Welcome_Hotkey_Label}" Style="{StaticResource WelcomeCardLabel}"/>
                                     <TextBlock Text="{loc:Loc Welcome_Hotkey_Desc}" Style="{StaticResource WelcomeCardDesc}"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Background="#D4D0BA" CornerRadius="6" Padding="12,7"
-                                        VerticalAlignment="Center" Margin="12,0,0,0">
-                                    <TextBlock Text="{Binding HotkeyText}" Foreground="#5B4833" FontSize="13"/>
-                                </Border>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                                            Margin="12,0,0,0">
+                                    <Button x:Name="BindCopilotButton" Content="{loc:Loc Settings_Hotkey_BindCopilot}"
+                                            Click="BindCopilot_Click" Margin="0,0,10,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="Foreground" Value="#8B7B6B"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Cursor" Value="Hand"/>
+                                                <Setter Property="FontSize" Value="13"/>
+                                                <Setter Property="Padding" Value="2,0"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Foreground" Value="#5B4833"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter Property="Foreground" Value="#3D3327"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Grid>
+                                        <TextBox x:Name="HotkeyBox" Width="180" Style="{StaticResource SettingsInputWide}"
+                                                 IsReadOnly="True" Cursor="Hand"
+                                                 Text="{Binding HotkeyDisplay, Mode=OneWay}"
+                                                 GotFocus="HotkeyBox_GotFocus"
+                                                 LostFocus="HotkeyBox_LostFocus"
+                                                 PreviewKeyDown="HotkeyBox_PreviewKeyDown"/>
+                                        <TextBlock x:Name="HotkeyHint" Text="{loc:Loc Settings_Hotkey_PressPrompt}"
+                                                   Foreground="#8B7B6B" FontSize="12"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   IsHitTestVisible="False" Visibility="Collapsed"/>
+                                    </Grid>
+                                    <Button Style="{StaticResource SettingsResetButton}"
+                                            Command="{Binding ResetHotkeyCommand}" Margin="6,0,0,0"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
 

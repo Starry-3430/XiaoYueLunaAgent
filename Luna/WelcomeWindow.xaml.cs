@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,7 +7,11 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using CommunityToolkit.Mvvm.Input;
+using Luna.Controls;
+using Luna.Localization;
 using Luna.Models;
+using Luna.Services;
 using Luna.ViewModels;
 
 namespace Luna;
@@ -111,6 +116,77 @@ public partial class WelcomeWindow : Window
     {
         if (DataContext is WelcomeViewModel vm)
             vm.ProxyPassword = ProxyPasswordBox.Password;
+    }
+
+    /// <summary>一键把快捷键绑定到 Copilot 键（Win + Shift + F23）。</summary>
+    private void BindCopilot_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not WelcomeViewModel vm) return;
+
+        var loc = LocalizationService.Instance;
+        var dialog = new LunaDialog
+        {
+            Owner = this,
+            DialogTitle = loc["Dialog_CopilotWarning_Title"],
+            DialogContent = new TextBlock
+            {
+                Text = loc["Dialog_CopilotWarning_Body"],
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            },
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_Cancel"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(dialog.Close),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_Continue"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    dialog.Close();
+                    vm.HotkeyText = "Win + Shift + F23";
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+    }
+
+    private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not WelcomeViewModel vm) return;
+        vm.HotkeyText = string.Empty;
+        HotkeyHint.Visibility = Visibility.Visible;
+    }
+
+    private void HotkeyBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        HotkeyHint.Visibility = Visibility.Collapsed;
+    }
+
+    private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not WelcomeViewModel vm) return;
+
+        e.Handled = true;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
+            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin or Key.None)
+            return;
+
+        var text = HotkeyService.Format(Keyboard.Modifiers, key);
+        vm.HotkeyText = text;
+        HotkeyHint.Visibility = Visibility.Collapsed;
+        HotkeyBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
     }
 
     /// <summary>点击下拉框以外区域时，关闭所有下拉弹出层。</summary>
