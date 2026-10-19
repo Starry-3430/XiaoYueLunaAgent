@@ -28,7 +28,7 @@
   <data name="Welcome_Step2_Desc" xml:space="preserve"><value>Set up your model service. You can change this later in Settings.</value></data>
   <data name="Welcome_Model_Label" xml:space="preserve"><value>Model</value></data>
   <data name="Welcome_Test_Button" xml:space="preserve"><value>Test Connection</value></data>
-  <data name="Welcome_Test_Success" xml:space="preserve"><value>✅ Connected</value></data>
+  <data name="Welcome_Test_Success" xml:space="preserve"><value>Connected ✓</value></data>
   <data name="Welcome_Test_NoModel" xml:space="preserve"><value>Please enter a model name first</value></data>
   <data name="Welcome_Advanced_Proxy" xml:space="preserve"><value>Proxy settings (optional)</value></data>
   <data name="Welcome_Advanced_BackgroundModel" xml:space="preserve"><value>Background task model (optional)</value></data>
