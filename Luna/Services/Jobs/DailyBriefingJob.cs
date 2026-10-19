@@ -111,16 +111,22 @@ public sealed class DailyBriefingJob : IBackgroundJob
                     ? $"- {t.Title}（截止 {ToolTime.ToLocalString(due)}）"
                     : $"- {t.Title}（未设置截止时间）"));
 
-        // 2. 昨天的日记（可选）
+        // 2. 昨天的日记（先等待日记生成完成，避免早报抢跑）
         var yesterdayLogicalDate = DateOnly.FromDateTime(nowLocal.AddDays(-1)).ToString("yyyy-MM-dd");
         string? diary = null;
         try
         {
+            _logger.LogInformation("等待逻辑日 {Date} 的日记生成完成后再生成早报", yesterdayLogicalDate);
+            await _diaryService.EnsureDiaryReadyAsync(yesterdayLogicalDate, ct);
             diary = await _diaryService.GetEntryContentAsync(yesterdayLogicalDate);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "读取昨天日记失败，早报将跳过日记内容");
+            _logger.LogWarning(ex, "等待或读取昨天日记失败，早报将跳过日记内容");
         }
 
         var diaryContext = string.IsNullOrWhiteSpace(diary) ? "（昨天没有日记记录）" : diary.Trim();

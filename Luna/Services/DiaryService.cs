@@ -122,6 +122,37 @@ public class DiaryService
         }
     }
 
+    /// <summary>
+    /// 确保指定逻辑日的日记已经生成完成（或确认无需生成）。
+    /// 会等待正在进行的日记检查结束；供每日早报等依赖日记的任务调用。
+    /// </summary>
+    public async Task EnsureDiaryReadyAsync(string logicalDate, CancellationToken ct = default)
+    {
+        if (!_settings.DiaryEnabled) return;
+
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var status = await GetStatusAsync(logicalDate);
+            if (status is StatusDone or StatusNoData) return;
+
+            await ProcessLogicalDateAsync(logicalDate);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "确保逻辑日 {Date} 日记生成失败", logicalDate);
+            await SetStatusAsync(logicalDate, StatusFailed, ex.Message);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     // ===== 候选逻辑日 =====
 
     private async Task<List<string>> GetCandidateDatesAsync()
