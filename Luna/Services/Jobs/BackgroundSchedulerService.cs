@@ -51,7 +51,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
             {
                 try
                 {
-                    await timer.WaitForNextTickAsync(stoppingToken);
+                    await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -69,7 +69,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
             {
                 try
                 {
-                    await Task.WhenAll(running);
+                    await Task.WhenAll(running).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -104,7 +104,9 @@ public sealed class BackgroundSchedulerService : BackgroundService
             if (next <= checkTime)
                 _nextRunTimes[job] = checkTime + TimeSpan.FromSeconds(1);
 
-            var task = RunJobSafelyAsync(job, stoppingToken);
+            // 作业可能在第一次 await 前执行较重的同步逻辑（如备份、数据库查询），
+            // 必须放到线程池，避免阻塞启动时的 UI 线程。
+            var task = Task.Run(() => RunJobSafelyAsync(job, stoppingToken));
             _running[job] = task;
             _ = task.ContinueWith(_ => _running.TryRemove(job, out Task? _),
                 CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously,
@@ -118,7 +120,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
         try
         {
             _logger.LogDebug("开始执行后台作业：{Name}", job.Name);
-            await job.ExecuteAsync(stoppingToken);
+            await job.ExecuteAsync(stoppingToken).ConfigureAwait(false);
             _logger.LogDebug("后台作业执行完成：{Name}", job.Name);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
