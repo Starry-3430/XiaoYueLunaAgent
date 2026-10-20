@@ -16,4 +16,36 @@
   <!-- 托盘菜单 -->
   <data name="App_Tray_OpenMain" xml:space="preserve"><value>Open Main Window</value></data>
   <data name="App_Tray_Close" xml:space="preserve"><value>Close</value></data>
+
+  <!-- 首次运行欢迎向导 -->
+  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>Hello. I'm your very own AI companion.</value></data>
+  <data name="Welcome_Step1_AiNameLabel" xml:space="preserve"><value>Give me a name</value></data>
+  <data name="Welcome_Step1_AiNameDesc" xml:space="preserve"><value>What should your AI companion be called?</value></data>
+  <data name="Welcome_Step1_UserNameLabel" xml:space="preserve"><value>What should I call you?</value></data>
+  <data name="Welcome_Step1_UserNameDesc" xml:space="preserve"><value>This is how it will address you</value></data>
+
+  <data name="Welcome_Step2_Title" xml:space="preserve"><value>Connect the brain</value></data>
+  <data name="Welcome_Step2_Desc" xml:space="preserve"><value>Set up your model service. You can change this later in Settings.</value></data>
+  <data name="Welcome_Model_Label" xml:space="preserve"><value>Model</value></data>
+  <data name="Welcome_Test_Button" xml:space="preserve"><value>Test Connection</value></data>
+  <data name="Welcome_Test_Success" xml:space="preserve"><value>Connected ✓</value></data>
+  <data name="Welcome_Test_NoModel" xml:space="preserve"><value>Please enter a model name first</value></data>
+  <data name="Welcome_Advanced_Proxy" xml:space="preserve"><value>Proxy settings (optional)</value></data>
+  <data name="Welcome_Advanced_BackgroundModel" xml:space="preserve"><value>Background task model (optional)</value></data>
+  <data name="Welcome_Advanced_BackgroundModel_Desc" xml:space="preserve"><value>Used for titles, summaries and diary entries. Leave empty to use the main chat model.</value></data>
+
+  <data name="Welcome_Step3_Title" xml:space="preserve"><value>All set</value></data>
+  <data name="Welcome_Step3_Desc" xml:space="preserve"><value>I'm ready. Call me anytime and let's get started.</value></data>
+  <data name="Welcome_Hotkey_Label" xml:space="preserve"><value>Global hotkey</value></data>
+  <data name="Welcome_Hotkey_Desc" xml:space="preserve"><value>Press the shortcut to open Luna at any time.</value></data>
+  <data name="Welcome_Tray_Label" xml:space="preserve"><value>Tray icon</value></data>
+  <data name="Welcome_Tray_Desc" xml:space="preserve"><value>Single click opens the floating input, double click opens the main window, right click shows more options.</value></data>
+  <data name="Welcome_ApiSkipped_Note" xml:space="preserve"><value>The API is not configured yet. You can finish it anytime in Settings → AI Connection.</value></data>
+
+  <data name="Welcome_Skip" xml:space="preserve"><value>Skip</value></data>
+  <data name="Welcome_Later" xml:space="preserve"><value>Set up later</value></data>
+  <data name="Welcome_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Welcome_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Welcome_Finish" xml:space="preserve"><value>Finish</value></data>
+  <data name="Welcome_StepIndicator" xml:space="preserve"><value>Step {0} of 3</value></data>
 </root>

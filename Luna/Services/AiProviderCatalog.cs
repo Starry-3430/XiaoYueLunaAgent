@@ -11,6 +11,7 @@ public static class AiProviderCatalog
     public static readonly IReadOnlyList<ProviderPreset> Presets =
     [
         new("openai", "OpenAI", "https://api.openai.com/v1", ["gpt-4o", "gpt-4o-mini", "o3-mini", "gpt-4.1", "gpt-4.1-mini"]),
+        new("deepseek", "DeepSeek", "https://api.deepseek.com/v1", ["deepseek-chat", "deepseek-reasoner"]),
         new("moonshot", "Moonshot", "https://api.moonshot.cn/v1", ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k", "kimi-k2-0711-preview"]),
         new("zhipu", "智谱", "https://open.bigmodel.cn/api/paas/v4", ["glm-4-plus", "glm-4-air", "glm-4-flash"]),
         new("qwen", "通义", "https://dashscope.aliyuncs.com/compatible-mode/v1", ["qwen-max", "qwen-plus", "qwen-turbo"]),

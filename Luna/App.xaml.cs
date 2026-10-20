@@ -43,6 +43,8 @@ public partial class App : Application
     private TrayMenuItem? _trayOpenItem;                // 托盘菜单：主界面
     private TrayMenuItem? _trayCloseItem;               // 托盘菜单：关闭
     private HomeWindow? _homeWindow;                    // 主窗口实例
+    private WelcomeWindow? _welcomeWindow;              // 首次运行欢迎向导
+    private bool _backgroundServicesStarted;            // 后台调度器/日记服务是否已启动
     private bool _restarting;                           // 是否正在重启进程
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
     private DateTime _lastTrayClickTime;                // 上次托盘点击时间，用于判断双击间隔
@@ -52,7 +54,8 @@ public partial class App : Application
 
     public App()
     {
-        // 强制使用软件渲染，避免硬件加速导致的兼容性问题
+        // 全局强制软件（CPU）渲染：覆盖所有窗口和弹窗，避免触发 NVIDIA 浮窗/覆盖层。
+        // 注意：软件渲染下系统原生最小化/过渡动画会退化为普通效果。
         RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
         // 管理员提权辅助进程：仅执行“管理员自启动”设置，不初始化日志/托盘/宿主与界面。
@@ -141,6 +144,8 @@ public partial class App : Application
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddTransient<HomeWindow>();
+                services.AddTransient<WelcomeWindow>();
+                services.AddTransient<WelcomeViewModel>();
                 services.AddSingleton<HomeViewModel>();
                 services.AddSingleton<AiConnectionViewModel>();
                 services.AddSingleton<GeneralSettingsViewModel>();
@@ -260,6 +265,9 @@ public partial class App : Application
         var elapsed = (now - _lastTrayClickTime).TotalMilliseconds;
         _lastTrayClickTime = now;
 
+        // 欢迎向导打开时，托盘点击只激活向导，不打开其它窗口
+        if (TryActivateWelcome()) return;
+
         // HomeWindow 已打开时，任何点击都激活它
         if (_homeWindow is { IsLoaded: true })
         {
@@ -291,6 +299,7 @@ public partial class App : Application
 
         // 延迟结束未被取消 → 确认是单击，显示 MainWindow
         if (cts.IsCancellationRequested) return;
+        if (TryActivateWelcome()) return;
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
         mainWindow.ShowInternal();
@@ -298,11 +307,24 @@ public partial class App : Application
         mainWindow.Activate();
     }
 
+    /// <summary>欢迎向导打开时将其激活并返回 true，阻止打开 MainWindow / HomeWindow。</summary>
+    private bool TryActivateWelcome()
+    {
+        if (_welcomeWindow is not { IsLoaded: true }) return false;
+
+        _welcomeWindow.WindowState = WindowState.Normal;
+        _welcomeWindow.Activate();
+        return true;
+    }
+
     /// <summary>
     /// 显示或激活主界面窗口（HomeWindow）。
     /// </summary>
     private void ShowHomeWindow()
     {
+        // 欢迎向导期间不允许打开主界面
+        if (TryActivateWelcome()) return;
+
         // 打开主界面时收起胶囊，但不打断正在进行的生成。
         _host.Services.GetRequiredService<MainWindow>().HideCapsule();
 
@@ -341,6 +363,9 @@ public partial class App : Application
                 // 在 UI 线程上显示 MainWindow
                 Dispatcher.Invoke(() =>
                 {
+                    // 欢迎向导期间不允许打开主界面
+                    if (TryActivateWelcome()) return;
+
                     var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                     mainWindow.Show();
                     mainWindow.ShowInternal();
@@ -368,6 +393,10 @@ public partial class App : Application
         // 开机自启动：带 --startup 参数时静默启动，不显示主窗口
         var launchedAtStartup = e.Args.Any(arg =>
             string.Equals(arg, StartupService.StartupArgument, StringComparison.OrdinalIgnoreCase));
+
+        // 首次运行信号：只认 .installed 标记。标记不存在就是新手，
+        // 不参考 settings.json / 会话表，避免引导中途关闭后直接进入主界面。
+        var isFirstRun = !InstallMarker.Exists;
 
         // 1. 单实例检查
         _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
@@ -435,33 +464,89 @@ public partial class App : Application
         hotkey.Update(settings.Hotkey);
         hotkey.Pressed += () => Dispatcher.Invoke(() =>
         {
+            // 欢迎向导期间不允许打开主界面
+            if (TryActivateWelcome()) return;
+
             mainWindow.Show();
             mainWindow.ShowInternal();
             mainWindow.WindowState = WindowState.Normal;
             mainWindow.Activate();
         });
 
-        if (!launchedAtStartup)
+        if (!launchedAtStartup && !isFirstRun)
         {
             mainWindow.Show();
             mainWindow.ShowInternal();
         }
 
-        // 7. 启动后台调度器（提醒轮询等；此时数据库与主窗口均已就绪）
+        // 7. 后台服务在欢迎向导结束后再启动，避免首次启动时后台任务提前创建会话。
+        if (!isFirstRun)
+            StartBackgroundServices();
+
+        // 8. 配置文件丢失或损坏时，已自动重置，提示用户（首次运行时不再提示）
+        if (!isFirstRun && _host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
+            ShowSettingsResetDialog(mainWindow);
+
+        // 9. 首次运行：显示欢迎向导；向导关闭（非完成）时直接结束进程。
+        if (isFirstRun)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Dispatcher.BeginInvoke(new Action(ShowWelcomeWizard));
+        }
+
+        base.OnStartup(e);
+    }
+
+    /// <summary>显示首次运行欢迎向导；主界面成功打开后再写入 .installed 标记。</summary>
+    private void ShowWelcomeWizard()
+    {
+        var welcome = _host.Services.GetRequiredService<WelcomeWindow>();
+        _welcomeWindow = welcome;
+
+        try
+        {
+            welcome.ShowDialog();
+        }
+        finally
+        {
+            _welcomeWindow = null;
+        }
+
+        if (!welcome.Completed)
+        {
+            Shutdown();
+            return;
+        }
+
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
+
+        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+        mainWindow.ShowInternal();
+        mainWindow.WindowState = WindowState.Normal;
+        mainWindow.Activate();
+
+        // 确认主界面已经成功打开后，才写入新手引导完成标记。
+        InstallMarker.MarkInstalled();
+
+        StartBackgroundServices();
+    }
+
+    /// <summary>启动后台调度器与日记服务（首次运行时推迟到欢迎向导完成之后）。</summary>
+    private void StartBackgroundServices()
+    {
+        if (_backgroundServicesStarted) return;
+        _backgroundServicesStarted = true;
+
+        // 提醒轮询等；此时数据库与主窗口均已就绪
         _host.Services.GetRequiredService<BackgroundSchedulerService>()
             .StartAsync(CancellationToken.None).GetAwaiter().GetResult();
 
-        // 7.1 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
+        // 启动日记服务（启动即检查一次 + 每天 4:00 后轮询）
         _host.Services.GetRequiredService<DiaryService>().Start();
 
-        // 7.2 预加载日记本内容，避免首次打开日记页时才加载导致的卡顿
+        // 预加载日记本内容，避免首次打开日记页时才加载导致的卡顿
         _ = _host.Services.GetRequiredService<DiaryViewModel>().LoadAsync();
-
-        // 8. 配置文件丢失或损坏时，已自动重置，提示用户
-        if (_host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
-            ShowSettingsResetDialog(mainWindow);
-
-        base.OnStartup(e);
     }
 
     /// <summary>应用界面语言：切换本地化服务、UI Culture 与 WPF 的 XmlLanguage（影响 XAML 内的格式化）。</summary>
@@ -558,16 +643,19 @@ public partial class App : Application
             _singleInstanceMutex?.Dispose();
         }
 
-        // 停止后台调度器（手动启动，Host 不会自动管理）
-        try
+        // 停止后台调度器（手动启动，Host 不会自动管理；欢迎向导未完成时可能尚未启动）
+        if (_backgroundServicesStarted)
         {
-            using var schedulerStopCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            _host.Services.GetRequiredService<BackgroundSchedulerService>()
-                .StopAsync(schedulerStopCts.Token).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "停止后台调度器失败");
+            try
+            {
+                using var schedulerStopCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                _host.Services.GetRequiredService<BackgroundSchedulerService>()
+                    .StopAsync(schedulerStopCts.Token).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "停止后台调度器失败");
+            }
         }
 
         // 停止并释放 Host
