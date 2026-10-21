@@ -120,9 +120,6 @@
   <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while this tool is enabled; entries stay in memory.</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
   <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
-  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
-  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
-  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
