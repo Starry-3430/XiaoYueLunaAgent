@@ -72,6 +72,11 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [ObservableProperty]
     private bool _isSearchLoading;
 
+    [ObservableProperty]
+    private string _welcomeGreeting = string.Empty;
+
+    public bool IsWelcomeVisible => SelectedSession is null;
+
     public ObservableCollection<SearchResult> SearchResults { get; } = new();
 
     public bool IsSearchActive => !string.IsNullOrWhiteSpace(SearchQuery);
@@ -125,6 +130,68 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 RefreshStatusText();
             }
         };
+    }
+
+    partial void OnSelectedSessionChanged(ChatSessionItem? value)
+        => OnPropertyChanged(nameof(IsWelcomeVisible));
+
+    public void UpdateWelcomeGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        string[] greetings;
+
+        if (hour >= 6 && hour < 10)
+        {
+            greetings =
+            [
+                "早上好呀！\n今天要从哪里开始呢？",
+                "早安！\n新的一天，也要开开心心哦！",
+                "睡醒啦？\n今天想和我聊点什么？",
+                "早上好~ \n伸个懒腰，今天就开始啦！",
+            ];
+        }
+        else if (hour >= 10 && hour < 14)
+        {
+            greetings =
+            [
+                "午安！\n有什么事情尽管向我说哦！",
+                "中午好呀！\n记得按时吃午饭哦！",
+                "上午辛苦啦！\n下午也要开心哦！",
+                "中午好~ \n要不要小憩一会儿？",
+            ];
+        }
+        else if (hour >= 14 && hour < 18)
+        {
+            greetings =
+            [
+                "下午好呀！\n喝杯水，随时跟我聊聊天！",
+                "下午好！\n今天的工作还顺利吗？",
+                "度过一段惬意的下午时光吧~\n有什么我可以帮忙的吗？",
+                "又是下午啦！\n我来陪你聊天吧！",
+            ];
+        }
+        else if (hour >= 18 && hour < 24)
+        {
+            greetings =
+            [
+                "晚上好呀！\n今天过得还顺利吗？",
+                "傍晚好~ \n辛苦一天啦，好好放松一下！",
+                "天黑啦！\n想聊点什么，还是想安静一会儿？",
+                "晚上好！\n今天有没有发生什么有趣的事？",
+            ];
+        }
+        else
+        {
+            greetings =
+            [
+                "夜深啦！\n该睡觉啦！要注意身体哦！",
+                "凌晨好！\n忙完手头上的事情就好好休息吧！",
+                "嘘，很晚啦！\n有什么心事想聊聊吗？",
+                "还在忙吗？\n睡不着的话...跟我聊聊天也可以哦！",
+            ];
+        }
+
+        WelcomeGreeting = greetings[Random.Shared.Next(greetings.Length)];
     }
 
     /// <summary>语言切换后刷新状态栏（仅在空闲时重置为“就绪”）。</summary>
