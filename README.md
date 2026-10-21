@@ -10,7 +10,7 @@
 
 ---
 
-![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B%20%7C%20Screenshot%202004%2B&color=blue)
+![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
 
 *当前仅支持 Windows*
 

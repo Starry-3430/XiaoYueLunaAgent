@@ -62,6 +62,14 @@
 | Azure.Identity / Azure.AI.FormRecognizer / Azure.AI.Vision.ImageAnalysis | MIT | Microsoft — https://github.com/Azure/azure-sdk-for-net |
 | Google.Cloud.DocumentAI.V1 / .Vision.V1 / .Speech.V1 | Apache-2.0 | Google — https://github.com/googleapis/google-cloud-dotnet |
 
+## 字体
+
+| 组件 | 许可证 | 版权 / 项目 |
+|------|--------|-------------|
+| Cascadia Mono（`Luna/Assets/CascadiaMono.ttf`） | SIL OFL 1.1 | Microsoft Corporation — https://github.com/microsoft/cascadia-code |
+
+完整许可证文本见 `licenses/CascadiaMono-OFL.txt`，随发布包一起分发。
+
 ## 构建期依赖
 
 | 组件 | 许可证 | 版权 / 项目 |
