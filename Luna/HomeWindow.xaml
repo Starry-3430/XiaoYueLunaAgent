@@ -1109,7 +1109,7 @@
                                                       SpriteSource="/Assets/Animations/idle/idle_sprite.png"
                                                       FrameWidth="160" FrameHeight="160"
                                                       Columns="10" FrameCount="150"
-                                                      FrameDuration="0:0:0.07"
+                                                      FrameDuration="0:0:0.067"
                                                       Width="70" Height="70"
                                                       HorizontalAlignment="Center"
                                                       Stretch="Uniform"
