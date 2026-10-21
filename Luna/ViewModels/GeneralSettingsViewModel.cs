@@ -524,7 +524,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     {
         var loc = LocalizationService.Instance;
         var version = typeof(GeneralSettingsViewModel).Assembly.GetName().Version;
-        var versionText = version is null ? loc["Settings_Update_UnknownVersion"] : $"{version.Major}.{version.Minor}.{version.Build}";
+        var versionText = version?.ToString() ?? loc["Settings_Update_UnknownVersion"];
         UpdateStatus = loc.Format("Settings_Update_StatusFormat", versionText);
     }
 

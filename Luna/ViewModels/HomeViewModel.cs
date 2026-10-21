@@ -77,6 +77,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public bool IsWelcomeVisible => SelectedSession is null;
 
+    /// <summary>关于页显示的版本号，与应用版本（csproj 的 Version）保持一致。</summary>
+    public string AboutVersionText =>
+        $"Luna V{typeof(HomeViewModel).Assembly.GetName().Version?.ToString() ?? "0.1.0.0"}";
+
     public ObservableCollection<SearchResult> SearchResults { get; } = new();
 
     public bool IsSearchActive => !string.IsNullOrWhiteSpace(SearchQuery);

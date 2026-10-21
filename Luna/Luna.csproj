@@ -12,6 +12,7 @@
         <UseWindowsForms>true</UseWindowsForms>
         <RootNamespace>Luna</RootNamespace>
         <AssemblyName>Luna</AssemblyName>
+        <Version>0.1.0.0</Version>
     </PropertyGroup>
 
     <PropertyGroup>

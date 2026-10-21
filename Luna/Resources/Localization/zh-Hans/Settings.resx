@@ -325,9 +325,6 @@
   <data name="Settings_Section_About" xml:space="preserve">
     <value>关于</value>
   </data>
-  <data name="Settings_About_Version" xml:space="preserve">
-    <value>Luna V0.1.0</value>
-  </data>
   <data name="Settings_About_GitHub" xml:space="preserve">
     <value>访问 GitHub</value>
   </data>

@@ -1291,7 +1291,7 @@
 
                             <!-- 关于 -->
                             <TextBlock Text="{loc:Loc Settings_Section_About}" Foreground="#5B4833" FontSize="15" FontWeight="Bold" Margin="0,12,0,12"/>
-                            <TextBlock Text="{loc:Loc Settings_About_Version}" Foreground="#5B4833" FontSize="13" Margin="0,0,0,6"/>
+                            <TextBlock Text="{Binding AboutVersionText}" Foreground="#5B4833" FontSize="13" Margin="0,0,0,6"/>
                             <TextBlock FontSize="13" Margin="0,0,0,8">
                                 <Hyperlink RequestNavigate="AboutGitHub_RequestNavigate"
                                            NavigateUri="https://github.com/Starry-3430/XiaoYueLunaAgent"
