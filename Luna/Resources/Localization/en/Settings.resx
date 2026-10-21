@@ -214,10 +214,61 @@
     <value>Check for Updates</value>
   </data>
   <data name="Settings_Update_StatusFormat" xml:space="preserve">
-    <value>Current version {0}, no updates available.</value>
+    <value>Current version {0}, you're up to date.</value>
   </data>
   <data name="Settings_Update_UnknownVersion" xml:space="preserve">
     <value>Unknown</value>
+  </data>
+  <data name="Settings_Update_Checking" xml:space="preserve">
+    <value>Checking for updates...</value>
+  </data>
+  <data name="Settings_Update_AvailableFormat" xml:space="preserve">
+    <value>Version {0} is available.</value>
+  </data>
+  <data name="Settings_Update_CheckFailedFormat" xml:space="preserve">
+    <value>Update check failed: {0}</value>
+  </data>
+  <data name="Settings_Update_Cancelled" xml:space="preserve">
+    <value>Update check cancelled.</value>
+  </data>
+  <data name="Settings_Update_Timeout" xml:space="preserve">
+    <value>Update check timed out. Please try again later.</value>
+  </data>
+  <data name="Settings_Update_NoRelease" xml:space="preserve">
+    <value>No releases available.</value>
+  </data>
+  <data name="Settings_Update_NoInstaller" xml:space="preserve">
+    <value>The latest release does not include an installer.</value>
+  </data>
+  <data name="Settings_Update_DialogTitle" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="Settings_Update_DialogBody" xml:space="preserve">
+    <value>Version {0} -&gt; {1}&#10;&#10;Update now?</value>
+  </data>
+  <data name="Settings_Update_VisitRelease" xml:space="preserve">
+    <value>Visit release page</value>
+  </data>
+  <data name="Settings_Update_DownloadingFormat" xml:space="preserve">
+    <value>Downloading ({0:0.0} MB / {1:0.0} MB)</value>
+  </data>
+  <data name="Settings_Update_DownloadingUnknownFormat" xml:space="preserve">
+    <value>Downloading ({0:0.0} MB)</value>
+  </data>
+  <data name="Settings_Update_DownloadFailedFormat" xml:space="preserve">
+    <value>Download failed: {0}</value>
+  </data>
+  <data name="Settings_Update_ChecksumFailed" xml:space="preserve">
+    <value>The installer checksum verification failed. Please download again.</value>
+  </data>
+  <data name="Settings_Update_ChecksumInvalid" xml:space="preserve">
+    <value>The checksum file is invalid.</value>
+  </data>
+  <data name="Settings_Update_Launching" xml:space="preserve">
+    <value>Download complete. Starting the installer...</value>
+  </data>
+  <data name="Settings_Update_LaunchFailedFormat" xml:space="preserve">
+    <value>Failed to start the installer: {0}</value>
   </data>
 
   <!-- 保存与配置文件 -->

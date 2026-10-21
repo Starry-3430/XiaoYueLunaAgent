@@ -214,10 +214,61 @@
     <value>检查更新</value>
   </data>
   <data name="Settings_Update_StatusFormat" xml:space="preserve">
-    <value>当前版本 {0}，暂无可用更新。</value>
+    <value>当前版本 {0}，已是最新版本。</value>
   </data>
   <data name="Settings_Update_UnknownVersion" xml:space="preserve">
     <value>未知</value>
+  </data>
+  <data name="Settings_Update_Checking" xml:space="preserve">
+    <value>正在检查更新…</value>
+  </data>
+  <data name="Settings_Update_AvailableFormat" xml:space="preserve">
+    <value>发现新版本 {0}。</value>
+  </data>
+  <data name="Settings_Update_CheckFailedFormat" xml:space="preserve">
+    <value>检查更新失败：{0}</value>
+  </data>
+  <data name="Settings_Update_Cancelled" xml:space="preserve">
+    <value>已取消更新检查。</value>
+  </data>
+  <data name="Settings_Update_Timeout" xml:space="preserve">
+    <value>检查更新超时，请稍后重试。</value>
+  </data>
+  <data name="Settings_Update_NoRelease" xml:space="preserve">
+    <value>暂无可用的发布版本。</value>
+  </data>
+  <data name="Settings_Update_NoInstaller" xml:space="preserve">
+    <value>最新版本没有可用的安装包。</value>
+  </data>
+  <data name="Settings_Update_DialogTitle" xml:space="preserve">
+    <value>检测到更新</value>
+  </data>
+  <data name="Settings_Update_DialogBody" xml:space="preserve">
+    <value>版本 {0} -&gt; {1}&#10;&#10;现在更新吗？</value>
+  </data>
+  <data name="Settings_Update_VisitRelease" xml:space="preserve">
+    <value>访问发布页</value>
+  </data>
+  <data name="Settings_Update_DownloadingFormat" xml:space="preserve">
+    <value>正在下载（{0:0.0} MB / {1:0.0} MB）</value>
+  </data>
+  <data name="Settings_Update_DownloadingUnknownFormat" xml:space="preserve">
+    <value>正在下载（{0:0.0} MB）</value>
+  </data>
+  <data name="Settings_Update_DownloadFailedFormat" xml:space="preserve">
+    <value>下载失败：{0}</value>
+  </data>
+  <data name="Settings_Update_ChecksumFailed" xml:space="preserve">
+    <value>安装包校验失败，请重新下载。</value>
+  </data>
+  <data name="Settings_Update_ChecksumInvalid" xml:space="preserve">
+    <value>校验文件格式不正确。</value>
+  </data>
+  <data name="Settings_Update_Launching" xml:space="preserve">
+    <value>下载完成，正在启动安装程序…</value>
+  </data>
+  <data name="Settings_Update_LaunchFailedFormat" xml:space="preserve">
+    <value>启动安装程序失败：{0}</value>
   </data>
 
   <!-- 保存与配置文件 -->

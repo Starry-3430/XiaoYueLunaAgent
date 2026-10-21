@@ -69,6 +69,10 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - 支持截止时间与提醒时间，提醒触发时以胶囊弹出 + 唤醒动画呈现。
 - 提醒队列机制：胶囊正在输入或被占用时自动排队，不打断用户操作。
 
+### 🔄 软件更新
+
+- 设置页可检查 GitHub Releases 最新版本；发现更新后可下载安装包并启动安装程序。
+
 ---
 
 ## 🧱 技术栈
@@ -88,22 +92,24 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 | 窗口特效 | DWM API（`DwmSetWindowAttribute` 圆角）、`WS_EX_TOOLWINDOW` |
 | 托盘 / 通知 | NativeTray（`TrayIconHost`）、Microsoft.Toolkit.Uwp.Notifications（Toast） |
 | 主题控件 | DynamicAero2 |
+| 安装包 | Inno Setup 6 |
 
 ---
 
 ## 🚀 快速开始
 
-### 下载发布包（推荐）
+### 下载安装包（推荐）
 
-从 [Releases](https://github.com/Starry-3430/XiaoYueLunaAgent/releases) 下载对应压缩包：
+从 [Releases](https://github.com/Starry-3430/XiaoYueLunaAgent/releases) 下载：
 
 | 包 | 说明 | 需要 |
 |----|------|------|
-| `Luna-win-x64.zip` | 自包含版本 | 无需安装 .NET 运行时，体积较大 |
-| `Luna-win-x64-fdd.zip` | 框架依赖版本 | 需安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) |
+| `Luna-v0.1.0.0-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
+| `Luna-win-x64.zip` | 自包含免安装版 | 无需安装 .NET 运行时，解压即用 |
+| `Luna-win-x64-fdd.zip` | 框架依赖免安装版 | 需安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) |
 
-1. 解压到任意可写目录（不要直接在压缩包内运行）。
-2. 双击 `Luna.exe`。
+1. 运行安装程序，或解压对应的免安装 ZIP。
+2. 从开始菜单 / 桌面 / 解压目录启动 `Luna.exe`。
 3. 首次启动会显示欢迎向导，按提示填写 AI 提供商、Base URL、模型与 API Key；也可以稍后在「设置 → 聊天」中修改。
 
 > **SmartScreen 提示**：当前 Beta 未做代码签名，Windows 可能提示「Windows 已保护你的电脑」。点击「更多信息」→「仍要运行」即可。
@@ -118,12 +124,20 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 
 - Windows 10 1809（build 17763）或更高 / Windows 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- 构建安装包需要 [Inno Setup 6](https://jrsoftware.org/isinfo.php)
 
 ```bash
 git clone https://github.com/Starry-3430/XiaoYueLunaAgent.git
 cd XiaoYueLunaAgent
 dotnet build
 dotnet run --project Luna
+```
+
+生成自包含发布目录和安装包：
+
+```powershell
+pwsh .\scripts\publish.ps1 -Mode selfcontained
+pwsh .\scripts\build-installer.ps1 -SkipPublish
 ```
 
 ### 首次配置
@@ -166,7 +180,9 @@ Luna 是本地优先应用：会话、日记、待办、长期事实和附件默
 
 ### 卸载
 
-Luna 目前以免安装 ZIP 方式分发，没有安装程序或卸载器：
+**安装版**：打开 Windows「设置 → 应用 → 已安装的应用」，找到 Luna 并卸载。卸载程序会询问是否同时删除个人数据，默认保留。
+
+**免安装 ZIP 版**：
 
 1. 如开启过开机自启，先在「设置 → 通用」中关闭。
 2. 托盘右键 → 关闭，退出 Luna。
@@ -184,8 +200,7 @@ Luna 目前以免安装 ZIP 方式分发，没有安装程序或卸载器：
 - 会话历史尚未做上下文预算与滚动摘要，极长会话可能触及模型上下文上限或增加费用。
 - 工具结果超过 5000 字会被截断，暂不支持按 ID 回读完整结果。
 - 代码沙箱目前只有超时限制，尚未施加 256 MB 内存硬限制。
-- 「检查更新」仍为占位实现，暂不联网比对最新版本。
-- 尚未提供安装包、自动更新与代码签名，SmartScreen 可能提示未知发布者。
+- 更新通过下载完整安装包进行，暂不支持增量更新；安装包未签名，可能被 SmartScreen 提示未知发布者。
 - 视觉仅支持图片 / 截图输入（需模型支持视觉）；OCR 与语音输入尚未实现。
 - 未提供整库加密或隐身会话；敏感数据请自行保护 Windows 账户与磁盘。
 
@@ -216,6 +231,8 @@ Luna/
 │   ├── Data/                        # DatabaseService（SQLite 连接）
 │   ├── Controls/                    # 自定义控件（对话框、右键菜单、平滑滚动等）
 │   └── Styles/                      # XAML 资源字典
+├── installer/                       # Inno Setup 安装脚本
+├── licenses/                        # 字体等第三方许可证
 └── Luna.sln
 ```
 
