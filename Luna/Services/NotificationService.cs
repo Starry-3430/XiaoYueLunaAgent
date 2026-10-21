@@ -132,7 +132,7 @@ public class NotificationService
     {
         if (_tray is null)
         {
-            _logger.LogWarning("托盘图标不可用，通知被丢弃：{Title} - {Message}", title, message);
+            _logger.LogWarning("托盘图标不可用，通知被丢弃：{Title}", title);
             return;
         }
 

@@ -95,7 +95,7 @@ public class PowerShellTool : ITool
         psi.ArgumentList.Add("-Command");
         psi.ArgumentList.Add(command);
 
-        _logger.LogInformation("执行 PowerShell 命令：{Command}", command);
+        _logger.LogInformation("执行 PowerShell 命令");
 
         Process process;
         try
@@ -120,7 +120,7 @@ public class PowerShellTool : ITool
             if (ct.IsCancellationRequested)
             {
                 TryKill(process);
-                _logger.LogInformation("PowerShell 命令已取消：{Command}", command);
+                _logger.LogInformation("PowerShell 命令已取消");
                 return ToolResult.Error(Format(command, SafeGet(stdOutTask), SafeGet(stdErrTask),
                     Text("Tool_Msg_Cancelled"), -1));
             }
@@ -128,7 +128,7 @@ public class PowerShellTool : ITool
             if (!exited)
             {
                 TryKill(process);
-                _logger.LogWarning("PowerShell 命令超时，已终止：{Command}", command);
+                _logger.LogWarning("PowerShell 命令超时，已终止");
                 return ToolResult.Error(Format(command, SafeGet(stdOutTask), SafeGet(stdErrTask),
                     Text("Tool_Powershell_Msg_Timeout", TimeoutMs / 1000), -1));
             }

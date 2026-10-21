@@ -517,7 +517,7 @@ public sealed class ChatGenerationService
                     repeatedToolCallCount++;
                     if (repeatedToolCallCount >= MaxRepeatedToolCalls)
                     {
-                        _logger.LogWarning("检测到工具死循环，强制中断：{Signature}", currentSignature);
+                        _logger.LogWarning("检测到重复工具循环，强制中断");
                         throw new InvalidOperationException(LocalizationService.Instance["Common_ToolLoopDetected"]);
                     }
                 }
@@ -568,7 +568,7 @@ public sealed class ChatGenerationService
                             deniedEntries.Add(entry);
                             permissionResults[entry] = "Deny";
 
-                            await AuditAsync(sessionId, tool.Name, entry.ArgumentsJson, "Deny", "Denied");
+                            await AuditAsync(sessionId, tool.Name, "Deny", "Denied");
                         }
 
                         _logger.LogInformation("用户拒绝执行工具（共 {Count} 个）", toolsNeedingConfirmation.Count);
@@ -635,8 +635,8 @@ public sealed class ChatGenerationService
                             : result.IsCanceled ? "Canceled"
                             : result.IsError ? "Failed"
                             : "Success";
-                        await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
-                            permissionResult, executionResult, result.IsError ? result.Content : null);
+                        await AuditAsync(sessionId, entry.ToolName,
+                            permissionResult, executionResult);
                     }
                 }
 
@@ -649,8 +649,8 @@ public sealed class ChatGenerationService
 
                     var permissionResult = permissionResults.GetValueOrDefault(entry,
                         autoAllowedEntries.Contains(entry) ? "AllowPersistent" : "NotRequired");
-                    await AuditAsync(sessionId, entry.ToolName, entry.ArgumentsJson,
-                        permissionResult, "Canceled", entry.ResultJson);
+                    await AuditAsync(sessionId, entry.ToolName,
+                        permissionResult, "Canceled");
                 }
 
                 // 所有结果按原始调用顺序写入会话，包含被用户拒绝的占位结果。
@@ -1104,7 +1104,7 @@ public sealed class ChatGenerationService
             var result = await ExecuteToolWithTimeoutAsync(tool, argsDoc.RootElement.Clone(), ct);
 
             if (result.IsError)
-                _logger.LogWarning("工具 {Name} 返回错误: {Result}", entry.ToolName, result.Content);
+                _logger.LogWarning("工具 {Name} 执行失败", entry.ToolName);
             else
                 _logger.LogInformation("工具 {Name} 执行成功", entry.ToolName);
 
@@ -1177,13 +1177,13 @@ public sealed class ChatGenerationService
     }
 
     /// <summary>写入工具审计日志；失败只记录警告，不影响工具执行与对话。</summary>
-    private async Task AuditAsync(string sessionId, string toolName, string argumentsJson,
-        string permissionResult, string executionResult, string? errorMessage = null)
+    private async Task AuditAsync(string sessionId, string toolName,
+        string permissionResult, string executionResult)
     {
         try
         {
-            await _auditRepo.AddAuditLogAsync(sessionId, toolName, argumentsJson,
-                permissionResult, executionResult, errorMessage);
+            await _auditRepo.AddAuditLogAsync(sessionId, toolName,
+                permissionResult, executionResult);
         }
         catch (Exception ex)
         {

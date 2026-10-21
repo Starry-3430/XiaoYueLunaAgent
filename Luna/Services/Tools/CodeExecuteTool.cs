@@ -93,7 +93,7 @@ public class CodeExecuteTool : ITool
             psi.ArgumentList.Add(scriptPath);
             psi.Environment["PYTHONIOENCODING"] = "utf-8";
 
-            _logger.LogInformation("执行 Python 代码（cwd={Dir}）", sandboxDir);
+            _logger.LogInformation("执行 Python 代码");
 
             Process process;
             try

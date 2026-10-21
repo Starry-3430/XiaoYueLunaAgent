@@ -41,7 +41,7 @@ public class ForgetFactTool : ITool
             var removed = await _repo.DeleteAsync(key);
             if (removed)
             {
-                _logger.LogInformation("已忘记事实：{Key}", key);
+                _logger.LogInformation("已忘记事实");
                 return ToolResult.Ok(Text("Tool_ForgetFact_Msg_Done", key));
             }
 
@@ -49,7 +49,7 @@ public class ForgetFactTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "忘记事实失败：{Key}", key);
+            _logger.LogError(ex, "忘记事实失败");
             return ToolResult.Error(Text("Tool_ForgetFact_Msg_Failed", ex.Message));
         }
     }

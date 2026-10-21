@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -66,6 +67,7 @@ public class OpenAiService : IAiService
     public async Task<string> ChatAsync(IEnumerable<ChatMessage> messages, AiRequestOptions options,
         CancellationToken cancellationToken = default)
     {
+        var startedAt = Stopwatch.GetTimestamp();
         var requestBody = await BuildRequestBodyAsync(messages, stream: false, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
@@ -80,7 +82,9 @@ public class OpenAiService : IAiService
             cancellationToken);
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
-        _logger.LogDebug("Response: {Body}", body);
+        _logger.LogInformation("AI 响应完成：HTTP {Status}，耗时 {ElapsedMs} ms",
+            (int)response.StatusCode,
+            (long)Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
 
         var chatResponse = JsonSerializer.Deserialize<ChatCompletionResponse>(body, JsonOptions);
         return chatResponse?.Choices?.FirstOrDefault()?.Message?.Content ?? "";
@@ -96,6 +100,7 @@ public class OpenAiService : IAiService
         AiRequestOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var startedAt = Stopwatch.GetTimestamp();
         var requestBody = await BuildRequestBodyAsync(messages, stream: true, options, cancellationToken);
 
         var url = $"{_settings.BaseUrl.TrimEnd('/')}/chat/completions";
@@ -110,6 +115,10 @@ public class OpenAiService : IAiService
             StreamHeaderTimeout,
             url,
             cancellationToken);
+
+        _logger.LogInformation("流式响应已连接：HTTP {Status}，耗时 {ElapsedMs} ms",
+            (int)response.StatusCode,
+            (long)Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -217,7 +226,7 @@ public class OpenAiService : IAiService
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "SSE 解析跳过: {Line}", line);
+                _logger.LogWarning(ex, "SSE 解析失败，已跳过该行");
             }
 
             if (events is not null)
@@ -654,12 +663,6 @@ public class OpenAiService : IAiService
             }
             root["tools"] = toolsArray;
             root["tool_choice"] = "auto";
-        }
-
-        if (_logger.IsEnabled(LogLevel.Debug))
-        {
-            _logger.LogDebug("Request body (tools={ToolCount}): {Body}",
-                registeredTools.Count, root.ToJsonString());
         }
 
         return root;

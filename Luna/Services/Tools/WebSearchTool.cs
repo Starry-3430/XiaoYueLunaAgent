@@ -58,7 +58,7 @@ public class WebSearchTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Tavily 搜索失败: {Query}", query);
+            _logger.LogError(ex, "Tavily 搜索失败");
             return ToolResult.Error(Text("Tool_WebSearch_Msg_Failed", ex.Message));
         }
     }

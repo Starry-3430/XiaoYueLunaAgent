@@ -69,7 +69,7 @@ public class SearchFilesTool : ITool
             if (!UserEnvironment.TryResolveFolder(path, out var dir) || !Directory.Exists(dir))
                 return ToolResult.Error(Text("Tool_SearchFiles_Msg_NoDir", path));
 
-            _logger.LogInformation("文件搜索（指定目录 {Dir}）：{Query}", dir, query);
+            _logger.LogInformation("文件搜索（指定目录）");
             return SearchByEnumeration(query, [dir], maxResults, ct);
         }
 
@@ -84,11 +84,11 @@ public class SearchFilesTool : ITool
 
             if (hits.Count > 0)
             {
-                _logger.LogInformation("文件搜索（索引）命中 {Count} 条：{Query}", hits.Count, query);
+                _logger.LogInformation("文件搜索（索引）命中 {Count} 条", hits.Count);
                 return FormatResult(hits, Text("Tool_SearchFiles_Msg_SourceIndex"));
             }
 
-            _logger.LogInformation("Windows 搜索索引无命中，回退到目录扫描：{Query}", query);
+            _logger.LogInformation("Windows 搜索索引无命中，回退到目录扫描");
         }
 
         // 2) 回退目录扫描：先常用目录（桌面/文档/下载…），再全部本地磁盘
@@ -154,13 +154,13 @@ public class SearchFilesTool : ITool
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "搜索目录失败：{Root}", root);
+                _logger.LogDebug(ex, "搜索目录失败");
             }
 
             if (timedOut || results.Count >= maxResults) break;
         }
 
-        _logger.LogInformation("文件搜索（目录扫描）命中 {Count} 条：{Query}", results.Count, query);
+        _logger.LogInformation("文件搜索（目录扫描）命中 {Count} 条", results.Count);
 
         if (results.Count == 0)
             return ToolResult.Ok(timedOut ? Text("Tool_SearchFiles_Msg_NoneTimeout") : Text("Tool_SearchFiles_Msg_None"));

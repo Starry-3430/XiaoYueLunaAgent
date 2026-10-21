@@ -71,7 +71,7 @@ public class DiarySearchTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检索日记失败：{Keyword}", keyword);
+            _logger.LogError(ex, "检索日记失败");
             return ToolResult.Error(Text("Tool_DiarySearch_Msg_Failed", ex.Message));
         }
     }
@@ -98,7 +98,7 @@ public class DiarySearchTool : ITool
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "日记 FTS 检索失败，回退 LIKE：{Keyword}", keyword);
+                _logger.LogWarning(ex, "日记 FTS 检索失败，回退 LIKE");
             }
         }
 

@@ -54,7 +54,7 @@ public class ListFactsTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "列出事实失败：{Keyword}", keyword);
+            _logger.LogError(ex, "列出事实失败");
             return ToolResult.Error(Text("Tool_ListFacts_Msg_Failed", ex.Message));
         }
     }

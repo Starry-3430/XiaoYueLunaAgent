@@ -53,12 +53,12 @@ public class RememberFactTool : ITool
         try
         {
             await _repo.UpsertAsync(key, value, sourceTurnId: null);
-            _logger.LogInformation("已记住事实：{Key}", key);
+            _logger.LogInformation("已记住事实");
             return ToolResult.Ok(Text("Tool_RememberFact_Msg_Remembered", key, value));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "记住事实失败：{Key}", key);
+            _logger.LogError(ex, "记住事实失败");
             return ToolResult.Error(Text("Tool_RememberFact_Msg_Failed", ex.Message));
         }
     }

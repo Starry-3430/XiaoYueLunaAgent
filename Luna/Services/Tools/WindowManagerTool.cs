@@ -34,7 +34,7 @@ public sealed class WindowManagerTool : ITool
                 case "move": if (!TryGetInt(args, "x", out var x) || !TryGetInt(args, "y", out var y)) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_MoveArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
                 case "resize": if (!TryGetInt(args, "width", out var width) || !TryGetInt(args, "height", out var height) || width < 100 || height < 80) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_ResizeArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, 0, 0, width, height, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
             }
-            _logger.LogInformation("Window operation {Action} executed on {Hwnd}", action, hwnd);
+            _logger.LogInformation("窗口操作已执行");
             return Task.FromResult(ToolResult.Ok(ToolLocalization.Text("Tool_WindowManager_Msg_Done", action)));
         }
         catch (Exception ex) { _logger.LogError(ex, "Window operation failed"); return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_Failed", ex.Message))); }

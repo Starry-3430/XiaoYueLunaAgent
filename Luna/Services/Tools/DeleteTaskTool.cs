@@ -39,7 +39,7 @@ public class DeleteTaskTool : ITool
             if (affected == 0)
                 return ToolResult.Error(Text("Tool_DeleteTask_Msg_NotFound", id));
 
-            _logger.LogInformation("已删除待办：{Id}", id);
+            _logger.LogInformation("已删除待办");
             return ToolResult.Ok(Text("Tool_DeleteTask_Msg_Deleted", id));
         }
         catch (Exception ex)

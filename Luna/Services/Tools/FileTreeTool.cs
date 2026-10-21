@@ -79,7 +79,7 @@ public class FileTreeTool : ITool
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "枚举目录失败：{Dir}", dir);
+                _logger.LogDebug(ex, "枚举目录失败");
                 return;
             }
 
@@ -120,7 +120,7 @@ public class FileTreeTool : ITool
         if (truncated)
             sb.AppendLine(Text("Tool_FileTree_Msg_Truncated", maxEntries));
 
-        _logger.LogInformation("目录树浏览：{Root}，条目 {Count}", root, count);
+        _logger.LogInformation("目录树浏览完成，条目 {Count}", count);
         return ToolResult.Ok(sb.ToString().TrimEnd());
     }
 
