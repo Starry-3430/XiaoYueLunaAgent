@@ -33,6 +33,9 @@ public partial class HomeWindow : Window
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    private static extern bool ReleaseCapture();
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_ROUND = 2;
     private const int DWMWCP_ROUNDSMALL = 3;
@@ -1001,13 +1004,14 @@ public partial class HomeWindow : Window
 
         if (WindowState == WindowState.Maximized)
         {
-            var mousePos = PointToScreen(pos);
-            WindowState = WindowState.Normal;
-            Left = mousePos.X - pos.X;
-            Top = 0;
-
+            // 交给系统执行原生“最大化窗口拖拽还原”：立即还原并保持鼠标与标题栏的相对位置，
+            // 避免先播放还原动画再开始拖动。
+            var screenPos = PointToScreen(pos);
             var hwnd = new WindowInteropHelper(this).Handle;
-            SendMessage(hwnd, WM_NCLBUTTONDOWN, (IntPtr)HT_CAPTION, (IntPtr)(((int)pos.Y << 16) | (int)pos.X));
+            var lParam = ((int)screenPos.Y & 0xFFFF) << 16 | ((int)screenPos.X & 0xFFFF);
+
+            ReleaseCapture();
+            SendMessage(hwnd, WM_NCLBUTTONDOWN, (IntPtr)HT_CAPTION, (IntPtr)lParam);
         }
         else
         {
