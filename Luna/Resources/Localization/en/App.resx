@@ -18,7 +18,7 @@
   <data name="App_Tray_Close" xml:space="preserve"><value>Close</value></data>
 
   <!-- 首次运行欢迎向导 -->
-  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>Hello. I'm your very own AI companion.</value></data>
+  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>Hiya! I'm Luna! Nice to meet you!</value></data>
   <data name="Welcome_Step1_AiNameLabel" xml:space="preserve"><value>Give me a name</value></data>
   <data name="Welcome_Step1_AiNameDesc" xml:space="preserve"><value>What should your AI companion be called?</value></data>
   <data name="Welcome_Step1_UserNameLabel" xml:space="preserve"><value>What should I call you?</value></data>

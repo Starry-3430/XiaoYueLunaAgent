@@ -18,11 +18,11 @@
   <data name="App_Tray_Close" xml:space="preserve"><value>关闭</value></data>
 
   <!-- 首次运行欢迎向导 -->
-  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>初次见面，我是你的专属 AI 伴侣。</value></data>
+  <data name="Welcome_Step1_Greeting" xml:space="preserve"><value>泥嚎！我素Luna！初次见面请多指教哦！</value></data>
   <data name="Welcome_Step1_AiNameLabel" xml:space="preserve"><value>给我取个名字吧</value></data>
-  <data name="Welcome_Step1_AiNameDesc" xml:space="preserve"><value>你的 AI 伴侣叫什么？</value></data>
+  <data name="Welcome_Step1_AiNameDesc" xml:space="preserve"><value>起个小名！</value></data>
   <data name="Welcome_Step1_UserNameLabel" xml:space="preserve"><value>我该怎么称呼你呢？</value></data>
-  <data name="Welcome_Step1_UserNameDesc" xml:space="preserve"><value>它会这样称呼你</value></data>
+  <data name="Welcome_Step1_UserNameDesc" xml:space="preserve"><value>以后我就用这个名字来称呼你啦！</value></data>
 
   <data name="Welcome_Step2_Title" xml:space="preserve"><value>连通“大脑”</value></data>
   <data name="Welcome_Step2_Desc" xml:space="preserve"><value>填写模型服务，之后可以随时在设置中修改。</value></data>
