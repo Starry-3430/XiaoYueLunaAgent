@@ -508,6 +508,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 提醒优先：提醒激活时不要再套用紧凑态的显示准备，避免覆盖提醒内容
+        if (_reminderActive)
+        {
+            Reposition();
+            return;
+        }
+
         // 同步设置初始状态，避免 HWND 重建后首帧闪现完整窗口
         CompactContent.Opacity = 0;
         IslandBorder.Clip = new RectangleGeometry
@@ -522,6 +529,8 @@ public partial class MainWindow : Window
         // 等布局完成后再播放显示动画，并聚焦紧凑输入框
         Dispatcher.BeginInvoke(() =>
         {
+            if (_reminderActive) return;
+
             var targetW = IslandBorder.ActualWidth;
             var targetH = IslandBorder.ActualHeight;
 
@@ -843,6 +852,13 @@ private void HideInternal()
 
     public void ShowInternal()
     {
+        // 提醒优先：启动唤起与提醒同时发生时，不让紧凑态覆盖正在显示的提醒
+        if (_reminderActive)
+        {
+            Reposition();
+            return;
+        }
+
         if (_hadConversation)
         {
             _viewModel.NewChat();
@@ -860,6 +876,8 @@ private void HideInternal()
         // 等布局完成后再播放动画，并聚焦输入框
         Dispatcher.BeginInvoke(() =>
         {
+            if (_reminderActive) return;
+
             var targetW = IslandBorder.ActualWidth;
             var targetH = IslandBorder.ActualHeight;
 
@@ -1017,6 +1035,7 @@ private void HideInternal()
         // 重新计算占位符与输入框尺寸
         StopAnimation();
         CollapseCapsuleHover(immediate: true);
+        SetInputEnabled(true);
         ReminderContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Visible;
@@ -1034,6 +1053,7 @@ private void HideInternal()
     {
         StopAnimation();
         CollapseCapsuleHover(immediate: true);
+        SetInputEnabled(true);
         ReminderContent.Visibility = Visibility.Collapsed;
         CompactContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Opacity = 0;
@@ -1215,9 +1235,18 @@ private void HideInternal()
     private void SwitchToReminder()
     {
         StopAnimation();
+        Keyboard.ClearFocus();
+        SetInputEnabled(false);
         CompactContent.Visibility = Visibility.Collapsed;
         ExpandedContent.Visibility = Visibility.Collapsed;
         ReminderContent.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>提醒显示期间屏蔽聊天输入；关闭提醒后恢复。</summary>
+    private void SetInputEnabled(bool enabled)
+    {
+        CompactInputBox.IsEnabled = enabled;
+        InputBox.IsEnabled = enabled;
     }
 
     private void ShowCapsuleForReminder()
@@ -1280,6 +1309,7 @@ private void HideInternal()
                 break;
             default:
                 SwitchToCompact();
+                Dispatcher.BeginInvoke(() => CompactInputBox.Focus(), DispatcherPriority.Loaded);
                 break;
         }
     }

@@ -32,6 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Resource Include="Assets\Animations\idle\idle_sprite.png" />
         <Resource Include="Assets\CascadiaMono.ttf" />
         <Resource Include="Assets\icons\ChatUI\attachmentimport.png" />
         <Resource Include="Assets\icons\DiaryUI\failed.png" />

@@ -1079,7 +1079,7 @@
                 <Rectangle Grid.Row="0" Height="1" Fill="#E4E0CA" VerticalAlignment="Bottom"/>
 
                 <!-- 消息列表 -->
-                <Grid Grid.Row="1">
+                <Grid x:Name="MessageArea" Grid.Row="1">
                     <ScrollViewer x:Name="MessageScrollViewer"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
@@ -1097,6 +1097,44 @@
                         </ItemsControl.ItemContainerStyle>
                     </ItemsControl>
                 </ScrollViewer>
+
+                    <!-- 新对话欢迎区：动图 + 分时段问候语 -->
+                    <Grid x:Name="WelcomeOverlay"
+                          IsHitTestVisible="False"
+                          Visibility="{Binding IsWelcomeVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,0,90">
+                            <controls:SpriteAnimation x:Name="WelcomeAnimation"
+                                                      SpriteSource="/Assets/Animations/idle/idle_sprite.png"
+                                                      FrameWidth="160" FrameHeight="160"
+                                                      Columns="10" FrameCount="150"
+                                                      FrameDuration="0:0:0.07"
+                                                      Width="70" Height="70"
+                                                      HorizontalAlignment="Center"
+                                                      Stretch="Uniform"
+                                                      IsHitTestVisible="False">
+                                <controls:SpriteAnimation.RenderTransform>
+                                    <TranslateTransform X="-8"/>
+                                </controls:SpriteAnimation.RenderTransform>
+                            </controls:SpriteAnimation>
+                            <Rectangle Height="1" Width="240"
+                                       Fill="#4A433D"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,1,0,10">
+                                <Rectangle.RenderTransform>
+                                    <TranslateTransform Y="-9"/>
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+                            <TextBlock Text="{Binding WelcomeGreeting}"
+                                       Foreground="#5B4833"
+                                       FontSize="18"
+                                       LineHeight="30"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
 
                     <!-- 滚动到底部按钮：不在底部时显示，点击回到最新内容 -->
                     <Button x:Name="ScrollToBottomButton"

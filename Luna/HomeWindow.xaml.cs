@@ -156,6 +156,8 @@ public partial class HomeWindow : Window
             EditorContextMenu.AttachTree(SettingsContent);
             EditorContextMenu.AttachTree(DiaryContent);
 
+            _viewModel.UpdateWelcomeGreeting();
+
             // 主界面可能在胶囊窗生成过程中才被打开：立即刷新会话列表，
             // 让正在生成的新会话出现在历史记录中，而不是等到本轮结束。
             _ = _viewModel.RefreshSessionsAsync();
@@ -325,7 +327,7 @@ public partial class HomeWindow : Window
     {
         _isSettingsMode = true;
         ChatTitle.Text = title;
-        MessageScrollViewer.Visibility = Visibility.Collapsed;
+        MessageArea.Visibility = Visibility.Collapsed;
         SettingsContent.Visibility = contentGrid == SettingsContent ? Visibility.Visible : Visibility.Collapsed;
         DiaryContent.Visibility = contentGrid == DiaryContent ? Visibility.Visible : Visibility.Collapsed;
         ToolsContent.Visibility = contentGrid == ToolsContent ? Visibility.Visible : Visibility.Collapsed;
@@ -353,7 +355,7 @@ public partial class HomeWindow : Window
     private void SwitchToChat()
     {
         _isSettingsMode = false;
-        MessageScrollViewer.Visibility = Visibility.Visible;
+        MessageArea.Visibility = Visibility.Visible;
         SettingsContent.Visibility = Visibility.Collapsed;
         DiaryContent.Visibility = Visibility.Collapsed;
         ToolsContent.Visibility = Visibility.Collapsed;
