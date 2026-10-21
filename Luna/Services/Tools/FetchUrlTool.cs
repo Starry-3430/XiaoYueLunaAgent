@@ -61,7 +61,7 @@ public class FetchUrlTool : ITool
             if (string.IsNullOrWhiteSpace(text))
                 return ToolResult.Error(Text("Tool_FetchUrl_Msg_NoContent", uri));
 
-            _logger.LogInformation("网页抓取成功: {Url}, 正文长度: {Length}", uri, text.Length);
+            _logger.LogInformation("网页抓取成功，正文长度: {Length}", text.Length);
             return ToolResult.Ok(text);
         }
         catch (OperationCanceledException)
@@ -70,7 +70,7 @@ public class FetchUrlTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "网页抓取失败: {Url}", url);
+            _logger.LogError(ex, "网页抓取失败");
             return ToolResult.Error(Text("Tool_FetchUrl_Msg_Failed", ex.Message));
         }
     }

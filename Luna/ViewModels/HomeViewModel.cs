@@ -77,6 +77,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     public bool IsWelcomeVisible => SelectedSession is null;
 
+    /// <summary>关于页显示的版本号，与应用版本（csproj 的 Version）保持一致。</summary>
+    public string AboutVersionText =>
+        $"Luna V{typeof(HomeViewModel).Assembly.GetName().Version?.ToString() ?? "0.1.0.0"}";
+
     public ObservableCollection<SearchResult> SearchResults { get; } = new();
 
     public bool IsSearchActive => !string.IsNullOrWhiteSpace(SearchQuery);
@@ -505,6 +509,25 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         }
 
         session ??= new ChatSessionItem { Id = result.SessionId, Title = result.SessionTitle };
+        await SelectSessionCommand.ExecuteAsync(session);
+    }
+
+    /// <summary>按会话 ID 打开会话，供系统通知点击等外部入口使用。</summary>
+    public async Task OpenSessionAsync(string sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return;
+
+        var session = ChatSessions.FirstOrDefault(s => s.Id == sessionId);
+        if (session is null)
+        {
+            await LoadSessionsAsync();
+            session = ChatSessions.FirstOrDefault(s => s.Id == sessionId);
+        }
+
+        if (session is null)
+            return;
+
         await SelectSessionCommand.ExecuteAsync(session);
     }
 

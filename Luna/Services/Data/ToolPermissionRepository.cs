@@ -44,22 +44,20 @@ public class ToolPermissionRepository
 
     // ===== 审计日志 =====
 
-    public async Task AddAuditLogAsync(string sessionId, string toolName, string? arguments,
-        string permissionResult, string executionResult, string? errorMessage = null)
+    public async Task AddAuditLogAsync(string sessionId, string toolName,
+        string permissionResult, string executionResult)
     {
         using var conn = new SqliteConnection(_db.ConnectionString);
         await conn.ExecuteAsync(
             @"INSERT INTO ToolAuditLogs
-              (SessionId, ToolName, ArgumentsSummary, PermissionResult, ExecutionResult, ErrorMessage, CreatedAtUtc)
-              VALUES (@SessionId, @ToolName, @Args, @Perm, @Exec, @Err, @Now)",
+              (SessionId, ToolName, PermissionResult, ExecutionResult, CreatedAtUtc)
+              VALUES (@SessionId, @ToolName, @Perm, @Exec, @Now)",
             new
             {
                 SessionId = sessionId,
                 ToolName = toolName,
-                Args = Truncate(arguments, 500),
                 Perm = permissionResult,
                 Exec = executionResult,
-                Err = Truncate(errorMessage, 1000),
                 Now = DateTime.UtcNow.ToString("O"),
             });
     }
@@ -75,7 +73,4 @@ public class ToolPermissionRepository
             new { Limit = limit });
         return rows.ToList();
     }
-
-    private static string? Truncate(string? text, int max)
-        => string.IsNullOrEmpty(text) || text.Length <= max ? text : text[..max] + "...";
 }

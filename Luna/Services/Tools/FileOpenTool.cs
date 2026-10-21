@@ -50,12 +50,12 @@ public sealed class FileOpenTool : ITool
                 UseShellExecute = true,
             });
 
-            _logger.LogInformation("已打开路径：{Path}", fullPath);
+            _logger.LogInformation("已打开路径");
             return Task.FromResult(ToolResult.Ok(Text("Tool_FileOpen_Msg_Opened", fullPath)));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "打开路径失败：{Path}", fullPath);
+            _logger.LogError(ex, "打开路径失败");
             return Task.FromResult(ToolResult.Error(Text("Tool_FileOpen_Msg_Failed", ex.Message)));
         }
     }

@@ -81,7 +81,7 @@ public class TurnSearchTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检索轮次摘要失败：{Keyword}", keyword);
+            _logger.LogError(ex, "检索轮次摘要失败");
             return ToolResult.Error(Text("Tool_TurnSearch_Msg_Failed", ex.Message));
         }
     }

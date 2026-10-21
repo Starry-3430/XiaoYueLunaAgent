@@ -39,7 +39,7 @@ public class CompleteTaskTool : ITool
             if (affected == 0)
                 return ToolResult.Error(Text("Tool_CompleteTask_Msg_NotFound", id));
 
-            _logger.LogInformation("已完成待办：{Id}", id);
+            _logger.LogInformation("已完成待办");
             return ToolResult.Ok(Text("Tool_CompleteTask_Msg_Done", id));
         }
         catch (Exception ex)

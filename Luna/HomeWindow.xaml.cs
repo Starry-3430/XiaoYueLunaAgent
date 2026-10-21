@@ -323,6 +323,28 @@ public partial class HomeWindow : Window
         SmoothScroll.Vertical(scrollViewer, e.Delta);
     }
 
+    /// <summary>打开指定会话并切换到聊天视图，供通知点击等外部入口使用。</summary>
+    public async Task OpenSessionAsync(string sessionId)
+    {
+        await _viewModel.OpenSessionAsync(sessionId);
+
+        var session = _viewModel.ChatSessions.FirstOrDefault(s => s.Id == sessionId);
+        if (session is null)
+            return;
+
+        if (!ReferenceEquals(HistoryList.SelectedItem, session))
+        {
+            HistoryList.SelectedItem = session;
+        }
+        else
+        {
+            BindSelectedSession(session);
+            ChatTitle.Text = session.Title;
+        }
+
+        SwitchToChat();
+    }
+
     /// <summary>
     /// 显示设置/日记/工具内容区，隐藏聊天区与输入区。
     /// </summary>

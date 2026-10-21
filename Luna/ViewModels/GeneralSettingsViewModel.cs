@@ -1,7 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
+using System.Xml.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -26,8 +32,14 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly ToolPermissionService _toolPermission;
     private readonly DataExportService _exportService;
     private readonly DataImportService _importService;
+    private readonly HttpClient _httpClient;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
+
+    private const string GitHubRepoUrl = "https://github.com/Starry-3430/XiaoYueLunaAgent";
+    private const string GitHubReleasesApiUrl = GitHubRepoUrl + "/releases?per_page=20";
+    private const string GitHubReleasesAtomUrl = GitHubRepoUrl + "/releases.atom";
+    private const string GitHubReleasesPageUrl = GitHubRepoUrl + "/releases";
 
     public SelectSetting FontSetting { get; } = new();
     public SelectSetting ProxyTypeSetting { get; } = new();
@@ -70,6 +82,16 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private string _updateStatus = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckUpdateCommand))]
+    private bool _isCheckingUpdate;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckUpdateCommand))]
+    private bool _isDownloadingUpdate;
+
+    private bool CanCheckUpdate => !IsCheckingUpdate && !IsDownloadingUpdate;
+
+    [ObservableProperty]
     private string _toolPermissionStatus = string.Empty;
 
     [ObservableProperty]
@@ -90,7 +112,8 @@ public partial class GeneralSettingsViewModel : ObservableObject
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
         HotkeyService hotkeyService, StartupService startupService,
         ToolPermissionService toolPermission, DataExportService exportService,
-        DataImportService importService, ILogger<GeneralSettingsViewModel> logger)
+        DataImportService importService, HttpClient httpClient,
+        ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
         _settingsService = settingsService;
@@ -99,6 +122,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _toolPermission = toolPermission;
         _exportService = exportService;
         _importService = importService;
+        _httpClient = httpClient;
         _logger = logger;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
@@ -518,14 +542,463 @@ public partial class GeneralSettingsViewModel : ObservableObject
         HorizontalAlignment = HorizontalAlignment.Left,
     };
 
-    /// <summary>检查更新（壳子）：当前尚无发布通道，仅展示版本信息。</summary>
-    [RelayCommand]
-    private void CheckUpdate()
+    /// <summary>检查 GitHub Releases 是否有新版本；发现更新后提示下载或打开发布页。</summary>
+    [RelayCommand(CanExecute = nameof(CanCheckUpdate))]
+    private async Task CheckUpdateAsync()
+    {
+        if (!CanCheckUpdate) return;
+
+        var loc = LocalizationService.Instance;
+        IsCheckingUpdate = true;
+        UpdateStatus = loc["Settings_Update_Checking"];
+
+        try
+        {
+            CleanupPendingUpdate();
+
+            var currentVersion = typeof(GeneralSettingsViewModel).Assembly.GetName().Version
+                                 ?? new Version(0, 0, 0, 0);
+            var release = await FindLatestReleaseAsync(CancellationToken.None);
+            if (release is null)
+            {
+                UpdateStatus = loc["Settings_Update_NoRelease"];
+                return;
+            }
+
+            if (release.Version <= currentVersion)
+            {
+                UpdateStatus = loc.Format("Settings_Update_StatusFormat", currentVersion);
+                return;
+            }
+
+            UpdateStatus = loc.Format("Settings_Update_AvailableFormat", release.Version);
+            if (release.Installer is null)
+            {
+                UpdateStatus = loc["Settings_Update_NoInstaller"];
+                return;
+            }
+
+            var choice = ShowUpdateAvailableDialog(currentVersion, release.Version);
+            if (choice == UpdateChoice.VisitRelease)
+            {
+                OpenUrl(string.IsNullOrWhiteSpace(release.HtmlUrl) ? GitHubReleasesPageUrl : release.HtmlUrl);
+                return;
+            }
+
+            if (choice != UpdateChoice.Update)
+                return;
+
+            IsDownloadingUpdate = true;
+            await DownloadAndLaunchInstallerAsync(release, loc);
+        }
+        catch (OperationCanceledException)
+        {
+            IsDownloadingUpdate = false;
+            UpdateStatus = loc["Settings_Update_Timeout"];
+        }
+        catch (Exception ex)
+        {
+            IsDownloadingUpdate = false;
+            _logger.LogWarning(ex, "检查更新失败");
+            UpdateStatus = loc.Format("Settings_Update_CheckFailedFormat", ex.Message);
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
+
+    private enum UpdateChoice
+    {
+        Cancel,
+        Update,
+        VisitRelease,
+    }
+
+    private sealed class GitHubRelease
+    {
+        [JsonPropertyName("tag_name")] public string TagName { get; set; } = string.Empty;
+        [JsonPropertyName("html_url")] public string HtmlUrl { get; set; } = string.Empty;
+        [JsonPropertyName("draft")] public bool Draft { get; set; }
+        [JsonPropertyName("assets")] public List<GitHubAsset> Assets { get; set; } = [];
+    }
+
+    private sealed class GitHubAsset
+    {
+        [JsonPropertyName("name")] public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("browser_download_url")] public string BrowserDownloadUrl { get; set; } = string.Empty;
+        [JsonPropertyName("size")] public long Size { get; set; }
+    }
+
+    private sealed record UpdateRelease(
+        Version Version, string HtmlUrl, GitHubAsset? Installer, GitHubAsset? Checksum);
+
+    private async Task<UpdateRelease?> FindLatestReleaseAsync(CancellationToken ct)
+    {
+        try
+        {
+            return await FindLatestReleaseFromApiAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // GitHub API 有频率限制；共享网络下 403 很常见，回退到 releases.atom。
+            _logger.LogWarning(ex, "GitHub API 检查更新失败，改用 releases.atom");
+            return await FindLatestReleaseFromAtomAsync(ct);
+        }
+    }
+
+    private async Task<UpdateRelease?> FindLatestReleaseFromApiAsync(CancellationToken ct)
+    {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(20));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, GitHubReleasesApiUrl);
+        request.Headers.UserAgent.ParseAdd("Luna-Updater/0.1");
+        request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+
+        using var response = await _httpClient.SendAsync(
+            request, HttpCompletionOption.ResponseContentRead, timeoutCts.Token);
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"GitHub API {(int)response.StatusCode}");
+
+        var json = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+        var releases = JsonSerializer.Deserialize<List<GitHubRelease>>(json) ?? [];
+        UpdateRelease? latest = null;
+
+        foreach (var release in releases)
+        {
+            if (release.Draft) continue;
+
+            var version = ParseVersion(release.TagName);
+            if (version is null) continue;
+            if (latest is not null && version <= latest.Version) continue;
+
+            var installer = release.Assets.FirstOrDefault(a =>
+                a.Name.EndsWith("-Setup.exe", StringComparison.OrdinalIgnoreCase));
+            var checksum = installer is null
+                ? null
+                : release.Assets.FirstOrDefault(a =>
+                    a.Name.Equals(installer.Name + ".sha256", StringComparison.OrdinalIgnoreCase));
+
+            latest = new UpdateRelease(version, release.HtmlUrl, installer, checksum);
+        }
+
+        return latest;
+    }
+
+    private async Task<UpdateRelease?> FindLatestReleaseFromAtomAsync(CancellationToken ct)
+    {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(20));
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, GitHubReleasesAtomUrl);
+        request.Headers.UserAgent.ParseAdd("Luna-Updater/0.1");
+
+        using var response = await _httpClient.SendAsync(
+            request, HttpCompletionOption.ResponseContentRead, timeoutCts.Token);
+        response.EnsureSuccessStatusCode();
+
+        var xml = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+        var document = XDocument.Parse(xml);
+        XNamespace atom = "http://www.w3.org/2005/Atom";
+        UpdateRelease? latest = null;
+
+        foreach (var entry in document.Root?.Elements(atom + "entry") ?? Enumerable.Empty<XElement>())
+        {
+            var link = entry.Elements(atom + "link")
+                .FirstOrDefault(l => (string?)l.Attribute("rel") == "alternate")
+                ?.Attribute("href")?.Value;
+
+            if (string.IsNullOrWhiteSpace(link)) continue;
+
+            var tag = link.TrimEnd('/').Split('/').LastOrDefault();
+            var version = ParseVersion(tag);
+            if (version is null || tag is null) continue;
+            if (latest is not null && version <= latest.Version) continue;
+
+            // 发布包的命名固定为 Luna-v{Version}-Setup.exe；tag 只用于下载路径。
+            var assetName = $"Luna-v{version}-Setup.exe";
+            var assetUrl = $"{GitHubRepoUrl}/releases/download/{tag}/{assetName}";
+
+            latest = new UpdateRelease(
+                version,
+                link,
+                new GitHubAsset
+                {
+                    Name = assetName,
+                    BrowserDownloadUrl = assetUrl,
+                },
+                new GitHubAsset
+                {
+                    Name = assetName + ".sha256",
+                    BrowserDownloadUrl = assetUrl + ".sha256",
+                });
+        }
+
+        return latest;
+    }
+
+    private static Version? ParseVersion(string? tag)
+    {
+        var text = tag?.Trim().TrimStart('v', 'V');
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var suffix = text.IndexOfAny(['-', '+']);
+        if (suffix >= 0)
+            text = text[..suffix];
+
+        if (!Version.TryParse(text, out var version))
+            return null;
+
+        return new Version(
+            version.Major,
+            version.Minor,
+            Math.Max(version.Build, 0),
+            Math.Max(version.Revision, 0));
+    }
+
+    private UpdateChoice ShowUpdateAvailableDialog(Version current, Version latest)
     {
         var loc = LocalizationService.Instance;
-        var version = typeof(GeneralSettingsViewModel).Assembly.GetName().Version;
-        var versionText = version is null ? loc["Settings_Update_UnknownVersion"] : $"{version.Major}.{version.Minor}.{version.Build}";
-        UpdateStatus = loc.Format("Settings_Update_StatusFormat", versionText);
+        var result = UpdateChoice.Cancel;
+
+        var dialog = new LunaDialog
+        {
+            Owner = GetDialogOwner(),
+            DialogTitle = loc["Settings_Update_DialogTitle"],
+            DialogContent = CreateDialogBody(
+                loc.Format("Settings_Update_DialogBody", current, latest)),
+        };
+
+        dialog.Buttons = new ObservableCollection<DialogButton>
+        {
+            new()
+            {
+                Text = loc["Dialog_Button_Cancel"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    result = UpdateChoice.Cancel;
+                    dialog.Close();
+                }),
+            },
+            new()
+            {
+                Text = loc["Dialog_Button_OK"],
+                IsPrimary = true,
+                Command = new RelayCommand(() =>
+                {
+                    result = UpdateChoice.Update;
+                    dialog.Close();
+                }),
+            },
+            new()
+            {
+                Text = loc["Settings_Update_VisitRelease"],
+                StyleKey = "StyleBeige",
+                Command = new RelayCommand(() =>
+                {
+                    result = UpdateChoice.VisitRelease;
+                    dialog.Close();
+                }),
+            },
+        };
+
+        dialog.ShowDialog();
+        return result;
+    }
+
+    private async Task DownloadAndLaunchInstallerAsync(UpdateRelease release, LocalizationService loc)
+    {
+        if (release.Installer is null) return;
+
+        var updateDir = Path.Combine(Path.GetTempPath(), "Luna", "updates");
+        Directory.CreateDirectory(updateDir);
+
+        var targetPath = Path.Combine(updateDir, Path.GetFileName(release.Installer.Name));
+        var partialPath = targetPath + ".download";
+        var installerReady = false;
+
+        try
+        {
+            UpdateStatus = FormatDownloadProgress(loc, 0, release.Installer.Size);
+            await DownloadFileAsync(release.Installer.BrowserDownloadUrl, partialPath,
+                release.Installer.Size, loc);
+
+            if (release.Checksum is not null)
+            {
+                try
+                {
+                    var expected = await DownloadChecksumAsync(release.Checksum);
+                    var actual = await ComputeSha256Async(partialPath);
+                    if (!string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException(loc["Settings_Update_ChecksumFailed"]);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+                {
+                    // 旧版本或手工创建的 Release 可能没有 .sha256 文件。
+                    _logger.LogWarning("未找到更新校验文件，跳过校验");
+                }
+            }
+
+            File.Move(partialPath, targetPath, overwrite: true);
+            installerReady = true;
+            UpdateStatus = loc["Settings_Update_Launching"];
+
+            var startInfo = new ProcessStartInfo(targetPath) { UseShellExecute = true };
+            if (IsInstalledCopy())
+                startInfo.Arguments = "/SILENT /NORESTART";
+
+            Process.Start(startInfo);
+            Application.Current?.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            IsDownloadingUpdate = false;
+            _logger.LogWarning(ex, "下载更新失败");
+            TryDelete(partialPath);
+            TryDelete(targetPath);
+            UpdateStatus = loc.Format(
+                installerReady ? "Settings_Update_LaunchFailedFormat" : "Settings_Update_DownloadFailedFormat",
+                ex.Message);
+        }
+    }
+
+    private static string FormatDownloadProgress(
+        LocalizationService loc, long downloaded, long total)
+    {
+        var downloadedMb = downloaded / 1024d / 1024d;
+        if (total > 0)
+            return loc.Format("Settings_Update_DownloadingFormat",
+                downloadedMb, total / 1024d / 1024d);
+
+        return loc.Format("Settings_Update_DownloadingUnknownFormat", downloadedMb);
+    }
+
+    private async Task DownloadFileAsync(
+        string url, string targetPath, long totalBytes, LocalizationService loc)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        using var response = await _httpClient.GetAsync(
+            url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+        response.EnsureSuccessStatusCode();
+
+        if (totalBytes <= 0)
+            totalBytes = response.Content.Headers.ContentLength ?? 0;
+
+        await using var input = await response.Content.ReadAsStreamAsync(cts.Token);
+        await using var output = new FileStream(
+            targetPath, FileMode.Create, FileAccess.Write, FileShare.None,
+            81920, FileOptions.Asynchronous);
+
+        var buffer = new byte[81920];
+        long downloaded = 0;
+        var lastReport = Stopwatch.StartNew();
+
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length), cts.Token);
+            if (read <= 0) break;
+
+            await output.WriteAsync(buffer.AsMemory(0, read), cts.Token);
+            downloaded += read;
+
+            if (lastReport.ElapsedMilliseconds >= 200)
+            {
+                UpdateStatus = FormatDownloadProgress(loc, downloaded, totalBytes);
+                lastReport.Restart();
+            }
+        }
+
+        UpdateStatus = FormatDownloadProgress(loc, downloaded, totalBytes);
+    }
+
+    private async Task<string> DownloadChecksumAsync(GitHubAsset asset)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var text = await _httpClient.GetStringAsync(asset.BrowserDownloadUrl, cts.Token);
+        var token = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+
+        if (token is null || token.Length != 64)
+            throw new InvalidDataException(
+                LocalizationService.Instance["Settings_Update_ChecksumInvalid"]);
+
+        try
+        {
+            _ = Convert.FromHexString(token);
+        }
+        catch (FormatException)
+        {
+            throw new InvalidDataException(
+                LocalizationService.Instance["Settings_Update_ChecksumInvalid"]);
+        }
+
+        return token;
+    }
+
+    private static async Task<string> ComputeSha256Async(string path)
+    {
+        await using var stream = File.OpenRead(path);
+        var hash = await SHA256.HashDataAsync(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private void CleanupPendingUpdate()
+    {
+        try
+        {
+            var updateDir = Path.Combine(Path.GetTempPath(), "Luna", "updates");
+            if (Directory.Exists(updateDir))
+                Directory.Delete(updateDir, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "清理更新临时文件失败");
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // 忽略清理失败。
+        }
+    }
+
+    private static bool IsInstalledCopy()
+    {
+        var installed = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs", "Luna", "Luna.exe");
+        var current = Environment.ProcessPath;
+        return current is not null
+               && string.Equals(Path.GetFullPath(current), Path.GetFullPath(installed),
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OpenUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "打开链接失败");
+        }
     }
 
     /// <summary>测试当前代理是否可用。</summary>

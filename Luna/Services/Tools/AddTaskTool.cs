@@ -70,7 +70,7 @@ public class AddTaskTool : ITool
         try
         {
             await _repo.AddAsync(task);
-            _logger.LogInformation("已创建待办：{Id} {Title}", task.Id, task.Title);
+            _logger.LogInformation("已创建待办");
 
             var sb = new StringBuilder();
             sb.Append(Text("Tool_AddTask_Msg_Created", task.Title));

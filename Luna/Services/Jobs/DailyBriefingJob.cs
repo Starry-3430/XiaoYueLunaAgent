@@ -194,9 +194,10 @@ public sealed class DailyBriefingJob : IBackgroundJob
         // 5. 刷新会话列表并提示用户
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(session.Id));
         _notifications.Notify(
-            loc["Common_DailyBriefing_NotifyTitle"],
-            loc["Common_DailyBriefing_NotifyMessage"],
-            timeoutMs: 6000);
+            loc.Format("Common_DailyBriefing_NotifyTitleFormat", nowLocal.ToString("yyyy-MM-dd")),
+            reply,
+            timeoutMs: 6000,
+            sessionId: session.Id);
 
         _logger.LogInformation("每日早报生成完毕：SessionId={SessionId}", session.Id);
     }

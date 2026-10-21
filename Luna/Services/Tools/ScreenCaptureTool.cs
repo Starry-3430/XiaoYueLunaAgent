@@ -264,7 +264,7 @@ public class ReadScreenTool : ITool
                 return path;
             }, ct);
 
-            _logger.LogInformation("屏幕截图已保存: {Path} (模式: {Mode})", filePath, mode);
+            _logger.LogInformation("屏幕截图已保存");
             return ToolResult.OkWithImage(Text("Tool_ReadScreen_Msg_Captured", mode, filePath), filePath);
         }
         catch (OperationCanceledException)

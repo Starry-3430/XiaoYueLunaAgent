@@ -46,6 +46,8 @@ public partial class App : Application
     private WelcomeWindow? _welcomeWindow;              // 首次运行欢迎向导
     private bool _backgroundServicesStarted;            // 后台调度器/日记服务是否已启动
     private bool _restarting;                           // 是否正在重启进程
+    private bool _appReady;                             // 启动流程是否完成，可处理通知跳转
+    private string? _pendingNotificationSessionId;      // 启动早期收到的通知会话 ID
     private CancellationTokenSource? _trayCts;          // 托盘点击延迟取消令牌，用于区分单击/双击
     private DateTime _lastTrayClickTime;                // 上次托盘点击时间，用于判断双击间隔
     private const int DoubleClickThresholdMs = 500;     // 双击判定阈值（毫秒）
@@ -252,6 +254,9 @@ public partial class App : Application
                 services.AddSingleton<BackgroundSchedulerService>();
             })
             .Build();
+
+        // 尽早订阅，确保应用由通知点击启动时也能收到激活事件（事件会缓冲到启动完成后再处理）。
+        _host.Services.GetRequiredService<NotificationService>().SessionActivated += OnSessionNotificationActivated;
     }
 
     /// <summary>
@@ -347,6 +352,40 @@ public partial class App : Application
         _homeWindow.WindowState = WindowState.Normal;
         _homeWindow.Show();
         _homeWindow.Activate();
+    }
+
+    /// <summary>处理系统通知点击：启动完成后显示主界面并打开目标会话。</summary>
+    private void OnSessionNotificationActivated(string sessionId)
+    {
+        if (!_appReady)
+        {
+            _pendingNotificationSessionId = sessionId;
+            return;
+        }
+
+        OpenSessionFromNotification(sessionId);
+    }
+
+    private void OpenSessionFromNotification(string sessionId)
+    {
+        // 欢迎向导期间 ShowHomeWindow 会直接返回，此时不强行打开会话。
+        ShowHomeWindow();
+        _ = OpenSessionFromNotificationAsync(sessionId);
+    }
+
+    private async Task OpenSessionFromNotificationAsync(string sessionId)
+    {
+        try
+        {
+            if (_homeWindow is { } window)
+                await window.OpenSessionAsync(sessionId);
+            else
+                await _host.Services.GetRequiredService<HomeViewModel>().OpenSessionAsync(sessionId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开通知会话失败：{SessionId}", sessionId);
+        }
     }
 
     /// <summary>
@@ -492,6 +531,14 @@ public partial class App : Application
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Dispatcher.BeginInvoke(new Action(ShowWelcomeWizard));
+        }
+
+        // 启动流程已完成：处理启动早期（含由通知点击启动）收到的会话跳转。
+        _appReady = true;
+        if (_pendingNotificationSessionId is { } pendingSessionId)
+        {
+            _pendingNotificationSessionId = null;
+            OpenSessionFromNotification(pendingSessionId);
         }
 
         base.OnStartup(e);

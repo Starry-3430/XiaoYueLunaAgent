@@ -104,7 +104,7 @@ public class GitTool : ITool
                 this, Text("Tool_Git_Msg_ConfirmWrite", commandText));
             if (decision == ToolPermissionDecision.Deny)
             {
-                _logger.LogInformation("用户拒绝执行 git {Action}", action);
+                _logger.LogInformation("用户拒绝执行 git 操作");
                 return ToolResult.Error(Text("Tool_Msg_UserDenied"));
             }
         }
@@ -128,7 +128,7 @@ public class GitTool : ITool
         foreach (var arg in gitArgs)
             psi.ArgumentList.Add(arg);
 
-        _logger.LogInformation("执行 git：{Command}（cwd={Repo}）", commandText, repo);
+        _logger.LogInformation("执行 git 操作");
 
         Process process;
         try

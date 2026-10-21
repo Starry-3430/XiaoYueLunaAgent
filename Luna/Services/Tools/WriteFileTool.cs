@@ -75,7 +75,7 @@ public class WriteFileTool : ITool
                 this, Text("Tool_WriteFile_Msg_ConfirmOverwrite", Path.GetFileName(fullPath)));
             if (decision == ToolPermissionDecision.Deny)
             {
-                _logger.LogInformation("用户拒绝覆盖文件：{Path}", fullPath);
+                _logger.LogInformation("用户拒绝覆盖文件");
                 return ToolResult.Error(Text("Tool_WriteFile_Msg_DeniedOverwrite"));
             }
         }
@@ -91,7 +91,7 @@ public class WriteFileTool : ITool
             else
                 await File.WriteAllTextAsync(fullPath, content, ct);
 
-            _logger.LogInformation("写入文件成功：{Path}（mode={Mode}，{Length} 字符）", fullPath, mode, content.Length);
+            _logger.LogInformation("写入文件成功，{Length} 字符", content.Length);
             return ToolResult.Ok(mode == ModeAppend
                 ? Text("Tool_WriteFile_Msg_Appended", fullPath, content.Length)
                 : Text("Tool_WriteFile_Msg_Written", fullPath, content.Length));
@@ -102,7 +102,7 @@ public class WriteFileTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "写入文件失败：{Path}", fullPath);
+            _logger.LogError(ex, "写入文件失败");
             return ToolResult.Error(Text("Tool_WriteFile_Msg_Failed", ex.Message));
         }
     }

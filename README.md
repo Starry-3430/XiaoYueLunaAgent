@@ -10,9 +10,11 @@
 
 ---
 
-![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B%20%7C%20Screenshot%202004%2B&color=blue)
+![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
 
 *当前仅支持 Windows*
+
+> 当前版本：**v0.1.0.0（公开测试版）**
 
 **Luna** 是一个基于 C# / WPF 开发的 Windows 桌面个人 AI 智能体。它以一个紧凑的胶囊窗口常驻屏幕顶部，通过全局快捷键或托盘图标随时呼出。你可以像聊天一样向它提问、让它完成实际任务。
 
@@ -36,7 +38,8 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 | 记忆 | 检索日记、轮次检索、长期事实 | ✅ 已实现         |
 | 组织 | 待办事项（增删改查、提醒）、剪贴板历史 | ✅ 已实现         |
 | 通信 | 系统通知 | ✅ 已实现         |
-| 输入 | 视觉、OCR、语音 | 📅 远期           |
+| 输入 | 图片附件与截图视觉（需模型支持视觉） | ✅ 已实现         |
+| 输入 | OCR、语音输入 | 📅 远期           |
 | 开发 | 代码沙箱、Git、文件树 | ✅ 已实现（部分） |
 
 工具权限分级管理：
@@ -54,7 +57,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - **轮次摘要**：每轮对话结束后异步生成结构化摘要（关键点、涉及文件、工具调用等），存入数据库。
 - **日记生成**：按“逻辑日”（凌晨 4 点为界，本地时间 -4h）聚合摘要，调用 AI 生成简短日记，失败时支持手动重试。
 - **全文检索**：基于 SQLite FTS5，可快速搜索历史日记。
-- **长期事实**：🧪 规划中——尚未实现记忆的写入与自动引用。
+- **长期事实**：通过 `remember_fact` / `list_facts` / `forget_fact` 工具维护；每轮会按当前话题自动检索最多 5 条相关事实注入提示词。自动事实抽取仍在计划中。
 
 ### ⏰ 待办与提醒
 
@@ -65,6 +68,10 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 - 通过自然语言添加待办：“帮我记一下明天下午三点开会”。
 - 支持截止时间与提醒时间，提醒触发时以胶囊弹出 + 唤醒动画呈现。
 - 提醒队列机制：胶囊正在输入或被占用时自动排队，不打断用户操作。
+
+### 🔄 软件更新
+
+- 设置页可检查 GitHub Releases 最新版本；发现更新后可下载安装包并启动安装程序。
 
 ---
 
@@ -85,19 +92,39 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 | 窗口特效 | DWM API（`DwmSetWindowAttribute` 圆角）、`WS_EX_TOOLWINDOW` |
 | 托盘 / 通知 | NativeTray（`TrayIconHost`）、Microsoft.Toolkit.Uwp.Notifications（Toast） |
 | 主题控件 | DynamicAero2 |
+| 安装包 | Inno Setup 6 |
 
 ---
 
 ## 🚀 快速开始
 
-### 环境要求
+### 下载安装包（推荐）
 
-- Windows 10 版本 1809（build 17763） 或更高 / Windows 11
+从 [Releases](https://github.com/Starry-3430/XiaoYueLunaAgent/releases) 下载：
+
+| 包 | 说明 | 需要 |
+|----|------|------|
+| `Luna-v0.1.0.0-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
+| `Luna-win-x64.zip` | 自包含免安装版 | 无需安装 .NET 运行时，解压即用 |
+| `Luna-win-x64-fdd.zip` | 框架依赖免安装版 | 需安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+1. 运行安装程序，或解压对应的免安装 ZIP。
+2. 从开始菜单 / 桌面 / 解压目录启动 `Luna.exe`。
+3. 首次启动会显示欢迎向导，按提示填写 AI 提供商、Base URL、模型与 API Key；也可以稍后在「设置 → 聊天」中修改。
+
+> **SmartScreen 提示**：当前 Beta 未做代码签名，Windows 可能提示「Windows 已保护你的电脑」。点击「更多信息」→「仍要运行」即可。
+>
+> **系统要求**：Windows 10 1809（build 17763）或更高 / Windows 11。截图工具的「Luna 窗口不进入截图」使用 `WDA_EXCLUDEFROMCAPTURE`，需要 **Windows 10 2004（build 19041）或更高**；旧版 Windows 会自动回退为临时移屏。
+>
+> **开机自启**：可在「设置 → 通用」中开启；如不需要，请保持关闭。
+
+### 从源码构建
+
+环境要求：
+
+- Windows 10 1809（build 17763）或更高 / Windows 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-
-> 截图工具的“Luna 窗口不进入截图”使用 `WDA_EXCLUDEFROMCAPTURE`，需要 **Windows 10 2004（build 19041）或更高**。Windows 10 1809–1909 仍可运行，截图时会自动回退为临时移屏。
-
-### 构建与运行
+- 构建安装包需要 [Inno Setup 6](https://jrsoftware.org/isinfo.php)
 
 ```bash
 git clone https://github.com/Starry-3430/XiaoYueLunaAgent.git
@@ -106,17 +133,76 @@ dotnet build
 dotnet run --project Luna
 ```
 
+生成自包含发布目录和安装包：
+
+```powershell
+pwsh .\scripts\publish.ps1 -Mode selfcontained
+pwsh .\scripts\build-installer.ps1 -SkipPublish
+```
+
 ### 首次配置
 
 1. 启动 Luna，托盘出现图标。
-
-2. 按 Ctrl + Alt + Y 呼出胶囊窗口。
-
-3. 打开“设置 → 聊天”，填入你的 AI 提供商信息（如 DeepSeek、OpenAI 等）。
-
+2. 按 `Ctrl + Alt + Y` 呼出胶囊窗口（可在设置中修改快捷键）。
+3. 打开「设置 → 聊天」，填入你的 AI 提供商信息（如 DeepSeek、OpenAI 等）。
 4. 保存后即可开始对话。
 
-> API Key 使用 Windows DPAPI（CryptProtectData）加密，仅当前用户可解密，不会明文存储。
+> API Key 使用 Windows DPAPI（CryptProtectData）加密，仅当前 Windows 用户可解密，不会以明文写入配置文件。
+
+---
+
+## 🔐 数据与隐私
+
+Luna 是本地优先应用：会话、日记、待办、长期事实和附件默认保存在本机。联网行为仅发生在以下场景：调用你配置的 AI 提供商、网页搜索（Tavily）、网页阅读 / 新闻（目标网站或 BBC News RSS）。
+
+### 本地数据位置
+
+| 路径 | 内容 | 说明 |
+|------|------|------|
+| `%APPDATA%\Luna\settings.json` | 设置、提供商信息、API Key 密文 | API Key（含 Tavily）/ 代理密码使用 Windows DPAPI 加密，仅当前 Windows 用户可解密 |
+| `%APPDATA%\Luna\database\LunaData.db` | 会话、消息、轮次摘要、日记、长期事实、待办、工具审计、附件元数据 | **明文 SQLite**，另有 `-wal` / `-shm` 文件 |
+| `%APPDATA%\Luna\database\LunaData.db.before-restore-*` | 导入备份前的数据库快照 | 明文，导入数据时生成 |
+| `%LOCALAPPDATA%\Luna\blobs\` | 附件原始内容 | 按 SHA-256 命名，明文存储 |
+| `%LOCALAPPDATA%\Luna\logs\` | 运行日志 | 按天滚动，最多保留 7 个文件；记录调用状态、耗时与错误信息，不记录完整对话 |
+| `%LOCALAPPDATA%\Luna\backups\` | 自动备份 ZIP | 每天 03:00 生成，最多保留 7 份（错过则下次启动补做） |
+| `%LOCALAPPDATA%\Luna\cache\markitdown\` | 文档转换临时缓存 | 可安全删除，Luna 会按需重建 |
+| `%LOCALAPPDATA%\Luna\.installed` | 首次运行标记 | 删除后会重新进入欢迎向导 |
+
+> `settings.json` 和数据库位于漫游目录 `%APPDATA%`；如果 Windows 账户启用了漫游配置文件（常见于企业域环境），这些明文数据可能随配置文件同步到服务器。附件、日志和备份位于 `%LOCALAPPDATA%`，不会漫游。
+
+### 隐私边界
+
+- **数据库、日记、长期事实、附件和日志均为明文**，没有整库加密；能访问此 Windows 账户或磁盘的人可以直接读取。
+- 对话内容、与当前话题相关的长期事实、附件内容会发送给你配置的 AI 提供商；启用网页搜索时会请求 Tavily，网页阅读 / 新闻工具会请求目标网站或 BBC News RSS。
+- API Key 使用 DPAPI 加密保存；日志不会记录 API Key、完整对话或工具参数，但仍可能包含调用状态、耗时、错误响应和文件路径等诊断信息，请勿把日志或导出文件发给不可信的人。
+- 数据导出和自动备份 **不包含 `settings.json`**（避免密钥跨设备复用），并且 ZIP **没有加密**。
+- 「设置 → 调试 → 清除数据库」目前只清理会话、消息、日记、长期事实、附件元数据和轮次摘要；不会删除待办、工具审计日志、附件 blob、日志和备份。彻底清理请手动删除数据目录。
+
+### 卸载
+
+**安装版**：打开 Windows「设置 → 应用 → 已安装的应用」，找到 Luna 并卸载。卸载程序会询问是否同时删除个人数据，默认保留。
+
+**免安装 ZIP 版**：
+
+1. 如开启过开机自启，先在「设置 → 通用」中关闭。
+2. 托盘右键 → 关闭，退出 Luna。
+3. 删除解压后的程序目录。
+4. 如需彻底删除个人数据，再手动删除 `%APPDATA%\Luna` 和 `%LOCALAPPDATA%\Luna`。
+
+> 删除数据目录不可恢复；请先在设置页的「数据备份」区域导出备份。
+
+---
+
+## ⚠️ Beta 已知问题
+
+> 这是首个公开测试版，数据格式与功能行为仍可能调整；升级前请先在设置页导出备份。
+
+- 会话历史尚未做上下文预算与滚动摘要，极长会话可能触及模型上下文上限或增加费用。
+- 工具结果超过 5000 字会被截断，暂不支持按 ID 回读完整结果。
+- 代码沙箱目前只有超时限制，尚未施加 256 MB 内存硬限制。
+- 更新通过下载完整安装包进行，暂不支持增量更新；安装包未签名，可能被 SmartScreen 提示未知发布者。
+- 视觉仅支持图片 / 截图输入（需模型支持视觉）；OCR 与语音输入尚未实现。
+- 未提供整库加密或隐身会话；敏感数据请自行保护 Windows 账户与磁盘。
 
 ---
 
@@ -145,6 +231,8 @@ Luna/
 │   ├── Data/                        # DatabaseService（SQLite 连接）
 │   ├── Controls/                    # 自定义控件（对话框、右键菜单、平滑滚动等）
 │   └── Styles/                      # XAML 资源字典
+├── installer/                       # Inno Setup 安装脚本
+├── licenses/                        # 字体等第三方许可证
 └── Luna.sln
 ```
 
@@ -172,9 +260,10 @@ Luna/
 - [x] 系统级工具：PowerShell（白名单）、写入文件（沙箱）、打开文件/应用
 - [x] 系统级工具：截图（Windows 10 2004+ 窗口排除，旧版移屏兜底）
 
-### 进行中
+### 计划中
 
-- [ ] 视觉与 OCR 输入
+- [ ] OCR 与语音输入
+- [ ] 自动事实抽取与事实管理 UI
 
 ---
 

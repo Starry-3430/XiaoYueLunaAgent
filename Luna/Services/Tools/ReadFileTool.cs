@@ -116,18 +116,18 @@ public class ReadFileTool : ITool
                 if (string.IsNullOrWhiteSpace(markdown))
                     return ToolResult.Error(Text("Tool_ReadFile_Msg_Empty"));
 
-                _logger.LogInformation("文档读取成功：{Path}，长度 {Length}", fullPath, markdown.Length);
+                _logger.LogInformation("文档读取成功，长度 {Length}", markdown.Length);
                 return BuildResult(markdown, fullPath, keyword, startLine, endLine);
             }
 
             var bytes = await File.ReadAllBytesAsync(fullPath, ct);
             if (!TryDecodeText(bytes, out var content))
             {
-                _logger.LogWarning("拒绝读取非文本文件：{Path}", fullPath);
+                _logger.LogWarning("拒绝读取非文本文件");
                 return ToolResult.Error(Text("Tool_ReadFile_Msg_Binary"));
             }
 
-            _logger.LogInformation("读取文件成功：{Path}，长度 {Length}", fullPath, content.Length);
+            _logger.LogInformation("读取文件成功，长度 {Length}", content.Length);
             return BuildResult(content, fullPath, keyword, startLine, endLine);
         }
         catch (OperationCanceledException)
@@ -136,7 +136,7 @@ public class ReadFileTool : ITool
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "读取文件失败：{Path}", fullPath);
+            _logger.LogError(ex, "读取文件失败");
             return ToolResult.Error(Text("Tool_ReadFile_Msg_Failed", ex.Message));
         }
     }
