@@ -14,6 +14,7 @@
 WizardSmallImageFile=
 AppId={#MyAppId}
 AppName={#MyAppName}
+AppMutex=Global\Luna_SingleInstance_Mutex
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -59,6 +60,20 @@ Name: "{autodesktop}\Luna"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopico
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,Luna}"; Flags: nowait postinstall
 
 [Code]
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+
+  // 卸载会删除程序文件，且可能同时删除个人数据。Luna 仍在运行时，
+  // 被占用的文件无法删除，会造成程序目录和用户数据只被删掉一部分。
+  if CheckForMutexes('Global\Luna_SingleInstance_Mutex') then
+  begin
+    MsgBox('Luna 正在运行。请先从托盘菜单退出 Luna，再重新执行卸载。',
+      mbError, MB_OK);
+    Result := False;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   ResultCode: Integer;

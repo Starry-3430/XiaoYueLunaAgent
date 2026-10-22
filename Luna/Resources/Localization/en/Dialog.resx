@@ -89,6 +89,22 @@ Continue?</value>
     <value>Because the settings.json configuration file was lost or its structure was damaged, the tool and settings configuration has been reset.</value>
   </data>
 
+  <!-- Settings recovered from backup -->
+  <data name="Dialog_SettingsRecovered_Title" xml:space="preserve">
+    <value>Configuration Restored</value>
+  </data>
+  <data name="Dialog_SettingsRecovered_Body" xml:space="preserve">
+    <value>settings.json could not be read or was damaged. The last valid configuration backup has been restored.</value>
+  </data>
+
+  <!-- Settings temporarily unavailable -->
+  <data name="Dialog_SettingsUnavailable_Title" xml:space="preserve">
+    <value>Configuration Unavailable</value>
+  </data>
+  <data name="Dialog_SettingsUnavailable_Body" xml:space="preserve">
+    <value>settings.json could not be read. Default settings will be used for this session, and the original file will not be overwritten. Check file permissions or disk status, then restart the app.</value>
+  </data>
+
   <!-- 选择文件夹 -->
   <data name="Dialog_ChooseFolder_Title" xml:space="preserve">
     <value>Select Output Directory</value>
