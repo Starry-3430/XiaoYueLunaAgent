@@ -478,8 +478,14 @@ public class ToolPermissionService
     }
 
     private static Window? GetOwner()
-        => Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
-           ?? Application.Current?.MainWindow;
+    {
+        // App 会确保临时显示一个可用的宿主窗口；绝不能用从未 Show 过的窗口当 Owner。
+        if (Application.Current is App app)
+            return app.EnsureDialogOwner();
+
+        return Application.Current?.Windows.OfType<Window>()
+            .FirstOrDefault(w => w.IsActive && w.IsVisible);
+    }
 
     private static string ConversationKey(string? conversationId)
         => string.IsNullOrEmpty(conversationId) ? string.Empty : conversationId;
