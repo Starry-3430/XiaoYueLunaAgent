@@ -354,6 +354,49 @@ public partial class App : Application
         _homeWindow.Activate();
     }
 
+    /// <summary>
+    /// 为模态弹窗准备宿主窗口：有激活窗口就直接复用；没有（例如静默自启后只在托盘中，
+    /// 或用户切到了其它程序）则显示并激活 HomeWindow，保证返回的窗口一定已有 HWND。
+    /// 必须在 UI 线程调用。
+    /// </summary>
+    internal Window? EnsureDialogOwner()
+    {
+        var active = FindActiveWindow();
+        if (active is not null) return active;
+
+        // 欢迎向导打开时 ShowHomeWindow 只激活向导，不创建主界面。
+        try
+        {
+            ShowHomeWindow();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "为弹窗显示主界面失败");
+        }
+
+        var owner = FindActiveWindow() ?? FindShownWindow();
+        if (owner is null) return null;
+
+        if (owner.WindowState == WindowState.Minimized)
+            owner.WindowState = WindowState.Normal;
+        owner.Activate();
+        return owner;
+    }
+
+    private static Window? FindActiveWindow()
+        => Application.Current?.Windows.OfType<Window>()
+            .FirstOrDefault(w => w.IsActive && IsUsableDialogOwner(w));
+
+    private static Window? FindShownWindow()
+        => Application.Current?.Windows.OfType<Window>()
+            .FirstOrDefault(IsUsableDialogOwner);
+
+    /// <summary>已显示过（HWND 已创建）且当前可见、未最小化的窗口才能作为弹窗 Owner。</summary>
+    private static bool IsUsableDialogOwner(Window window)
+        => window.IsVisible
+           && window.WindowState != WindowState.Minimized
+           && new WindowInteropHelper(window).Handle != IntPtr.Zero;
+
     /// <summary>处理系统通知点击：启动完成后显示主界面并打开目标会话。</summary>
     private void OnSessionNotificationActivated(string sessionId)
     {
@@ -525,7 +568,7 @@ public partial class App : Application
         // 8. 配置文件异常时提示用户：恢复、重置或暂时不可用（首次运行时不再提示）
         var settingsService = _host.Services.GetRequiredService<SettingsService>();
         if (!isFirstRun && settingsService.LastLoadStatus != SettingsLoadStatus.Loaded)
-            ShowSettingsLoadIssueDialog(mainWindow, settingsService.LastLoadStatus);
+            ShowSettingsLoadIssueDialog(EnsureDialogOwner(), settingsService.LastLoadStatus);
 
         // 9. 首次运行：显示欢迎向导；向导关闭（非完成）时直接结束进程。
         if (isFirstRun)
@@ -662,7 +705,7 @@ public partial class App : Application
     }
 
     /// <summary>配置文件恢复、重置或暂时不可用时弹出的提示。</summary>
-    private static void ShowSettingsLoadIssueDialog(Window owner, SettingsLoadStatus status)
+    private static void ShowSettingsLoadIssueDialog(Window? owner, SettingsLoadStatus status)
     {
         var loc = LocalizationService.Instance;
         var (titleKey, bodyKey) = status switch
