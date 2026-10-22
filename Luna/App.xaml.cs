@@ -544,38 +544,80 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
-    /// <summary>显示首次运行欢迎向导；主界面成功打开后再写入 .installed 标记。</summary>
+    /// <summary>
+    /// 显示首次运行欢迎向导；向导不可用时回退到主界面，
+    /// 避免首次运行标记缺失导致应用永久卡在欢迎向导而无法启动。
+    /// </summary>
     private void ShowWelcomeWizard()
     {
-        var welcome = _host.Services.GetRequiredService<WelcomeWindow>();
+        WelcomeWindow welcome;
+        try
+        {
+            welcome = _host.Services.GetRequiredService<WelcomeWindow>();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "创建欢迎向导失败，回退到主界面");
+            CompleteOnboarding();
+            return;
+        }
+
         _welcomeWindow = welcome;
 
+        var wizardFailed = false;
         try
         {
             welcome.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            wizardFailed = true;
+            Log.Error(ex, "显示欢迎向导失败，回退到主界面");
+
+            try { welcome.Close(); }
+            catch { /* 忽略关闭失败，继续回退到主界面 */ }
         }
         finally
         {
             _welcomeWindow = null;
         }
 
-        if (!welcome.Completed)
+        // 用户主动关闭向导：保留首次运行状态，下次启动可以继续引导。
+        if (!wizardFailed && !welcome.Completed)
         {
             Shutdown();
             return;
         }
 
+        if (wizardFailed)
+            Log.Warning("欢迎向导不可用，已跳过首次引导并继续启动应用");
+
+        CompleteOnboarding();
+    }
+
+    /// <summary>
+    /// 首次运行收尾：打开主界面、写入完成标记并启动后台服务。
+    /// 即使欢迎向导失败也必须继续启动链，避免配置、早报和提醒全部失效。
+    /// </summary>
+    private void CompleteOnboarding()
+    {
         ShutdownMode = ShutdownMode.OnLastWindowClose;
 
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        mainWindow.Show();
-        mainWindow.ShowInternal();
-        mainWindow.WindowState = WindowState.Normal;
-        mainWindow.Activate();
+        try
+        {
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+            mainWindow.ShowInternal();
+            mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "首次运行结束后显示主界面失败");
+        }
 
-        // 确认主界面已经成功打开后，才写入新手引导完成标记。
+        // 即使主界面显示失败也写入标记：否则每次启动都会重复失败的欢迎向导。
         InstallMarker.MarkInstalled();
-
         StartBackgroundServices();
     }
 
