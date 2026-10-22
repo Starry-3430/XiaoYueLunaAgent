@@ -522,9 +522,10 @@ public partial class App : Application
         if (!isFirstRun)
             StartBackgroundServices();
 
-        // 8. 配置文件丢失或损坏时，已自动重置，提示用户（首次运行时不再提示）
-        if (!isFirstRun && _host.Services.GetRequiredService<SettingsService>().LastLoadWasReset)
-            ShowSettingsResetDialog(mainWindow);
+        // 8. 配置文件异常时提示用户：恢复、重置或暂时不可用（首次运行时不再提示）
+        var settingsService = _host.Services.GetRequiredService<SettingsService>();
+        if (!isFirstRun && settingsService.LastLoadStatus != SettingsLoadStatus.Loaded)
+            ShowSettingsLoadIssueDialog(mainWindow, settingsService.LastLoadStatus);
 
         // 9. 首次运行：显示欢迎向导；向导关闭（非完成）时直接结束进程。
         if (isFirstRun)
@@ -660,17 +661,26 @@ public partial class App : Application
         if (_trayCloseItem is not null) _trayCloseItem.Header = loc["App_Tray_Close"];
     }
 
-    /// <summary>配置文件丢失或结构损坏并已重置时弹出的提示。</summary>
-    private static void ShowSettingsResetDialog(Window owner)
+    /// <summary>配置文件恢复、重置或暂时不可用时弹出的提示。</summary>
+    private static void ShowSettingsLoadIssueDialog(Window owner, SettingsLoadStatus status)
     {
         var loc = LocalizationService.Instance;
+        var (titleKey, bodyKey) = status switch
+        {
+            SettingsLoadStatus.RecoveredFromBackup =>
+                ("Dialog_SettingsRecovered_Title", "Dialog_SettingsRecovered_Body"),
+            SettingsLoadStatus.ResetToDefaults =>
+                ("Dialog_SettingsReset_Title", "Dialog_SettingsReset_Body"),
+            _ => ("Dialog_SettingsUnavailable_Title", "Dialog_SettingsUnavailable_Body"),
+        };
+
         var dialog = new LunaDialog
         {
             Owner = owner,
-            DialogTitle = loc["Dialog_SettingsReset_Title"],
+            DialogTitle = loc[titleKey],
             DialogContent = new TextBlock
             {
-                Text = loc["Dialog_SettingsReset_Body"],
+                Text = loc[bodyKey],
                 TextWrapping = TextWrapping.Wrap,
                 TextAlignment = TextAlignment.Left,
                 HorizontalAlignment = HorizontalAlignment.Left,

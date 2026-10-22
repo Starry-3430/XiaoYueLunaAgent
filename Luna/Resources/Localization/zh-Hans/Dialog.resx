@@ -89,6 +89,22 @@
     <value>由于settings.json配置文件丢失或结构被破坏，已重置工具和设置的相关配置</value>
   </data>
 
+  <!-- 配置文件从备份恢复 -->
+  <data name="Dialog_SettingsRecovered_Title" xml:space="preserve">
+    <value>配置已恢复</value>
+  </data>
+  <data name="Dialog_SettingsRecovered_Body" xml:space="preserve">
+    <value>settings.json 无法读取或已损坏，已从最近一次有效的配置备份恢复。</value>
+  </data>
+
+  <!-- 配置文件暂时不可用 -->
+  <data name="Dialog_SettingsUnavailable_Title" xml:space="preserve">
+    <value>配置暂不可用</value>
+  </data>
+  <data name="Dialog_SettingsUnavailable_Body" xml:space="preserve">
+    <value>暂时无法读取 settings.json。本次启动将使用默认设置，原配置文件不会被覆盖。请检查文件权限或磁盘状态后重启应用。</value>
+  </data>
+
   <!-- 选择文件夹 -->
   <data name="Dialog_ChooseFolder_Title" xml:space="preserve">
     <value>选择输出目录</value>
