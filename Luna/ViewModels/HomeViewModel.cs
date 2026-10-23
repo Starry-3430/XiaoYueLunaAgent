@@ -35,8 +35,10 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private readonly FileStorageService _fileStorage;
     private readonly IDocumentConverterService _documentConverter;
     private readonly SearchRepository _searchRepo;
+    private readonly AttachmentRepository _attachmentRepo;
     private readonly ILogger<HomeViewModel> _logger;
     private string? _currentSessionId;
+    private ChatMessage? _editingUserMessage;
     private readonly Dictionary<string, string> _sessionDrafts = new();
     private readonly Dictionary<string, List<Attachment>> _sessionAttachments = new();
     private SessionRuntime? _runtime;
@@ -105,6 +107,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         ToolPermissionService toolPermission, SettingsService settingsService,
         ChatGenerationService generation, FileStorageService fileStorage,
         IDocumentConverterService documentConverter, SearchRepository searchRepo,
+        AttachmentRepository attachmentRepo,
         ILogger<HomeViewModel> logger)
     {
         _sessionRepo = sessionRepo;
@@ -117,6 +120,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         _fileStorage = fileStorage;
         _documentConverter = documentConverter;
         _searchRepo = searchRepo;
+        _attachmentRepo = attachmentRepo;
         _logger = logger;
 
         _tavilyApiKey = _aiSettings.TavilyApiKey;
@@ -578,7 +582,9 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [RelayCommand]
     private void NewChat()
     {
-        SaveCurrentDraft();
+        var wasEditing = _editingUserMessage is not null;
+        CancelEditing();
+        if (!wasEditing) SaveCurrentDraft();
         _toolPermission.ClearConversation(_currentSessionId);
         _attachmentCts?.Cancel();
         Runtime = null;
@@ -601,7 +607,9 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             return;
         }
 
-        SaveCurrentDraft();
+        var wasEditing = _editingUserMessage is not null;
+        CancelEditing();
+        if (!wasEditing) SaveCurrentDraft();
         PendingAttachments.Clear();
 
         _currentSessionId = session.Id;
@@ -674,6 +682,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
             if (wasSelected)
             {
+                CancelEditing();
                 Runtime = null;
                 _currentSessionId = null;
                 SelectedSession = null;
@@ -882,6 +891,25 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 userText = LocalizationService.Instance["Common_ReadAttachmentsPrompt"];
             ApplyTokenBudget(prepared);
 
+            var editing = _editingUserMessage;
+            if (editing is not null && !CanEditUserMessage(editing))
+            {
+                CancelEditing();
+                editing = null;
+            }
+
+            if (editing is not null)
+            {
+                // 编辑最后一条用户消息：以重写语义归档旧分支并生成新版本。
+                var sessionId = _currentSessionId!;
+                Runtime = await _generation.GetOrLoadAsync(sessionId);
+                await _generation.EditUserMessageAsync(sessionId, editing, userText, prepared);
+                CancelEditing();
+                PendingAttachments.Clear();
+                _sessionAttachments[sessionId] = new List<Attachment>();
+                return;
+            }
+
             if (_currentSessionId is null)
             {
                 var session = new Session();
@@ -900,15 +928,15 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 SelectedSession = item;
             }
 
-            var sessionId = _currentSessionId;
-            Runtime = await _generation.GetOrLoadAsync(sessionId);
+            var newSessionId = _currentSessionId;
+            Runtime = await _generation.GetOrLoadAsync(newSessionId);
 
             // 生成在服务中后台执行：切换界面/会话不会中断，用户消息与 AI 输出由服务写库并推进。
-            await _generation.SendAsync(sessionId, userText, prepared);
+            await _generation.SendAsync(newSessionId, userText, prepared);
 
             // 发送成功后清空待发送附件（并清掉该会话的暂存）
             PendingAttachments.Clear();
-            _sessionAttachments[sessionId] = new List<Attachment>();
+            _sessionAttachments[newSessionId] = new List<Attachment>();
         }
         catch (Exception ex)
         {
@@ -929,6 +957,73 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             _generation.Cancel(_currentSessionId);
     }
 
+    /// <summary>是否允许编辑：只允许当前会话最后一条激活的用户消息。</summary>
+    public bool CanEditUserMessage(ChatMessage? msg)
+    {
+        if (msg is null || msg.Role != "user" || IsBusy || _currentSessionId is null)
+            return false;
+
+        var runtimeMessages = Runtime?.Messages;
+        return runtimeMessages is not null &&
+               ReferenceEquals(runtimeMessages.LastOrDefault(m => m.IsActive && m.Role == "user"), msg);
+    }
+
+    /// <summary>进入编辑模式：恢复用户消息内容与同轮附件到输入区。</summary>
+    public async Task BeginEditUserMessageAsync(ChatMessage msg)
+    {
+        if (!CanEditUserMessage(msg)) return;
+
+        _editingUserMessage = msg;
+        InputText = msg.Content;
+        PendingAttachments.Clear();
+
+        try
+        {
+            if (!string.IsNullOrEmpty(msg.TurnId))
+            {
+                var attachments = await _attachmentRepo.GetByTurnAsync(msg.TurnId);
+                foreach (var attachment in attachments)
+                    PendingAttachments.Add(CloneAttachment(attachment));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "恢复编辑消息的附件失败：{TurnId}", msg.TurnId);
+        }
+
+        Status = LocalizationService.Instance["Common_Status_Editing"];
+    }
+
+    private void CancelEditing()
+    {
+        _editingUserMessage = null;
+    }
+
+    /// <summary>按 Esc 取消编辑：清空恢复的内容与附件，回到就绪状态。</summary>
+    public bool TryCancelEditing()
+    {
+        if (_editingUserMessage is null) return false;
+
+        CancelEditing();
+        InputText = string.Empty;
+        PendingAttachments.Clear();
+        Status = Runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
+        return true;
+    }
+
+    private static Attachment CloneAttachment(Attachment source) => new()
+    {
+        Id = Guid.NewGuid().ToString("N"),
+        FileName = source.FileName,
+        FileExtension = source.FileExtension,
+        FileSize = source.FileSize,
+        Sha256 = source.Sha256,
+        StoredPath = source.StoredPath,
+        ConvertedMarkdown = source.ConvertedMarkdown,
+        SourcePath = source.SourcePath,
+        CreatedAtUtc = DateTime.UtcNow,
+    };
+
     [RelayCommand]
     private async Task RewriteMessageAsync(ChatMessage msg)
     {
@@ -947,7 +1042,9 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     private async Task SwitchVersionAsync(ChatMessage msg, int direction)
     {
         if (_currentSessionId is null || IsBusy) return;
+        CancelEditing();
         await _generation.SwitchVersionAsync(_currentSessionId, msg, direction);
+        Status = Runtime?.Status ?? LocalizationService.Instance["Common_Status_Ready"];
     }
 
     public void Receive(SessionUpdateMessage message)

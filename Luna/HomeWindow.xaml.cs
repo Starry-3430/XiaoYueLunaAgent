@@ -713,7 +713,16 @@ public partial class HomeWindow : Window
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is TextBox tb)
-            _ = new BubbleContextMenu(tb);
+            _ = new BubbleContextMenu(tb,
+                edit: BeginEditMessage,
+                canEdit: _viewModel.CanEditUserMessage);
+    }
+
+    private async void BeginEditMessage(ChatMessage msg)
+    {
+        await _viewModel.BeginEditUserMessageAsync(msg);
+        InputBox.Focus();
+        InputBox.CaretIndex = InputBox.Text.Length;
     }
 
     // ===== AI 操作按钮 =====
@@ -1377,6 +1386,12 @@ public partial class HomeWindow : Window
     /// </summary>
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.TryCancelEditing())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
         if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
             && IsActive && _viewModel.TryPasteClipboardAttachments())

@@ -31,6 +31,12 @@ public class MessageRepository
             new { SessionId = sessionId, Id = afterId });
     }
 
+    public async Task DeleteAsync(long id)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.ExecuteAsync("DELETE FROM Messages WHERE Id = @Id", new { Id = id });
+    }
+
     /// <summary>更新消息的版本激活状态、版本分组与版本序号。</summary>
     public async Task UpdateMessageVersionAsync(long id, bool isActive, string? versionGroupId, int versionIndex)
     {

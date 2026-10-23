@@ -82,4 +82,11 @@ public class AttachmentRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         return await conn.ExecuteAsync("DELETE FROM Attachments WHERE Id = @Id", new { Id = id });
     }
+
+    /// <summary>删除某个轮次下的全部附件记录（用于清理失败的重写分支）。</summary>
+    public async Task<int> DeleteByTurnAsync(string turnId)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        return await conn.ExecuteAsync("DELETE FROM Attachments WHERE TurnId = @TurnId", new { TurnId = turnId });
+    }
 }

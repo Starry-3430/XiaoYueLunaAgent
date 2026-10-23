@@ -15,6 +15,7 @@
 
   <!-- 聊天通用 -->
   <data name="Common_Status_Ready" xml:space="preserve"><value>就绪</value></data>
+  <data name="Common_Status_Editing" xml:space="preserve"><value>正在编辑消息，按下Esc可取消编辑</value></data>
   <data name="Common_Thinking" xml:space="preserve"><value>正在思考</value></data>
   <data name="Common_ReasoningProcess" xml:space="preserve"><value>思考过程</value></data>
   <data name="Common_Params" xml:space="preserve"><value>参数</value></data>
@@ -25,6 +26,7 @@
   <data name="Common_Rename" xml:space="preserve"><value>重命名</value></data>
   <data name="Common_Delete" xml:space="preserve"><value>删除</value></data>
   <data name="Common_Rewrite" xml:space="preserve"><value>重写</value></data>
+  <data name="Common_Edit" xml:space="preserve"><value>编辑</value></data>
   <data name="Common_PreviousVersion" xml:space="preserve"><value>上一个版本</value></data>
   <data name="Common_NextVersion" xml:space="preserve"><value>下一个版本</value></data>
   <data name="Common_ScrollToBottom" xml:space="preserve"><value>滚动到底部</value></data>
