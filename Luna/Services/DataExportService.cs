@@ -97,7 +97,7 @@ public sealed class DataExportService
                 "SELECT Id, Title, CreatedAtUtc, UpdatedAtUtc, IsArchived FROM Sessions ORDER BY UpdatedAtUtc DESC", ct)).ToList();
             messages = (await QueryAsync<MessageRow>(conn, tx,
                 @"SELECT Id, SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson,
-                         ToolCallId, ErrorMessage, ContentType, IsActive, VersionGroupId, CreatedAtUtc, LogicalDate
+                         ToolCallId, ErrorMessage, ContentType, IsActive, VersionGroupId, VersionIndex, CreatedAtUtc, LogicalDate
                   FROM Messages ORDER BY CreatedAtUtc, Id", ct)).ToList();
             tasks = (await QueryAsync<TaskRow>(conn, tx,
                 @"SELECT Id, Title, Notes, DueAtUtc, RemindAtUtc, Status, Priority, ReminderCount,
@@ -277,6 +277,7 @@ public sealed class DataExportService
         public string ContentType { get; set; } = string.Empty;
         public long IsActive { get; set; }
         public string? VersionGroupId { get; set; }
+        public long VersionIndex { get; set; }
         public string CreatedAtUtc { get; set; } = string.Empty;
         public string LogicalDate { get; set; } = string.Empty;
     }

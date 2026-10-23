@@ -297,7 +297,11 @@ public sealed class ChatGenerationService
         return string.Join("\n", lines);
     }
 
-    /// <summary>重写最后一条 AI 回复：旧版本保留并隐藏，生成一个新版本。</summary>
+    /// <summary>
+    /// 重写最后一条 AI 回复：把本轮用户输入之后由 AI 生成的全部内容（含多轮工具调用、
+    /// 工具结果与思考过程）整体作为一个旧版本隐藏，再生成一个完整的新版本。
+    /// 旧版本仍保留在内存和数据库中，切换回答历史时恢复。
+    /// </summary>
     public async Task RewriteAsync(string sessionId, ChatMessage msg)
     {
         var runtime = await GetOrLoadAsync(sessionId);
@@ -314,40 +318,65 @@ public sealed class ChatGenerationService
             return;
         }
 
+        // 找到本轮用户消息的边界：其后的所有激活 AI 消息都属于本次回答，
+        // 必须整体隐藏，否则工具调用历史/思考内容会残留，并继续影响新回答的上下文。
+        var turnStart = 0;
+        for (var i = index - 1; i >= 0; i--)
+        {
+            if (messages[i].Role == "user")
+            {
+                turnStart = i + 1;
+                break;
+            }
+        }
+
+        var currentVersionMessages = messages
+            .Skip(turnStart)
+            .Where(m => m.IsActive && (m.Role == "assistant" || m.Role == "tool"))
+            .ToList();
+        if (!currentVersionMessages.Contains(msg))
+            currentVersionMessages.Add(msg);
+
         var versionGroupId = msg.VersionGroupId ?? Guid.NewGuid().ToString("N");
-        var existingVersions = messages
-            .Where(m => m.Role == "assistant" &&
-                        string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
-            .OrderBy(m => m.DbId)
+
+        // 组内已有版本的序号集合；新版本接在最大值之后。
+        var existingIndexes = messages
+            .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
+            .Select(m => m.VersionIndex)
+            .Where(i => i > 0)
+            .Distinct()
             .ToList();
 
-        if (!existingVersions.Contains(msg))
-            existingVersions.Add(msg);
+        var oldVersionIndex = msg.VersionGroupId is not null && msg.VersionIndex > 0
+            ? msg.VersionIndex
+            : 1;
+        var newVersionIndex = (existingIndexes.Count > 0 ? existingIndexes.Max() : 0) + 1;
+        if (newVersionIndex <= oldVersionIndex)
+            newVersionIndex = oldVersionIndex + 1;
+        var totalVersions = Math.Max(newVersionIndex,
+            existingIndexes.Count > 0 ? existingIndexes.Max() : 0);
 
-        var totalVersions = existingVersions.Count + 1;
-
-        // 先把旧版本全部隐藏并归组；内存中保留，供 UI 切换。
-        for (var i = 0; i < existingVersions.Count; i++)
+        // 先把当前回答的所有 AI 消息归入同一版本并隐藏；内存中保留，供 UI 切换。
+        foreach (var version in currentVersionMessages)
         {
-            var version = existingVersions[i];
             version.VersionGroupId = versionGroupId;
-            version.VersionIndex = i + 1;
+            version.VersionIndex = oldVersionIndex;
             version.TotalVersions = totalVersions;
             version.IsActive = false;
 
             if (version.DbId > 0)
-                await _messageRepo.UpdateMessageVersionAsync(version.DbId, false, versionGroupId);
+                await _messageRepo.UpdateMessageVersionAsync(
+                    version.DbId, false, versionGroupId, oldVersionIndex);
         }
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
-        var messageCountBefore = messages.Count;
 
         var success = false;
         try
         {
             success = await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate,
-                versionGroupId, totalVersions, totalVersions);
+                versionGroupId, newVersionIndex, totalVersions);
         }
         catch (Exception ex)
         {
@@ -357,41 +386,44 @@ public sealed class ChatGenerationService
         if (!success)
         {
             // 清理本次失败尝试新增的消息：数据库标记为非激活，内存中移除，避免挡住后续重写。
-
-            for (var i = messages.Count - 1; i >= messageCountBefore; i--)
+            for (var i = messages.Count - 1; i >= 0; i--)
             {
                 var added = messages[i];
+                if (!string.Equals(added.VersionGroupId, versionGroupId, StringComparison.Ordinal) ||
+                    added.VersionIndex != newVersionIndex)
+                    continue;
+
                 if (added.DbId > 0)
                 {
                     await _messageRepo.UpdateMessageVersionAsync(
-                        added.DbId, false, added.VersionGroupId);
+                        added.DbId, false, versionGroupId, newVersionIndex);
                 }
                 messages.RemoveAt(i);
             }
 
             // 恢复旧版本，避免会话没有可见回复。
-            msg.IsActive = true;
-            foreach (var version in existingVersions)
+            var oldVersions = messages
+                .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal) &&
+                            m.VersionIndex == oldVersionIndex)
+                .ToList();
+            foreach (var version in oldVersions)
             {
-                version.TotalVersions = existingVersions.Count;
+                version.IsActive = true;
                 if (version.DbId > 0)
                 {
                     await _messageRepo.UpdateMessageVersionAsync(
-                        version.DbId, ReferenceEquals(version, msg), versionGroupId);
+                        version.DbId, true, versionGroupId, oldVersionIndex);
                 }
             }
 
-            if (existingVersions.Count == 1)
-            {
-                msg.VersionIndex = 1;
-                msg.TotalVersions = 1;
-            }
-
-            UpdateRewriteEligibility(messages);
         }
+
+        AssignVersionMetadata(messages);
+        MarkFinalReplies(messages);
+        UpdateRewriteEligibility(messages);
     }
 
-    /// <summary>在同一版本组内左右切换当前激活的回复，并同步数据库状态。</summary>
+    /// <summary>在同一版本组内左右切换当前激活的回复（连同其工具调用历史），并同步数据库状态。</summary>
     public async Task SwitchVersionAsync(string sessionId, ChatMessage msg, int direction)
     {
         var runtime = await GetOrLoadAsync(sessionId);
@@ -400,26 +432,34 @@ public sealed class ChatGenerationService
         var messages = runtime.Messages;
         if (string.IsNullOrEmpty(msg.VersionGroupId) || !messages.Contains(msg)) return;
 
-        var versions = messages
-            .Where(m => m.Role == "assistant" &&
-                        string.Equals(m.VersionGroupId, msg.VersionGroupId, StringComparison.Ordinal))
-            .OrderBy(m => m.VersionIndex)
+        var groupMessages = messages
+            .Where(m => string.Equals(m.VersionGroupId, msg.VersionGroupId, StringComparison.Ordinal))
             .ToList();
-        if (versions.Count <= 1) return;
 
-        var targetIndex = msg.VersionIndex + direction;
-        if (targetIndex < 1 || targetIndex > versions.Count) return;
+        var indexes = groupMessages
+            .Select(m => m.VersionIndex)
+            .Where(i => i > 0)
+            .Distinct()
+            .OrderBy(i => i)
+            .ToList();
+        if (indexes.Count <= 1) return;
 
-        var target = versions.FirstOrDefault(m => m.VersionIndex == targetIndex);
-        if (target is null || ReferenceEquals(target, msg)) return;
+        var position = indexes.IndexOf(msg.VersionIndex);
+        if (position < 0) return;
 
-        foreach (var version in versions)
-            version.IsActive = ReferenceEquals(version, target);
+        var targetPosition = position + direction;
+        if (targetPosition < 0 || targetPosition >= indexes.Count) return;
 
-        foreach (var version in versions.Where(v => v.DbId > 0))
+        var targetIndex = indexes[targetPosition];
+
+        foreach (var version in groupMessages)
+            version.IsActive = version.VersionIndex == targetIndex;
+
+        foreach (var version in groupMessages.Where(v => v.DbId > 0))
             await _messageRepo.UpdateMessageVersionAsync(
-                version.DbId, version.IsActive, version.VersionGroupId);
+                version.DbId, version.IsActive, version.VersionGroupId, version.VersionIndex);
 
+        AssignVersionMetadata(messages);
         MarkFinalReplies(messages);
         UpdateRewriteEligibility(messages);
     }
@@ -465,6 +505,12 @@ public sealed class ChatGenerationService
 
                 var previousReply = activeReply;
                 var uiReply = new ChatMessage { Role = "assistant", Content = string.Empty, IsStreaming = true };
+                if (versionGroupId is not null)
+                {
+                    uiReply.VersionGroupId = versionGroupId;
+                    uiReply.VersionIndex = versionIndex;
+                    uiReply.TotalVersions = totalVersions;
+                }
                 messages.Add(uiReply);
                 activeReply = uiReply;
 
@@ -492,13 +538,6 @@ public sealed class ChatGenerationService
                     replyContent = content;
                     replyReasoning = reasoning;
                     replyFinishReason = finishReason;
-
-                    if (versionGroupId is not null)
-                    {
-                        uiReply.VersionGroupId = versionGroupId;
-                        uiReply.VersionIndex = versionIndex;
-                        uiReply.TotalVersions = totalVersions;
-                    }
 
                     lastAssistantMsg = uiReply;
                     break;
@@ -654,21 +693,29 @@ public sealed class ChatGenerationService
                 }
 
                 // 所有结果按原始调用顺序写入会话，包含被用户拒绝的占位结果。
+                // 工具消息与对应 assistant 同属一个回答版本，重试/切换时一起隐藏或恢复。
+                var toolChatMessages = new List<ChatMessage>(sortedCalls.Count);
                 foreach (var (_, entry) in sortedCalls)
                 {
-                    messages.Add(new ChatMessage
+                    var toolChatMessage = new ChatMessage
                     {
                         Role = "tool",
                         Content = entry.ResultJson,
                         ToolCallId = entry.ToolCallId,
-                        ToolCalls = { new ToolCallEntry { ToolCallId = entry.ToolCallId, ToolName = entry.ToolName } },
-                    });
+                        VersionGroupId = versionGroupId,
+                        VersionIndex = versionIndex,
+                        TotalVersions = totalVersions,
+                    };
+                    toolChatMessage.ToolCalls.Add(
+                        new ToolCallEntry { ToolCallId = entry.ToolCallId, ToolName = entry.ToolName });
+                    messages.Add(toolChatMessage);
+                    toolChatMessages.Add(toolChatMessage);
                 }
 
                 var toolCallsJson = JsonSerializer.Serialize(
                     sortedCalls.Select(kv => new { kv.Value.ToolCallId, kv.Value.ToolName, kv.Value.ArgumentsJson, kv.Value.ResultJson }));
 
-                await _messageRepo.InsertAsync(new Message
+                uiReply.DbId = await _messageRepo.InsertAsync(new Message
                 {
                     SessionId = sessionId,
                     TurnId = turnId,
@@ -676,20 +723,26 @@ public sealed class ChatGenerationService
                     Content = content,
                     ReasoningContent = reasoning,
                     ToolCallsJson = toolCallsJson,
+                    IsActive = uiReply.IsActive,
+                    VersionGroupId = versionGroupId,
+                    VersionIndex = versionIndex,
                     CreatedAtUtc = DateTime.UtcNow,
                     LogicalDate = logicalDate,
                 });
 
-                foreach (var (_, entry) in sortedCalls)
+                foreach (var toolChatMessage in toolChatMessages)
                 {
-                    await _messageRepo.InsertAsync(new Message
+                    toolChatMessage.DbId = await _messageRepo.InsertAsync(new Message
                     {
                         SessionId = sessionId,
                         TurnId = turnId,
                         Role = "tool",
-                        Content = entry.ResultJson,
-                        ToolCallId = entry.ToolCallId,
+                        Content = toolChatMessage.Content,
+                        ToolCallId = toolChatMessage.ToolCallId,
                         ContentType = "tool_result",
+                        IsActive = toolChatMessage.IsActive,
+                        VersionGroupId = versionGroupId,
+                        VersionIndex = versionIndex,
                         CreatedAtUtc = DateTime.UtcNow,
                         LogicalDate = logicalDate,
                     });
@@ -704,7 +757,8 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, LocalizationService.Instance["Common_Canceled"]);
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
+                    LocalizationService.Instance["Common_Canceled"], versionGroupId, versionIndex);
             }
         }
         catch (Exception ex)
@@ -714,7 +768,8 @@ public sealed class ChatGenerationService
             if (activeReply is not null)
             {
                 activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply, LocalizationService.Instance.Format("Common_SendFailed", ex.Message));
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
+                    LocalizationService.Instance.Format("Common_SendFailed", ex.Message), versionGroupId, versionIndex);
             }
         }
         finally
@@ -751,6 +806,7 @@ public sealed class ChatGenerationService
                 ContentType = truncated ? "error" : "text",
                 IsActive = lastAssistantMsg.IsActive,
                 VersionGroupId = lastAssistantMsg.VersionGroupId,
+                VersionIndex = lastAssistantMsg.VersionIndex,
                 CreatedAtUtc = DateTime.UtcNow,
                 LogicalDate = logicalDate,
             });
@@ -794,9 +850,11 @@ public sealed class ChatGenerationService
     /// 因此它会在会话中一直显示，但不会作为 AI 上下文（OpenAiService 会跳过正文为空的 assistant 消息）。
     /// </summary>
     private async Task PersistNoticeAsync(string sessionId, string turnId, string logicalDate,
-        ChatMessage msg, string text)
+        ChatMessage msg, string text, string? versionGroupId, int versionIndex)
     {
         msg.ErrorMessage = text;
+        msg.VersionGroupId = versionGroupId;
+        msg.VersionIndex = versionIndex;
 
         var id = await _messageRepo.InsertAsync(new Message
         {
@@ -806,6 +864,9 @@ public sealed class ChatGenerationService
             Content = string.Empty,
             ErrorMessage = text,
             ContentType = "error",
+            IsActive = msg.IsActive,
+            VersionGroupId = versionGroupId,
+            VersionIndex = versionIndex,
             CreatedAtUtc = DateTime.UtcNow,
             LogicalDate = logicalDate,
         });
@@ -935,6 +996,7 @@ public sealed class ChatGenerationService
             ErrorMessage = m.ErrorMessage,
             IsActive = m.IsActive,
             VersionGroupId = m.VersionGroupId,
+            VersionIndex = m.VersionIndex,
         };
 
         if (m.Role == "system")
@@ -999,20 +1061,51 @@ public sealed class ChatGenerationService
             message.CanRewrite = ReferenceEquals(message, target);
     }
 
-    /// <summary>按版本分组计算 V1/V2 序号与总数，保证重启后 UI 显示正确。</summary>
+    /// <summary>
+    /// 按版本分组计算 V1/V2 序号与总数，保证重启后 UI 显示正确。
+    /// 工具调用与工具结果和对应回复共享版本序号，因此切换版本时能整组恢复/隐藏。
+    /// </summary>
     private static void AssignVersionMetadata(ObservableCollection<ChatMessage> messages)
     {
         var groups = messages
-            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .Where(m => !string.IsNullOrEmpty(m.VersionGroupId))
             .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
 
         foreach (var group in groups)
         {
-            var versions = group.OrderBy(m => m.DbId).ToList();
-            for (var i = 0; i < versions.Count; i++)
+            var members = group.ToList();
+
+            // 旧数据没有持久化版本序号：每个版本只有一条 assistant 消息，按插入顺序补全。
+            if (members.All(m => m.VersionIndex <= 0))
             {
-                versions[i].VersionIndex = i + 1;
-                versions[i].TotalVersions = versions.Count;
+                var ordered = members.OrderBy(m => m.DbId).ToList();
+                for (var i = 0; i < ordered.Count; i++)
+                {
+                    ordered[i].VersionIndex = i + 1;
+                    ordered[i].TotalVersions = ordered.Count;
+                }
+                continue;
+            }
+
+            // 组内可能混有旧数据（VersionIndex = 0）：追加到已有版本之后。
+            var lastIndex = members.Where(m => m.VersionIndex > 0)
+                .Select(m => m.VersionIndex)
+                .DefaultIfEmpty(0).Max();
+            foreach (var member in members.Where(m => m.VersionIndex <= 0).OrderBy(m => m.DbId))
+                member.VersionIndex = ++lastIndex;
+
+            // 归一化为连续的 1..N（避免历史数据里出现空洞）。
+            var indexMap = members.Select(m => m.VersionIndex)
+                .Distinct()
+                .OrderBy(i => i)
+                .Select((index, rank) => (index, Rank: rank + 1))
+                .ToDictionary(x => x.index, x => x.Rank);
+
+            var total = indexMap.Count;
+            foreach (var member in members)
+            {
+                member.VersionIndex = indexMap[member.VersionIndex];
+                member.TotalVersions = total;
             }
         }
     }
@@ -1024,17 +1117,23 @@ public sealed class ChatGenerationService
     private async Task RepairVersionGroupsAsync(IReadOnlyList<ChatMessage> messages)
     {
         var groups = messages
-            .Where(m => m.Role == "assistant" && !string.IsNullOrEmpty(m.VersionGroupId))
+            .Where(m => !string.IsNullOrEmpty(m.VersionGroupId))
             .GroupBy(m => m.VersionGroupId!, StringComparer.Ordinal);
 
         foreach (var group in groups)
         {
             if (group.Any(m => m.IsActive)) continue;
 
-            var latest = group.OrderByDescending(m => m.DbId).First();
-            latest.IsActive = true;
-            if (latest.DbId > 0)
-                await _messageRepo.UpdateMessageVersionAsync(latest.DbId, true, latest.VersionGroupId);
+            var targetIndex = group.Max(m => m.VersionIndex);
+            foreach (var member in group)
+            {
+                member.IsActive = member.VersionIndex == targetIndex;
+                if (member.DbId > 0)
+                {
+                    await _messageRepo.UpdateMessageVersionAsync(
+                        member.DbId, member.IsActive, member.VersionGroupId, member.VersionIndex);
+                }
+            }
         }
     }
 
