@@ -154,7 +154,7 @@ public partial class HomeWindow : Window
         // 为输入框挂载自定义右键菜单（主输入框、会话搜索框，以及设置/日记页内的所有文本框）
         EditorContextMenu.Attach(InputBox, () => IsActive && _viewModel.TryPasteClipboardAttachments());
         EditorContextMenu.Attach(SearchBox);
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             EditorContextMenu.AttachTree(SettingsContent);
             EditorContextMenu.AttachTree(DiaryContent);
@@ -163,7 +163,17 @@ public partial class HomeWindow : Window
 
             // 主界面可能在胶囊窗生成过程中才被打开：立即刷新会话列表，
             // 让正在生成的新会话出现在历史记录中，而不是等到本轮结束。
-            _ = _viewModel.RefreshSessionsAsync();
+            await _viewModel.RefreshSessionsAsync();
+
+            // 窗口是临时实例，重开时列表重建/异步刷新可能丢失选中项；
+            // 这里按 ViewModel 当前会话恢复选择与标题，避免欢迎层与消息层重叠。
+            if (_viewModel.SelectedSession is { } selected)
+            {
+                if (!ReferenceEquals(HistoryList.SelectedItem, selected))
+                    HistoryList.SelectedItem = selected;
+                BindSelectedSession(selected);
+                ChatTitle.Text = selected.Title;
+            }
         };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动

@@ -77,7 +77,12 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
     [ObservableProperty]
     private string _welcomeGreeting = string.Empty;
 
-    public bool IsWelcomeVisible => SelectedSession is null;
+    /// <summary>
+    /// 欢迎界面只用于“没有选中会话且没有当前会话”的新对话状态。
+    /// 仅判断 SelectedSession 不够：HomeWindow 是临时窗口，关闭再打开时列表重建/异步刷新
+    /// 可能短暂把 SelectedSession 置空，但当前会话的消息仍然显示，导致欢迎界面与消息重叠。
+    /// </summary>
+    public bool IsWelcomeVisible => SelectedSession is null && _currentSessionId is null;
 
     /// <summary>关于页显示的版本号，与应用版本（csproj 的 Version）保持一致。</summary>
     public string AboutVersionText =>
@@ -563,7 +568,9 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
 
     private void ApplySessions(List<Session> sessions)
     {
-        var selectedId = SelectedSession?.Id;
+        // 列表刷新时 ListBox 可能先清空选择并把 SelectedSession 写成 null；
+        // 用当前会话 ID 兜底，保证窗口重开后仍能恢复选中项。
+        var selectedId = SelectedSession?.Id ?? _currentSessionId;
         ChatSessions.Clear();
         foreach (var s in sessions)
         {
@@ -593,6 +600,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
         Status = LocalizationService.Instance["Common_Status_Ready"];
         _currentSessionId = null;
         SelectedSession = null;
+        OnPropertyChanged(nameof(IsWelcomeVisible));
     }
 
     [RelayCommand]
@@ -689,6 +697,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 InputText = string.Empty;
                 PendingAttachments.Clear();
                 Status = LocalizationService.Instance["Common_Status_Ready"];
+                OnPropertyChanged(nameof(IsWelcomeVisible));
             }
 
             _logger.LogInformation("会话已删除：{Id}", session.Id);
