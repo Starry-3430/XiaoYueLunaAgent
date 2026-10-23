@@ -26,6 +26,10 @@ public partial class AttachmentManagerViewModel : ObservableObject
     [ObservableProperty]
     private string _summary = string.Empty;
 
+    /// <summary>附件存储数量上限的明文说明（设置页展示）。</summary>
+    public string RetentionText =>
+        LocalizationService.Instance.Format("Attachment_Retention_Desc", AttachmentHelper.MaxStoredCount);
+
     [ObservableProperty]
     private bool _isBusy;
 
@@ -40,7 +44,10 @@ public partial class AttachmentManagerViewModel : ObservableObject
         LocalizationService.Instance.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+            {
                 RefreshSummaryText();
+                OnPropertyChanged(nameof(RetentionText));
+            }
         };
     }
 
@@ -96,7 +103,14 @@ public partial class AttachmentManagerViewModel : ObservableObject
         try
         {
             await _repository.DeleteAsync(item.Attachment.Id);
-            _storage.DeleteBlob(item.Attachment.Sha256);
+
+            // 内容寻址下同一 blob 可能被多条记录引用，只有再无引用时才删除文件。
+            if (!string.IsNullOrEmpty(item.Attachment.Sha256) &&
+                await _repository.GetBySha256Async(item.Attachment.Sha256) is null)
+            {
+                _storage.DeleteBlob(item.Attachment.Sha256);
+            }
+
             Items.Remove(item);
             UpdateSummary();
         }

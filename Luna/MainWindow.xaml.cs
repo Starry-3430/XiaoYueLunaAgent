@@ -151,7 +151,17 @@ public partial class MainWindow : Window
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is TextBox tb)
-            _ = new BubbleContextMenu(tb);
+            _ = new BubbleContextMenu(tb,
+                edit: BeginEditMessage,
+                canEdit: _viewModel.CanEditUserMessage);
+    }
+
+    private async void BeginEditMessage(ChatMessage msg)
+    {
+        await _viewModel.BeginEditUserMessageAsync(msg);
+        var box = CompactInputBox.IsVisible ? CompactInputBox : InputBox;
+        box.Focus();
+        box.CaretIndex = box.Text.Length;
     }
 
     /// <summary>每个 Markdown 视图当前订阅的清理动作，避免重复 Loaded 时重复挂钩导致重复渲染。</summary>
@@ -758,6 +768,12 @@ public partial class MainWindow : Window
 
     private void CompactInputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.TryCancelEditing())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
         if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
             && IsActive && _viewModel.TryPasteClipboardAttachments())
@@ -1334,6 +1350,12 @@ private void HideInternal()
 
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.TryCancelEditing())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
         if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
             && IsActive && _viewModel.TryPasteClipboardAttachments())
@@ -1381,6 +1403,13 @@ private void HideInternal()
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape) return;
+
+        // 编辑模式：Esc 取消编辑，不隐藏胶囊窗口。
+        if (_viewModel.TryCancelEditing())
+        {
+            e.Handled = true;
+            return;
+        }
 
         // 提醒模式：Esc 收起提醒
         if (_reminderActive)

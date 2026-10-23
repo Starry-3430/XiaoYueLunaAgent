@@ -14,16 +14,30 @@ public class BubbleContextMenu
 {
     private readonly Popup _popup;
     private readonly FrameworkElement _target;
+    private readonly Action<ChatMessage>? _edit;
+    private readonly Func<ChatMessage, bool>? _canEdit;
+    private readonly Button _editButton;
     private bool _isOpen;
     private bool _windowEventsAttached;
 
-    public BubbleContextMenu(FrameworkElement target)
+    public BubbleContextMenu(FrameworkElement target,
+        Action<ChatMessage>? edit = null, Func<ChatMessage, bool>? canEdit = null)
     {
         _target = target;
+        _edit = edit;
+        _canEdit = canEdit;
+
+        _editButton = CreateMenuItem(LocalizationService.Instance["Common_Edit"], (_, _) =>
+        {
+            if (_target.DataContext is ChatMessage message)
+                _edit?.Invoke(message);
+            CloseMenu();
+        });
 
         var copyButton = CreateMenuItem(LocalizationService.Instance["Common_Copy"], (_, _) => { CopyContent(); CloseMenu(); });
 
         var panel = new StackPanel();
+        panel.Children.Add(_editButton);
         panel.Children.Add(copyButton);
 
         var container = new Border
@@ -129,6 +143,12 @@ public class BubbleContextMenu
 
         EnsureWindowEvents();
 
+        // 编辑只对用户消息开放；并且只有当前会话最后一条激活的用户消息才能编辑。
+        var message = _target.DataContext as ChatMessage;
+        var isUserMessage = message is { Role: "user" } && _edit is not null;
+        _editButton.Visibility = isUserMessage ? Visibility.Visible : Visibility.Collapsed;
+        _editButton.IsEnabled = isUserMessage && (_canEdit?.Invoke(message!) ?? true);
+
         _popup.Placement = PlacementMode.MousePoint;
         _popup.HorizontalOffset = 0;
         _popup.VerticalOffset = 0;
@@ -225,6 +245,16 @@ public class BubbleContextMenu
         };
         hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x3D, 0x36, 0x2F)), "Bg"));
         template.Triggers.Add(hoverTrigger);
+
+        var disabledTrigger = new Trigger
+        {
+            Property = UIElement.IsEnabledProperty,
+            Value = false,
+        };
+        disabledTrigger.Setters.Add(new Setter(Button.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x8B, 0x7B, 0x6B))));
+        disabledTrigger.Setters.Add(new Setter(Button.CursorProperty, Cursors.Arrow));
+        disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.55));
+        template.Triggers.Add(disabledTrigger);
 
         return template;
     }

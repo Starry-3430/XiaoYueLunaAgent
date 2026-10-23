@@ -51,6 +51,7 @@ public sealed class ChatGenerationService
     private readonly SessionRepository _sessionRepo;
     private readonly MessageRepository _messageRepo;
     private readonly AttachmentRepository _attachmentRepo;
+    private readonly FileStorageService _fileStorage;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly ToolPermissionRepository _auditRepo;
@@ -85,7 +86,8 @@ public sealed class ChatGenerationService
     };
 
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
-        MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
+        MessageRepository messageRepo, AttachmentRepository attachmentRepo,
+        FileStorageService fileStorage, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, ToolPermissionRepository auditRepo,
         TurnSummaryService turnSummaryService,
         SessionTitleService sessionTitleService,
@@ -95,6 +97,7 @@ public sealed class ChatGenerationService
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
         _attachmentRepo = attachmentRepo;
+        _fileStorage = fileStorage;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _auditRepo = auditRepo;
@@ -186,7 +189,13 @@ public sealed class ChatGenerationService
         };
         var userMsgDbId = await _messageRepo.InsertAsync(userMsg);
 
-        var userChatMessage = new ChatMessage { Role = "user", Content = userText, DbId = userMsgDbId };
+        var userChatMessage = new ChatMessage
+        {
+            Role = "user",
+            Content = userText,
+            DbId = userMsgDbId,
+            TurnId = turnId,
+        };
 
         if (attachments is { Count: > 0 })
         {
@@ -197,6 +206,8 @@ public sealed class ChatGenerationService
                 attachment.TurnId = turnId;
                 await _attachmentRepo.AddAsync(attachment);
             }
+
+            await EnforceAttachmentStorageLimitAsync();
 
             // 图片：压缩后作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
             foreach (var attachment in attachments.Where(AttachmentHelper.IsImage))
@@ -234,6 +245,7 @@ public sealed class ChatGenerationService
                     Content = context,
                     AttachmentSummary = ExtractAttachmentSummary(context),
                     DbId = systemMsgDbId,
+                    TurnId = turnId,
                 });
             }
         }
@@ -298,9 +310,235 @@ public sealed class ChatGenerationService
     }
 
     /// <summary>
-    /// 重写最后一条 AI 回复：把本轮用户输入之后由 AI 生成的全部内容（含多轮工具调用、
-    /// 工具结果与思考过程）整体作为一个旧版本隐藏，再生成一个完整的新版本。
-    /// 旧版本仍保留在内存和数据库中，切换回答历史时恢复。
+    /// 附件存储只保留最新 <see cref="AttachmentHelper.MaxStoredCount"/> 条记录；
+    /// 新附件成功入库后调用，删除最旧记录并清理不再被引用的 blob 文件。
+    /// </summary>
+    private async Task EnforceAttachmentStorageLimitAsync()
+    {
+        try
+        {
+            var removed = await _attachmentRepo.TrimToLimitAsync(AttachmentHelper.MaxStoredCount);
+            if (removed.Count == 0) return;
+
+            foreach (var attachment in removed)
+            {
+                // 内容寻址下多个记录可能指向同一个 blob；仅在没有其他记录引用时删除文件。
+                if (string.IsNullOrEmpty(attachment.Sha256)) continue;
+                if (await _attachmentRepo.GetBySha256Async(attachment.Sha256) is not null) continue;
+                _fileStorage.DeleteBlob(attachment.Sha256);
+            }
+
+            _logger.LogInformation("附件存储超过上限，已删除最旧的 {Count} 个附件记录", removed.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清理超限附件存储失败");
+        }
+    }
+
+    /// <summary>一次版本分支的公共准备结果。</summary>
+    private sealed record BranchPreparation(
+        string VersionGroupId,
+        int OldVersionIndex,
+        int NewVersionIndex,
+        int TotalVersions,
+        ChatMessage UserMessage,
+        List<ChatMessage> BranchMessages);
+
+    /// <summary>
+    /// 把当前激活分支（用户消息 + 附件上下文 + 全部 AI 生成内容）归档到旧版本并隐藏。
+    /// 新版本会重新创建用户消息副本，保证切换版本时用户消息与 AI 回答一起恢复。
+    /// </summary>
+    private async Task<BranchPreparation?> PrepareBranchAsync(
+        ObservableCollection<ChatMessage> messages, ChatMessage userMessage)
+    {
+        var userIndex = messages.IndexOf(userMessage);
+        if (userIndex < 0 || userMessage.Role != "user") return null;
+
+        var branch = new List<ChatMessage>();
+        for (var i = userIndex; i < messages.Count; i++)
+        {
+            var message = messages[i];
+            if (!message.IsActive) continue;
+            if (i > userIndex && message.Role == "user") break;
+            if (message.Role is "user" or "system" or "assistant" or "tool")
+                branch.Add(message);
+        }
+
+        var versionGroupId = userMessage.VersionGroupId;
+        if (string.IsNullOrEmpty(versionGroupId))
+        {
+            versionGroupId = branch
+                .Select(m => m.VersionGroupId)
+                .FirstOrDefault(id => !string.IsNullOrEmpty(id))
+                ?? Guid.NewGuid().ToString("N");
+        }
+
+        var existingIndexes = messages
+            .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
+            .Select(m => m.VersionIndex)
+            .Where(i => i > 0)
+            .Distinct()
+            .ToList();
+
+        var oldVersionIndex = userMessage.VersionGroupId is not null && userMessage.VersionIndex > 0
+            ? userMessage.VersionIndex
+            : branch
+                .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
+                .Select(m => m.VersionIndex)
+                .Where(i => i > 0)
+                .DefaultIfEmpty(1)
+                .Max();
+
+        var newVersionIndex = (existingIndexes.Count > 0 ? existingIndexes.Max() : 0) + 1;
+        if (newVersionIndex <= oldVersionIndex)
+            newVersionIndex = oldVersionIndex + 1;
+        var totalVersions = Math.Max(newVersionIndex,
+            existingIndexes.Count > 0 ? existingIndexes.Max() : 0);
+
+        foreach (var message in branch)
+        {
+            message.VersionGroupId = versionGroupId;
+            message.VersionIndex = oldVersionIndex;
+            message.TotalVersions = totalVersions;
+            message.IsActive = false;
+
+            if (message.DbId > 0)
+            {
+                await _messageRepo.UpdateMessageVersionAsync(
+                    message.DbId, false, versionGroupId, oldVersionIndex);
+            }
+        }
+
+        return new BranchPreparation(versionGroupId, oldVersionIndex, newVersionIndex,
+            totalVersions, userMessage, branch);
+    }
+
+    private async Task<ChatMessage> InsertBranchUserAsync(ObservableCollection<ChatMessage> messages,
+        string sessionId, string turnId, string logicalDate, string content,
+        IEnumerable<string> images, BranchPreparation branch)
+    {
+        var user = new ChatMessage
+        {
+            Role = "user",
+            Content = content,
+            TurnId = turnId,
+            VersionGroupId = branch.VersionGroupId,
+            VersionIndex = branch.NewVersionIndex,
+            TotalVersions = branch.TotalVersions,
+        };
+
+        foreach (var image in images)
+            user.Images.Add(image);
+
+        messages.Add(user);
+        user.DbId = await _messageRepo.InsertAsync(new Message
+        {
+            SessionId = sessionId,
+            TurnId = turnId,
+            Role = "user",
+            Content = content,
+            IsActive = true,
+            VersionGroupId = branch.VersionGroupId,
+            VersionIndex = branch.NewVersionIndex,
+            CreatedAtUtc = DateTime.UtcNow,
+            LogicalDate = logicalDate,
+        });
+        return user;
+    }
+
+    /// <summary>把旧轮次的附件元数据复制到新轮次，保证后续编辑新版本时仍能恢复附件。</summary>
+    private async Task CopyTurnAttachmentsAsync(string sessionId, string newTurnId, string sourceTurnId)
+    {
+        if (string.IsNullOrEmpty(sourceTurnId) || string.Equals(sourceTurnId, newTurnId, StringComparison.Ordinal))
+            return;
+
+        var attachments = await _attachmentRepo.GetByTurnAsync(sourceTurnId);
+        foreach (var source in attachments)
+        {
+            await _attachmentRepo.AddAsync(new Attachment
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                SessionId = sessionId,
+                TurnId = newTurnId,
+                FileName = source.FileName,
+                FileExtension = source.FileExtension,
+                FileSize = source.FileSize,
+                Sha256 = source.Sha256,
+                StoredPath = source.StoredPath,
+                ConvertedMarkdown = source.ConvertedMarkdown,
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+        }
+
+        await EnforceAttachmentStorageLimitAsync();
+    }
+
+    private async Task InsertBranchSystemAsync(ObservableCollection<ChatMessage> messages,
+        string sessionId, string turnId, string logicalDate, string content,
+        string attachmentSummary, BranchPreparation branch)
+    {
+        var dbId = await _messageRepo.InsertAsync(new Message
+        {
+            SessionId = sessionId,
+            TurnId = turnId,
+            Role = "system",
+            Content = content,
+            IsActive = true,
+            VersionGroupId = branch.VersionGroupId,
+            VersionIndex = branch.NewVersionIndex,
+            CreatedAtUtc = DateTime.UtcNow,
+            LogicalDate = logicalDate,
+        });
+
+        messages.Add(new ChatMessage
+        {
+            Role = "system",
+            Content = content,
+            AttachmentSummary = attachmentSummary,
+            DbId = dbId,
+            TurnId = turnId,
+            VersionGroupId = branch.VersionGroupId,
+            VersionIndex = branch.NewVersionIndex,
+            TotalVersions = branch.TotalVersions,
+        });
+    }
+
+    /// <summary>新版本生成失败时删除本次新增内容，并恢复旧版本。</summary>
+    private async Task CleanupFailedBranchAsync(ObservableCollection<ChatMessage> messages,
+        BranchPreparation branch, string newTurnId)
+    {
+        for (var i = messages.Count - 1; i >= 0; i--)
+        {
+            var added = messages[i];
+            if (!string.Equals(added.VersionGroupId, branch.VersionGroupId, StringComparison.Ordinal) ||
+                added.VersionIndex != branch.NewVersionIndex)
+                continue;
+
+            if (added.DbId > 0)
+                await _messageRepo.DeleteAsync(added.DbId);
+            messages.RemoveAt(i);
+        }
+
+        // 失败分支的附件也不应留下，避免附件管理页出现孤立记录。
+        await _attachmentRepo.DeleteByTurnAsync(newTurnId);
+
+        foreach (var old in messages.Where(m =>
+                     string.Equals(m.VersionGroupId, branch.VersionGroupId, StringComparison.Ordinal) &&
+                     m.VersionIndex == branch.OldVersionIndex))
+        {
+            old.IsActive = true;
+            if (old.DbId > 0)
+            {
+                await _messageRepo.UpdateMessageVersionAsync(
+                    old.DbId, true, branch.VersionGroupId, branch.OldVersionIndex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 重写最后一条 AI 回复：把当前分支（用户消息、附件上下文和全部 AI 生成内容）
+    /// 整体归档为旧版本，再基于同一用户输入生成完整的新版本。
     /// </summary>
     public async Task RewriteAsync(string sessionId, ChatMessage msg)
     {
@@ -311,63 +549,29 @@ public sealed class ChatGenerationService
         var index = messages.IndexOf(msg);
         if (index < 0 || msg.Role != "assistant") return;
 
-        // 目前只支持重写最后一条“激活”的回复，避免破坏其后的有效上下文。
-        if (messages.Skip(index + 1).Any(m => m.IsActive))
+        // 只支持最后一轮的最终回复；同一轮中最终回复之后可能还有 tool 消息，
+        // 它们会随本轮一起归入旧版本，不能因此拒绝重写。
+        if (!msg.IsFinalReply ||
+            messages.Skip(index + 1).Any(m => m.IsActive && m.Role == "user"))
         {
             _logger.LogWarning("目前仅支持重写最后一条 AI 回复");
             return;
         }
 
-        // 找到本轮用户消息的边界：其后的所有激活 AI 消息都属于本次回答，
-        // 必须整体隐藏，否则工具调用历史/思考内容会残留，并继续影响新回答的上下文。
-        var turnStart = 0;
-        for (var i = index - 1; i >= 0; i--)
+        var userIndex = -1;
+        for (var i = index; i >= 0; i--)
         {
-            if (messages[i].Role == "user")
+            if (messages[i].Role == "user" && messages[i].IsActive)
             {
-                turnStart = i + 1;
+                userIndex = i;
                 break;
             }
         }
+        if (userIndex < 0) return;
 
-        var currentVersionMessages = messages
-            .Skip(turnStart)
-            .Where(m => m.IsActive && (m.Role == "assistant" || m.Role == "tool"))
-            .ToList();
-        if (!currentVersionMessages.Contains(msg))
-            currentVersionMessages.Add(msg);
-
-        var versionGroupId = msg.VersionGroupId ?? Guid.NewGuid().ToString("N");
-
-        // 组内已有版本的序号集合；新版本接在最大值之后。
-        var existingIndexes = messages
-            .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal))
-            .Select(m => m.VersionIndex)
-            .Where(i => i > 0)
-            .Distinct()
-            .ToList();
-
-        var oldVersionIndex = msg.VersionGroupId is not null && msg.VersionIndex > 0
-            ? msg.VersionIndex
-            : 1;
-        var newVersionIndex = (existingIndexes.Count > 0 ? existingIndexes.Max() : 0) + 1;
-        if (newVersionIndex <= oldVersionIndex)
-            newVersionIndex = oldVersionIndex + 1;
-        var totalVersions = Math.Max(newVersionIndex,
-            existingIndexes.Count > 0 ? existingIndexes.Max() : 0);
-
-        // 先把当前回答的所有 AI 消息归入同一版本并隐藏；内存中保留，供 UI 切换。
-        foreach (var version in currentVersionMessages)
-        {
-            version.VersionGroupId = versionGroupId;
-            version.VersionIndex = oldVersionIndex;
-            version.TotalVersions = totalVersions;
-            version.IsActive = false;
-
-            if (version.DbId > 0)
-                await _messageRepo.UpdateMessageVersionAsync(
-                    version.DbId, false, versionGroupId, oldVersionIndex);
-        }
+        var userMessage = messages[userIndex];
+        var branch = await PrepareBranchAsync(messages, userMessage);
+        if (branch is null) return;
 
         var turnId = Guid.NewGuid().ToString("N");
         var logicalDate = LogicalDate.Now();
@@ -375,8 +579,18 @@ public sealed class ChatGenerationService
         var success = false;
         try
         {
+            // 新版本沿用原用户输入与附件上下文，保证切换版本时用户消息一致。
+            await CopyTurnAttachmentsAsync(sessionId, turnId, branch.UserMessage.TurnId);
+            await InsertBranchUserAsync(messages, sessionId, turnId, logicalDate,
+                branch.UserMessage.Content, branch.UserMessage.Images, branch);
+            foreach (var system in branch.BranchMessages.Where(m => m.Role == "system"))
+            {
+                await InsertBranchSystemAsync(messages, sessionId, turnId, logicalDate,
+                    system.Content, system.AttachmentSummary, branch);
+            }
+
             success = await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate,
-                versionGroupId, newVersionIndex, totalVersions);
+                branch.VersionGroupId, branch.NewVersionIndex, branch.TotalVersions);
         }
         catch (Exception ex)
         {
@@ -384,39 +598,85 @@ public sealed class ChatGenerationService
         }
 
         if (!success)
+            await CleanupFailedBranchAsync(messages, branch, turnId);
+
+        AssignVersionMetadata(messages);
+        MarkFinalReplies(messages);
+        UpdateRewriteEligibility(messages);
+    }
+
+    /// <summary>
+    /// 编辑最后一条用户消息并重新生成：旧分支（含旧用户消息与 AI 回答）整体归档，
+    /// 新用户消息、附件上下文和新 AI 回答共享新的版本序号。
+    /// </summary>
+    public async Task EditUserMessageAsync(string sessionId, ChatMessage userMsg, string newText,
+        IReadOnlyList<Attachment>? attachments)
+    {
+        var runtime = await GetOrLoadAsync(sessionId);
+        if (runtime.IsBusy) return;
+
+        var messages = runtime.Messages;
+        var index = messages.IndexOf(userMsg);
+        if (index < 0 || userMsg.Role != "user") return;
+
+        // 只能编辑当前会话最后一条激活的用户消息，不能修改历史轮次。
+        var lastActiveUser = messages.LastOrDefault(m => m.IsActive && m.Role == "user");
+        if (!ReferenceEquals(lastActiveUser, userMsg)) return;
+
+        var branch = await PrepareBranchAsync(messages, userMsg);
+        if (branch is null) return;
+
+        var turnId = Guid.NewGuid().ToString("N");
+        var logicalDate = LogicalDate.Now();
+        var preparedAttachments = attachments?.ToList() ?? new List<Attachment>();
+
+        var generated = false;
+        try
         {
-            // 清理本次失败尝试新增的消息：数据库标记为非激活，内存中移除，避免挡住后续重写。
-            for (var i = messages.Count - 1; i >= 0; i--)
+            foreach (var attachment in preparedAttachments)
             {
-                var added = messages[i];
-                if (!string.Equals(added.VersionGroupId, versionGroupId, StringComparison.Ordinal) ||
-                    added.VersionIndex != newVersionIndex)
-                    continue;
-
-                if (added.DbId > 0)
-                {
-                    await _messageRepo.UpdateMessageVersionAsync(
-                        added.DbId, false, versionGroupId, newVersionIndex);
-                }
-                messages.RemoveAt(i);
+                // 每次编辑发送都创建新的附件记录，避免复用旧行主键或影响旧版本附件。
+                attachment.Id = Guid.NewGuid().ToString("N");
+                attachment.SessionId = sessionId;
+                attachment.TurnId = turnId;
+                await _attachmentRepo.AddAsync(attachment);
             }
 
-            // 恢复旧版本，避免会话没有可见回复。
-            var oldVersions = messages
-                .Where(m => string.Equals(m.VersionGroupId, versionGroupId, StringComparison.Ordinal) &&
-                            m.VersionIndex == oldVersionIndex)
-                .ToList();
-            foreach (var version in oldVersions)
+            if (preparedAttachments.Count > 0)
+                await EnforceAttachmentStorageLimitAsync();
+
+            var newUser = await InsertBranchUserAsync(messages, sessionId, turnId, logicalDate,
+                newText, [], branch);
+
+            if (preparedAttachments.Count > 0)
             {
-                version.IsActive = true;
-                if (version.DbId > 0)
+                foreach (var attachment in preparedAttachments.Where(AttachmentHelper.IsImage))
                 {
-                    await _messageRepo.UpdateMessageVersionAsync(
-                        version.DbId, true, versionGroupId, oldVersionIndex);
+                    var (success, dataUrl, error) = await AttachmentHelper.TryBuildImageDataUrlAsync(attachment);
+                    if (success)
+                        newUser.Images.Add(dataUrl);
+                    else
+                        _logger.LogWarning("图片附件无法作为图像发送：{File}（{Error}）", attachment.FileName, error);
+                }
+
+                var context = BuildAttachmentContext(preparedAttachments);
+                if (!string.IsNullOrWhiteSpace(context))
+                {
+                    await InsertBranchSystemAsync(messages, sessionId, turnId, logicalDate,
+                        context, ExtractAttachmentSummary(context), branch);
                 }
             }
 
+            generated = await RunAiLoopAsync(runtime, sessionId, turnId, logicalDate,
+                branch.VersionGroupId, branch.NewVersionIndex, branch.TotalVersions);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "编辑用户消息后生成失败");
+        }
+
+        if (!generated)
+            await CleanupFailedBranchAsync(messages, branch, turnId);
 
         AssignVersionMetadata(messages);
         MarkFinalReplies(messages);
@@ -485,6 +745,7 @@ public sealed class ChatGenerationService
         string? replyFinishReason = null;
         ChatMessage? lastAssistantMsg = null;
         ChatMessage? activeReply = null;
+        var cancelled = ct.IsCancellationRequested;
 
         try
         {
@@ -520,6 +781,14 @@ public sealed class ChatGenerationService
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var (content, reasoning, pendingToolCalls, finishReason) =
                     await StreamOneRoundAsync(uiReply, snapshot, activeGroups, ct);
+
+                // 流式读取在取消时可能正常结束（yield break），不会抛异常；
+                // 必须显式识别，否则会把半截内容当成正常回复，导致取消提示与操作按钮丢失。
+                if (ct.IsCancellationRequested)
+                {
+                    cancelled = true;
+                    break;
+                }
 
                 if (pendingToolCalls.Count == 0)
                 {
@@ -748,18 +1017,16 @@ public sealed class ChatGenerationService
                     });
                 }
 
-                if (ct.IsCancellationRequested) break;
+                if (ct.IsCancellationRequested)
+                {
+                    cancelled = true;
+                    break;
+                }
             }
         }
         catch (OperationCanceledException)
         {
-            runtime.Status = LocalizationService.Instance["Common_Status_ReadyCanceled"];
-            if (activeReply is not null)
-            {
-                activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
-                    LocalizationService.Instance["Common_Canceled"], versionGroupId, versionIndex);
-            }
+            cancelled = true;
         }
         catch (Exception ex)
         {
@@ -786,6 +1053,38 @@ public sealed class ChatGenerationService
             runtime.IsBusy = false;
             runtime.Cts?.Dispose();
             runtime.Cts = null;
+        }
+
+        if (cancelled)
+        {
+            runtime.Status = LocalizationService.Instance["Common_Status_ReadyCanceled"];
+            var cancelText = LocalizationService.Instance["Common_Canceled"];
+
+            // 取消时如果当前回复已经是本轮最后一条 assistant，直接把提示写在它上面；
+            // 如果它后面还有工具消息（取消发生在工具调用阶段），则在其后追加一条提示，
+            // 保证“最终回复”始终位于本轮末尾，复制/重写按钮不会消失。
+            var lastAssistant = messages.LastOrDefault(m => m.IsActive && m.Role == "assistant");
+            if (activeReply is { DbId: 0 } && ReferenceEquals(lastAssistant, activeReply))
+            {
+                activeReply.IsStreaming = false;
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
+                    cancelText, versionGroupId, versionIndex);
+            }
+            else
+            {
+                var notice = new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = string.Empty,
+                    IsStreaming = false,
+                    VersionGroupId = versionGroupId,
+                    VersionIndex = versionIndex,
+                    TotalVersions = totalVersions,
+                };
+                messages.Add(notice);
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, notice,
+                    cancelText, versionGroupId, versionIndex);
+            }
         }
 
         if (lastAssistantMsg is not null)
@@ -830,6 +1129,7 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = LocalizationService.Instance["Common_Status_Ready"];
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+        MarkFinalReplies(messages);
         UpdateRewriteEligibility(messages);
         return lastAssistantMsg is not null && !string.IsNullOrWhiteSpace(lastAssistantMsg.Content);
     }
@@ -992,6 +1292,7 @@ public sealed class ChatGenerationService
             Content = m.Content,
             Reasoning = m.ReasoningContent,
             DbId = m.Id,
+            TurnId = m.TurnId,
             ToolCallId = m.ToolCallId,
             ErrorMessage = m.ErrorMessage,
             IsActive = m.IsActive,
@@ -1037,9 +1338,10 @@ public sealed class ChatGenerationService
         foreach (var message in messages)
             message.IsFinalReply = false;
 
-        // 每轮用户消息之后，最后一个有正文或错误提示的激活 assistant 就是本轮最终回复。
+        // 每轮用户消息之后，最后一个激活 assistant 就是本轮最终回复。
         // 不能简单用“下一条激活消息是否为 user”判断：取消/出错时工具消息可能排在这条
         // 回复之后（同一版本的 tool 消息），那样会把最终回复误判为非最终，导致操作按钮消失。
+        // 也不要求必须有正文/错误：取消可能发生在首个 token 之前，此时仍是可重写的最终回复。
         ChatMessage? candidate = null;
         foreach (var message in messages)
         {
@@ -1052,9 +1354,7 @@ public sealed class ChatGenerationService
             }
 
             if (!message.IsActive || message.Role != "assistant") continue;
-
-            if (!string.IsNullOrEmpty(message.Content) || !string.IsNullOrEmpty(message.ErrorMessage))
-                candidate = message;
+            candidate = message;
         }
 
         if (candidate is not null)

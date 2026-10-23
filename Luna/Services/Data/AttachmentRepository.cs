@@ -82,4 +82,40 @@ public class AttachmentRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         return await conn.ExecuteAsync("DELETE FROM Attachments WHERE Id = @Id", new { Id = id });
     }
+
+    /// <summary>删除某个轮次下的全部附件记录（用于清理失败的重写分支）。</summary>
+    public async Task<int> DeleteByTurnAsync(string turnId)
+    {
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        return await conn.ExecuteAsync("DELETE FROM Attachments WHERE TurnId = @TurnId", new { TurnId = turnId });
+    }
+
+    /// <summary>仅保留最新的 <paramref name="maxCount"/> 条附件记录，返回被删除的最旧记录。</summary>
+    public async Task<List<Attachment>> TrimToLimitAsync(int maxCount)
+    {
+        if (maxCount < 0) maxCount = 0;
+
+        using var conn = new SqliteConnection(_db.ConnectionString);
+        await conn.OpenAsync();
+        using var tx = conn.BeginTransaction();
+
+        var removed = (await conn.QueryAsync<Attachment>(
+            @"SELECT * FROM Attachments
+              WHERE Id NOT IN (
+                  SELECT Id FROM Attachments
+                  ORDER BY CreatedAtUtc DESC, rowid DESC
+                  LIMIT @MaxCount
+              )",
+            new { MaxCount = maxCount }, tx)).ToList();
+
+        if (removed.Count > 0)
+        {
+            await conn.ExecuteAsync(
+                "DELETE FROM Attachments WHERE Id IN @Ids",
+                new { Ids = removed.Select(a => a.Id).ToList() }, tx);
+        }
+
+        tx.Commit();
+        return removed;
+    }
 }

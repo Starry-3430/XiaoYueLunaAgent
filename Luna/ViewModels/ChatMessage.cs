@@ -112,6 +112,9 @@ public partial class ChatMessage : ObservableObject
 
     public long DbId { get; set; }
 
+    /// <summary>所属轮次 ID；用户消息用于找回同轮附件。</summary>
+    public string TurnId { get; set; } = string.Empty;
+
     public string ToolCallId { get; set; } = string.Empty;
 
     /// <summary>随本条用户消息一并发送的图片（data URL 形式）。仅运行期使用，供多模态识图。</summary>

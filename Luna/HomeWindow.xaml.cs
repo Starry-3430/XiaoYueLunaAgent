@@ -154,7 +154,7 @@ public partial class HomeWindow : Window
         // 为输入框挂载自定义右键菜单（主输入框、会话搜索框，以及设置/日记页内的所有文本框）
         EditorContextMenu.Attach(InputBox, () => IsActive && _viewModel.TryPasteClipboardAttachments());
         EditorContextMenu.Attach(SearchBox);
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             EditorContextMenu.AttachTree(SettingsContent);
             EditorContextMenu.AttachTree(DiaryContent);
@@ -163,7 +163,17 @@ public partial class HomeWindow : Window
 
             // 主界面可能在胶囊窗生成过程中才被打开：立即刷新会话列表，
             // 让正在生成的新会话出现在历史记录中，而不是等到本轮结束。
-            _ = _viewModel.RefreshSessionsAsync();
+            await _viewModel.RefreshSessionsAsync();
+
+            // 窗口是临时实例，重开时列表重建/异步刷新可能丢失选中项；
+            // 这里按 ViewModel 当前会话恢复选择与标题，避免欢迎层与消息层重叠。
+            if (_viewModel.SelectedSession is { } selected)
+            {
+                if (!ReferenceEquals(HistoryList.SelectedItem, selected))
+                    HistoryList.SelectedItem = selected;
+                BindSelectedSession(selected);
+                ChatTitle.Text = selected.Title;
+            }
         };
 
         // 防止鼠标选中气泡文字时父级 ScrollViewer 自动滚动
@@ -713,7 +723,16 @@ public partial class HomeWindow : Window
     private void MessageText_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is TextBox tb)
-            _ = new BubbleContextMenu(tb);
+            _ = new BubbleContextMenu(tb,
+                edit: BeginEditMessage,
+                canEdit: _viewModel.CanEditUserMessage);
+    }
+
+    private async void BeginEditMessage(ChatMessage msg)
+    {
+        await _viewModel.BeginEditUserMessageAsync(msg);
+        InputBox.Focus();
+        InputBox.CaretIndex = InputBox.Text.Length;
     }
 
     // ===== AI 操作按钮 =====
@@ -1116,7 +1135,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Dialog_Button_Continue"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDangerSevere",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -1149,7 +1168,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Settings_ClearDb_RestartButton"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();
@@ -1194,7 +1213,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -1292,13 +1311,9 @@ public partial class HomeWindow : Window
         var box = new TextBox
         {
             Text = session.Title,
-            Width = 260,
-            FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            CaretBrush = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            Background = new SolidColorBrush(Color.FromRgb(0xD4, 0xD0, 0xBA)),
-            BorderThickness = new Thickness(0),
-            Padding = new Thickness(10, 8, 10, 8),
+            Width = double.NaN,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Style = (Style)FindResource("SettingsInput"),
         };
         box.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
 
@@ -1311,7 +1326,7 @@ public partial class HomeWindow : Window
         dialog.Buttons = new ObservableCollection<DialogButton>
         {
             new() { Text = LocalizationService.Instance["Dialog_Button_Cancel"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
-            new() { Text = LocalizationService.Instance["Dialog_Button_OK"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = LocalizationService.Instance["Dialog_Button_OK"], StyleKey = "StyleDark", Command = new RelayCommand(dialog.Close) },
         };
         dialog.ShowDialog();
 
@@ -1358,7 +1373,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Home_Session_DeleteButton"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDanger",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -1377,6 +1392,12 @@ public partial class HomeWindow : Window
     /// </summary>
     private void InputBox_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _viewModel.TryCancelEditing())
+        {
+            e.Handled = true;
+            return;
+        }
+
         // 剪贴板中是图片/文件时，Ctrl+V 直接作为附件导入，而不是粘贴文本。
         if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) != 0
             && IsActive && _viewModel.TryPasteClipboardAttachments())

@@ -52,6 +52,7 @@
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="{loc:Loc Attachment_Storage_Title}" Style="{StaticResource SettingsTitle}"/>
                     <TextBlock Text="{Binding Summary}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{Binding RetentionText}" Style="{StaticResource SettingsDesc}" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="{loc:Loc Attachment_Refresh_Button}" Style="{StaticResource SecondaryActionButton}"

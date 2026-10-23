@@ -201,9 +201,10 @@ public partial class App : Application
                 services.AddSingleton<ITool, SearchFilesTool>();
                 services.AddSingleton<ITool, FileOpenTool>();
                 services.AddSingleton<ITool, ReadScreenTool>();
-                services.AddSingleton<ITool, NewsCalendarTool>();
-                services.AddSingleton<ITool, WindowManagerTool>();
-                services.AddSingleton<ITool, VolumeBrightnessTool>();
+                // 冻结：新闻/日历、窗口管理、音量/亮度未通过评审，暂不注册，避免暴露给 AI。
+                // services.AddSingleton<ITool, NewsCalendarTool>();
+                // services.AddSingleton<ITool, WindowManagerTool>();
+                // services.AddSingleton<ITool, VolumeBrightnessTool>();
                 services.AddSingleton<ITool, ClipboardHistoryTool>();
                 services.AddSingleton<ITool, AddTaskTool>();
                 services.AddSingleton<ITool, ListTasksTool>();
@@ -735,7 +736,7 @@ public partial class App : Application
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };

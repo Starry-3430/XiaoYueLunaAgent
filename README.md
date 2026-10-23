@@ -11,10 +11,9 @@
 ---
 
 ![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
+[![Version](https://img.shields.io/github/v/release/Starry-3430/XiaoYueLunaAgent?display_name=tag&sort=semver&include_prereleases&label=Version&color=E38A20)](https://github.com/Starry-3430/XiaoYueLunaAgent/releases/latest)
 
 *当前仅支持 Windows*
-
-> 当前版本：**v0.1.0.0（公开测试版）**
 
 **Luna** 是一个基于 C# / WPF 开发的 Windows 桌面个人 AI 智能体。它以一个紧凑的胶囊窗口常驻屏幕顶部，通过全局快捷键或托盘图标随时呼出。你可以像聊天一样向它提问、让它完成实际任务。
 
@@ -30,11 +29,12 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 
 | 分类 | 工具 | 状态              |
 |------|------|-------------------|
-| 信息 | 网页搜索（Tavily）、网页阅读、剪贴板读取、新闻/日历 | ✅ 已实现         |
+| 信息 | 网页搜索（Tavily）、网页阅读、剪贴板读取 | ✅ 已实现         |
+| 信息 | 新闻/日历 | ⏳ 进行中         |
 | 系统 | 文件搜索（Windows 索引 / 全盘扫描）、读取文件（文本 / PDF / Office 文档，MarkItDown 转换，支持关键词搜索与分段读取） | ✅ 已实现         |
 | 系统 | PowerShell（白名单）、写入文件（沙箱）、打开文件/应用 | ✅ 已实现         |
 | 系统 | 截图（窗口排除需 Windows 10 2004+，旧版自动回退移屏） | ✅ 已实现         |
-| 系统 | 窗口管理、音量/亮度 | ⏳ 进行中     |
+| 系统 | 窗口管理、音量/亮度 | ⏳ 进行中         |
 | 记忆 | 检索日记、轮次检索、长期事实 | ✅ 已实现         |
 | 组织 | 待办事项（增删改查、提醒）、剪贴板历史 | ✅ 已实现         |
 | 通信 | 系统通知 | ✅ 已实现         |
@@ -100,7 +100,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 
 | 包 | 说明 | 需要 |
 |----|------|------|
-| `Luna-v0.1.0.0-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
+| `Luna-vX.Y.Z-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
 | `Luna-win-x64.zip` | 自包含免安装版 | 无需安装 .NET 运行时，解压即用 |
 | `Luna-win-x64-fdd.zip` | 框架依赖免安装版 | 需安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) |
 
@@ -149,7 +149,7 @@ pwsh .\scripts\build-installer.ps1 -SkipPublish
 
 ## 🔐 数据与隐私
 
-Luna 是本地优先应用：会话、日记、待办、长期事实和附件默认保存在本机。联网行为仅发生在以下场景：调用你配置的 AI 提供商、网页搜索（Tavily）、网页阅读 / 新闻。
+Luna 是本地优先应用：会话、日记、待办、长期事实和附件默认保存在本机。联网行为仅发生在以下场景：调用你配置的 AI 提供商、网页搜索（Tavily）、网页阅读。
 
 ### 本地数据位置
 
@@ -169,7 +169,7 @@ Luna 是本地优先应用：会话、日记、待办、长期事实和附件默
 ### 隐私边界
 
 - **数据库、日记、长期事实、附件和日志均为明文**，没有整库加密；能访问此 Windows 账户或磁盘的人可以直接读取。
-- 对话内容、与当前话题相关的长期事实、附件内容会发送给你配置的 AI 提供商；启用网页搜索时会请求 Tavily，网页阅读 / 新闻工具会进行联网搜索。
+- 对话内容、与当前话题相关的长期事实、附件内容会发送给你配置的 AI 提供商；启用网页搜索时会请求 Tavily，网页阅读工具会进行联网搜索。
 - API Key 使用 DPAPI 加密保存；日志不会记录 API Key、完整对话或工具参数，但仍可能包含调用状态、耗时、错误响应和文件路径等诊断信息，请勿把日志或导出文件发给不可信的人。
 - 数据导出和自动备份 **不包含 `settings.json`**（避免密钥跨设备复用），并且 ZIP **没有加密**。
 - 「设置 → 调试 → 清除数据库」目前只清理会话、消息、日记、长期事实、附件元数据和轮次摘要；不会删除待办、工具审计日志、附件 blob、日志和备份。彻底清理请手动删除数据目录。

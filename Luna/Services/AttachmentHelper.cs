@@ -25,6 +25,9 @@ public static class AttachmentHelper
     /// <summary>单条消息可附带的最大附件数量。</summary>
     public const int MaxCount = 10;
 
+    /// <summary>附件存储最多保留的记录数；新附件上传成功后自动删除最旧的多余记录。</summary>
+    public const int MaxStoredCount = 30;
+
     /// <summary>单个附件的最大字节数（100 MB）。</summary>
     public const long MaxBytes = 100L * 1024 * 1024;
 

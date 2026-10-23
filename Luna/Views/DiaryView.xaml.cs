@@ -531,7 +531,7 @@ public partial class DiaryView : UserControl
             new()
             {
                 Text = loc["Diary_Disable_Confirm"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
