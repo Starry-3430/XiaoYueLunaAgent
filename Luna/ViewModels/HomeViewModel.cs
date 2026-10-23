@@ -295,7 +295,6 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             NameKey = "Tool_Category_Input",
             Tools =
             {
-                new ToolDefinition { Id = "vision", NameKey = "Tool_Vision_DisplayName", DescriptionKey = "Tool_Vision_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "ocr", NameKey = "Tool_Ocr_DisplayName", DescriptionKey = "Tool_Ocr_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "speech", NameKey = "Tool_Speech_DisplayName", DescriptionKey = "Tool_Speech_Description", IsEnabled = true, IsAvailable = false },
             }

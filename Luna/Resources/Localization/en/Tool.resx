@@ -75,8 +75,6 @@
   <data name="Tool_ClipboardHistory_Description" xml:space="preserve"><value>View and manage clipboard history.</value></data>
 
   <!-- 输入 -->
-  <data name="Tool_Vision_DisplayName" xml:space="preserve"><value>Vision</value></data>
-  <data name="Tool_Vision_Description" xml:space="preserve"><value>Analyze image content.</value></data>
   <data name="Tool_Ocr_DisplayName" xml:space="preserve"><value>OCR</value></data>
   <data name="Tool_Ocr_Description" xml:space="preserve"><value>Recognize text in images.</value></data>
   <data name="Tool_Speech_DisplayName" xml:space="preserve"><value>Speech</value></data>

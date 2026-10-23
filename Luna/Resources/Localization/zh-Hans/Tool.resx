@@ -75,8 +75,6 @@
   <data name="Tool_ClipboardHistory_Description" xml:space="preserve"><value>查看和管理剪贴板历史记录</value></data>
 
   <!-- 输入 -->
-  <data name="Tool_Vision_DisplayName" xml:space="preserve"><value>视觉</value></data>
-  <data name="Tool_Vision_Description" xml:space="preserve"><value>分析图片内容</value></data>
   <data name="Tool_Ocr_DisplayName" xml:space="preserve"><value>OCR</value></data>
   <data name="Tool_Ocr_Description" xml:space="preserve"><value>识别图片中的文字</value></data>
   <data name="Tool_Speech_DisplayName" xml:space="preserve"><value>语音</value></data>
