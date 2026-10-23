@@ -273,7 +273,9 @@ public partial class LunaDialog : Window
             Content = model.Text,
             Command = model.Command,
             CommandParameter = model.CommandParameter,
-            Style = TryFindResource(styleKey) as Style
+            Style = TryFindResource(styleKey) as Style,
+            IsDefault = model.IsPrimary,
+            IsCancel = model.IsCancel,
         };
     }
 }

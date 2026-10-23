@@ -14,6 +14,8 @@
   </resheader>
 
   <data name="Main_Placeholder" xml:space="preserve"><value>Type here</value></data>
+  <data name="Main_Placeholder_FullAccess" xml:space="preserve"><value>Type here (Full Access enabled)</value></data>
+  <data name="Main_FullAccessWarning" xml:space="preserve"><value>⚠Full Access</value></data>
   <data name="Main_ClearAttachments" xml:space="preserve"><value>Clear All</value></data>
   <data name="Main_Reminder" xml:space="preserve"><value>Reminder</value></data>
   <data name="Main_Snooze" xml:space="preserve"><value>Snooze</value></data>

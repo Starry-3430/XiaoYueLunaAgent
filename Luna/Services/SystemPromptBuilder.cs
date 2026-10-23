@@ -52,6 +52,10 @@ public class SystemPromptBuilder
         var rules = ReplacePlaceholders(DefaultPrompts.SystemRules);
         var prompt = string.IsNullOrWhiteSpace(personality) ? rules : personality + "\n\n" + rules;
 
+        // 完全访问模式：追加能力说明，但不放宽防提示词注入等底层纪律。
+        if (_settings.FullAccessEnabled)
+            prompt += "\n\n" + DefaultPrompts.FullAccessRules;
+
         // 注入当前用户的目录信息（用户名、桌面、文档等），让 AI 知道可以搜索/读取的位置
         if (options.IncludeUserEnvironment)
             prompt += "\n\n" + UserEnvironment.BuildPromptSection(_settings.ResponseLanguage);

@@ -12,6 +12,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Styles/SettingsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -371,6 +372,10 @@
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="{loc:Loc Settings_Output_Title}" Style="{StaticResource SettingsTitle}"/>
                     <TextBlock Text="{loc:Loc Settings_Output_Desc}" Style="{StaticResource SettingsDesc}" Margin="0"/>
+                    <TextBlock Text="{loc:Loc Settings_Output_FullAccessWarning}"
+                               Foreground="#C0392B" FontSize="12" TextWrapping="Wrap"
+                               Margin="0,4,0,0"
+                               Visibility="{Binding IsFullAccessEnabled, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBox Width="240" Style="{StaticResource SettingsInputWide}"

@@ -103,6 +103,12 @@ public class AiSettings
 
     /// <summary>是否启用日记本：关闭后不再自动整理日记，但轮次关键词与摘要照常生成。</summary>
     public bool DiaryEnabled { get; set; } = DefaultDiaryEnabled;
+
+    /// <summary>
+    /// 完全访问模式：解除文件写入目录、扩展名与代码/命令执行黑名单限制。
+    /// 默认关闭；关闭时恢复所有安全限制。
+    /// </summary>
+    public bool FullAccessEnabled { get; set; }
 }
 
 public class ChatCompletionRequest

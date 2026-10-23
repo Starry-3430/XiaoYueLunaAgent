@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Luna.Models;
 using Microsoft.Extensions.Logging;
 using static Luna.Services.Tools.ToolLocalization;
 
@@ -39,6 +40,7 @@ public class CodeExecuteTool : ITool
     private const string SchemaTemplate =
         """{"type":"object","properties":{"code":{"type":"string","description":"$code$"}},"required":["code"]}""";
 
+    private readonly AiSettings _settings;
     private readonly ILogger<CodeExecuteTool> _logger;
 
     public string Name => "code_execute";
@@ -47,8 +49,9 @@ public class CodeExecuteTool : ITool
     public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$code$", Param("Tool_CodeExecute_Param_Code")));
     public ToolRiskLevel Risk => ToolRiskLevel.High;
 
-    public CodeExecuteTool(ILogger<CodeExecuteTool> logger)
+    public CodeExecuteTool(AiSettings settings, ILogger<CodeExecuteTool> logger)
     {
+        _settings = settings;
         _logger = logger;
     }
 
@@ -58,10 +61,14 @@ public class CodeExecuteTool : ITool
         if (string.IsNullOrWhiteSpace(code))
             return Task.FromResult(ToolResult.Error(Text("Tool_Msg_MissingParam", "code")));
 
-        var blocked = FindForbidden(code);
-        if (blocked is not null)
-            return Task.FromResult(ToolResult.Error(
-                Text("Tool_CodeExecute_Msg_Forbidden", blocked)));
+        // 完全访问模式：允许网络、系统操作、动态执行等能力，不再做正则黑名单拦截。
+        if (!_settings.FullAccessEnabled)
+        {
+            var blocked = FindForbidden(code);
+            if (blocked is not null)
+                return Task.FromResult(ToolResult.Error(
+                    Text("Tool_CodeExecute_Msg_Forbidden", blocked)));
+        }
 
         return Task.Run(() => Run(code, ct), ct);
     }

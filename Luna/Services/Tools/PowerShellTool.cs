@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Luna.Models;
 using Microsoft.Extensions.Logging;
 using static Luna.Services.Tools.ToolLocalization;
 
@@ -30,6 +31,7 @@ public class PowerShellTool : ITool
     private const string SchemaTemplate =
         """{"type":"object","properties":{"command":{"type":"string","description":"$command$"}},"required":["command"]}""";
 
+    private readonly AiSettings _settings;
     private readonly ILogger<PowerShellTool> _logger;
 
     public string Name => "powershell";
@@ -38,17 +40,25 @@ public class PowerShellTool : ITool
     public JsonElement ParametersSchema => ToolSchema.Parse(SchemaTemplate.Replace("$command$", Param("Tool_Powershell_Param_Command")));
     public ToolRiskLevel Risk => ToolRiskLevel.High;
 
-    public PowerShellTool(ILogger<PowerShellTool> logger)
+    public PowerShellTool(AiSettings settings, ILogger<PowerShellTool> logger)
     {
+        _settings = settings;
         _logger = logger;
     }
 
     public Task<ToolResult> ExecuteAsync(JsonElement args, CancellationToken ct = default)
     {
         var command = GetString(args, "command");
-        var validationError = Validate(command);
-        if (validationError is not null)
-            return Task.FromResult(ToolResult.Error(validationError));
+        if (string.IsNullOrWhiteSpace(command))
+            return Task.FromResult(ToolResult.Error(Text("Tool_Powershell_Msg_MissingCommand")));
+
+        // 完全访问模式：解除只读动词白名单与写操作动词黑名单。
+        if (!_settings.FullAccessEnabled)
+        {
+            var validationError = Validate(command);
+            if (validationError is not null)
+                return Task.FromResult(ToolResult.Error(validationError));
+        }
 
         return Task.Run(() => Run(command, ct), ct);
     }
