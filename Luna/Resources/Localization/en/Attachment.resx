@@ -35,6 +35,9 @@
   <data name="Attachment_Summary_Count" xml:space="preserve">
     <value>{0} attachment(s), {1} total</value>
   </data>
+  <data name="Attachment_Retention_Desc" xml:space="preserve">
+    <value>Up to {0} attachments are kept. After a new upload, the oldest attachments beyond the limit are deleted automatically.</value>
+  </data>
   <data name="Attachment_Load_Failed" xml:space="preserve">
     <value>Load failed: {0}</value>
   </data>

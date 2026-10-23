@@ -51,6 +51,7 @@ public sealed class ChatGenerationService
     private readonly SessionRepository _sessionRepo;
     private readonly MessageRepository _messageRepo;
     private readonly AttachmentRepository _attachmentRepo;
+    private readonly FileStorageService _fileStorage;
     private readonly ToolRegistry _toolRegistry;
     private readonly ToolPermissionService _toolPermission;
     private readonly ToolPermissionRepository _auditRepo;
@@ -85,7 +86,8 @@ public sealed class ChatGenerationService
     };
 
     public ChatGenerationService(IAiService aiService, SessionRepository sessionRepo,
-        MessageRepository messageRepo, AttachmentRepository attachmentRepo, ToolRegistry toolRegistry,
+        MessageRepository messageRepo, AttachmentRepository attachmentRepo,
+        FileStorageService fileStorage, ToolRegistry toolRegistry,
         ToolPermissionService toolPermission, ToolPermissionRepository auditRepo,
         TurnSummaryService turnSummaryService,
         SessionTitleService sessionTitleService,
@@ -95,6 +97,7 @@ public sealed class ChatGenerationService
         _sessionRepo = sessionRepo;
         _messageRepo = messageRepo;
         _attachmentRepo = attachmentRepo;
+        _fileStorage = fileStorage;
         _toolRegistry = toolRegistry;
         _toolPermission = toolPermission;
         _auditRepo = auditRepo;
@@ -204,6 +207,8 @@ public sealed class ChatGenerationService
                 await _attachmentRepo.AddAsync(attachment);
             }
 
+            await EnforceAttachmentStorageLimitAsync();
+
             // 图片：压缩后作为多模态图像附加到用户消息，交由 AI 的识图能力识别（不走本地工具）
             foreach (var attachment in attachments.Where(AttachmentHelper.IsImage))
             {
@@ -302,6 +307,33 @@ public sealed class ChatGenerationService
             .Where(l => l.StartsWith(AttachmentHeaderPrefix, StringComparison.Ordinal))
             .Select(l => l[AttachmentHeaderPrefix.Length..].Trim());
         return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// 附件存储只保留最新 <see cref="AttachmentHelper.MaxStoredCount"/> 条记录；
+    /// 新附件成功入库后调用，删除最旧记录并清理不再被引用的 blob 文件。
+    /// </summary>
+    private async Task EnforceAttachmentStorageLimitAsync()
+    {
+        try
+        {
+            var removed = await _attachmentRepo.TrimToLimitAsync(AttachmentHelper.MaxStoredCount);
+            if (removed.Count == 0) return;
+
+            foreach (var attachment in removed)
+            {
+                // 内容寻址下多个记录可能指向同一个 blob；仅在没有其他记录引用时删除文件。
+                if (string.IsNullOrEmpty(attachment.Sha256)) continue;
+                if (await _attachmentRepo.GetBySha256Async(attachment.Sha256) is not null) continue;
+                _fileStorage.DeleteBlob(attachment.Sha256);
+            }
+
+            _logger.LogInformation("附件存储超过上限，已删除最旧的 {Count} 个附件记录", removed.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "清理超限附件存储失败");
+        }
     }
 
     /// <summary>一次版本分支的公共准备结果。</summary>
@@ -438,6 +470,8 @@ public sealed class ChatGenerationService
                 CreatedAtUtc = DateTime.UtcNow,
             });
         }
+
+        await EnforceAttachmentStorageLimitAsync();
     }
 
     private async Task InsertBranchSystemAsync(ObservableCollection<ChatMessage> messages,
@@ -607,6 +641,9 @@ public sealed class ChatGenerationService
                 attachment.TurnId = turnId;
                 await _attachmentRepo.AddAsync(attachment);
             }
+
+            if (preparedAttachments.Count > 0)
+                await EnforceAttachmentStorageLimitAsync();
 
             var newUser = await InsertBranchUserAsync(messages, sessionId, turnId, logicalDate,
                 newText, [], branch);

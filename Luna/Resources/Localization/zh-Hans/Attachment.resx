@@ -35,6 +35,9 @@
   <data name="Attachment_Summary_Count" xml:space="preserve">
     <value>{0} 个附件，共 {1}</value>
   </data>
+  <data name="Attachment_Retention_Desc" xml:space="preserve">
+    <value>最多保留 {0} 个附件；上传新附件后，超出部分会按时间自动删除最旧的附件。</value>
+  </data>
   <data name="Attachment_Load_Failed" xml:space="preserve">
     <value>加载失败：{0}</value>
   </data>
