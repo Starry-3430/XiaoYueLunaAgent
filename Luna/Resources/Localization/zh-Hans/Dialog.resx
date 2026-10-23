@@ -35,7 +35,8 @@
     <value>提示</value>
   </data>
   <data name="Dialog_DataSharing_Body" xml:space="preserve">
-    <value>您输入的对话、附件、日记等数据将被发送至您配置的 AI 提供商（如 DeepSeek、GLM等）以生成回复。Luna 开发者不会收集您的任何数据。</value>
+    <value>您输入的对话、附件、日记等数据将被发送至您配置的 AI 提供商（如 DeepSeek、GLM等）以生成回复。Luna 开发者不会收集您的任何数据。
+      配置境外AI服务提供商时，相关对话内容可能传输至境外服务器，可能造成的损失由用户自主选择并自行承担相应后果。</value>
   </data>
 
   <!-- 授权提权 -->

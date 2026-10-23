@@ -92,7 +92,7 @@
     <value>密码</value>
   </data>
   <data name="Settings_Proxy_TestButton" xml:space="preserve">
-    <value>测试</value>
+    <value>测试代理</value>
   </data>
   <data name="Settings_Proxy_Testing" xml:space="preserve">
     <value>测试中…</value>
