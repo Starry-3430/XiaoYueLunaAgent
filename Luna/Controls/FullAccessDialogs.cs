@@ -169,6 +169,14 @@ public static class FullAccessDialogs
         var textBox = new TextBox
         {
             Style = dialog.FindResource("DialogInput") as Style,
+            Height = 40,
+            MinHeight = 0,
+            MaxHeight = 40,
+            Padding = new Thickness(8, 6, 8, 6),
+            AcceptsReturn = false,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalContentAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 10, 0, 0),
         };
 

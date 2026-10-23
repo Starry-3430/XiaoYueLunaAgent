@@ -13,12 +13,15 @@ namespace Luna.Services.Tools;
 /// <summary>
 /// 在独立进程中执行 Python 代码（<c>python.exe</c>，不使用 Assembly.Load / 动态编译）。
 /// 沙箱为"尽力而为"：跨进程无法硬隔离网络与文件系统，仅以正则黑名单 + 独立临时目录 + 超时兜底，非绝对安全。
-/// 超时 10 秒（超时杀进程树），输出上限 100 KB（超出即停止累计并标记）。
+/// 超时：常规模式 10 秒；完全访问模式 60 秒；检测到 pip 安装 / subprocess 时 300 秒（超时杀进程树）。
+/// 输出上限 100 KB（超出即停止累计并标记）。
 /// TODO: 256 MB 内存硬限制（通过 JobObject CreateJobObject / SetInformationJobObject），初期用超时兜底。
 /// </summary>
 public class CodeExecuteTool : ITool
 {
-    private const int TimeoutMs = 10_000;
+    private const int NormalTimeoutMs = 10_000;
+    private const int FullAccessTimeoutMs = 60_000;
+    private const int InstallTimeoutMs = 300_000;
     private const int MaxOutputChars = 100 * 1024; // 100 KB
 
     /// <summary>沙箱逃逸防护：命中任意一条即拒绝执行。跨进程无法硬隔离，属"尽力而为"。</summary>
@@ -70,10 +73,20 @@ public class CodeExecuteTool : ITool
                     Text("Tool_CodeExecute_Msg_Forbidden", blocked)));
         }
 
-        return Task.Run(() => Run(code, ct), ct);
+        // 依赖安装必须落在持久的用户级环境，而不是随后即被删除的临时沙箱目录。
+        var packageInstall = PipInstallPolicy.IsPackageInstall(code);
+        var effectiveCode = PipInstallPolicy.EnsureUserFlag(code);
+
+        return Task.Run(() => Run(effectiveCode, packageInstall, ct), ct);
     }
 
-    private ToolResult Run(string code, CancellationToken ct)
+    private int GetTimeoutMs(bool packageInstall)
+    {
+        if (!_settings.FullAccessEnabled) return NormalTimeoutMs;
+        return packageInstall ? InstallTimeoutMs : FullAccessTimeoutMs;
+    }
+
+    private ToolResult Run(string code, bool packageInstall, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
             return ToolResult.Error(Text("Tool_Msg_Cancelled"));
@@ -99,6 +112,7 @@ public class CodeExecuteTool : ITool
             };
             psi.ArgumentList.Add(scriptPath);
             psi.Environment["PYTHONIOENCODING"] = "utf-8";
+            psi.Environment["PYTHONUTF8"] = "1";
 
             _logger.LogInformation("执行 Python 代码");
 
@@ -120,7 +134,8 @@ public class CodeExecuteTool : ITool
                 var stdOutTask = ReadCappedAsync(process.StandardOutput);
                 var stdErrTask = ReadCappedAsync(process.StandardError);
 
-                var exited = process.WaitForExit(TimeoutMs);
+                var timeoutMs = GetTimeoutMs(packageInstall);
+                var exited = process.WaitForExit(timeoutMs);
                 var timedOut = !exited;
                 if (timedOut)
                     TryKill(process);
@@ -131,7 +146,8 @@ public class CodeExecuteTool : ITool
                 var (stdErr, _) = stdErrTask.GetAwaiter().GetResult();
 
                 var exitCode = timedOut ? -1 : process.ExitCode;
-                var content = Format(exitCode, timedOut, stopwatch.Elapsed, stdOut, stdErr, outTruncated);
+                var content = Format(exitCode, timedOut, stopwatch.Elapsed, stdOut, stdErr, outTruncated,
+                    timeoutMs, packageInstall);
 
                 if (timedOut)
                 {
@@ -191,11 +207,20 @@ public class CodeExecuteTool : ITool
         return (sb.ToString(), truncated);
     }
 
-    private static string Format(int exitCode, bool timedOut, TimeSpan elapsed, string stdOut, string stdErr, bool truncated)
+    private static string Format(int exitCode, bool timedOut, TimeSpan elapsed, string stdOut, string stdErr,
+        bool truncated, int timeoutMs, bool packageInstall)
     {
         var sb = new StringBuilder();
         sb.Append(Text("Tool_CodeExecute_Msg_ExitCode")).Append(timedOut ? Text("Tool_CodeExecute_Msg_TimedOut") : exitCode.ToString()).AppendLine();
         sb.Append(Text("Tool_CodeExecute_Msg_Elapsed")).Append(elapsed.TotalSeconds.ToString("0.0")).AppendLine("s");
+
+        if (timedOut)
+        {
+            sb.AppendLine(packageInstall
+                ? Text("Tool_CodeExecute_Msg_InstallTimeout", timeoutMs / 1000)
+                : Text("Tool_CodeExecute_Msg_Timeout", timeoutMs / 1000));
+        }
+
         sb.AppendLine();
         sb.AppendLine("=== stdout ===");
         sb.AppendLine(string.IsNullOrEmpty(stdOut) ? Text("Tool_CodeExecute_Msg_Empty") : stdOut.TrimEnd());
