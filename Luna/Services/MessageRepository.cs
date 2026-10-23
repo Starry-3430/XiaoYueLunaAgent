@@ -16,9 +16,9 @@ public class MessageRepository
         using var conn = new SqliteConnection(_db.ConnectionString);
         var id = await conn.ExecuteScalarAsync<long>(
             @"INSERT INTO Messages 
-              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ToolCallId, ErrorMessage, ContentType, IsActive, VersionGroupId, CreatedAtUtc, LogicalDate)
+              (SessionId, TurnId, Role, Content, ReasoningContent, ToolCallsJson, ToolCallId, ErrorMessage, ContentType, IsActive, VersionGroupId, VersionIndex, CreatedAtUtc, LogicalDate)
               VALUES 
-              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ToolCallId, @ErrorMessage, @ContentType, @IsActive, @VersionGroupId, @CreatedAtUtc, @LogicalDate);
+              (@SessionId, @TurnId, @Role, @Content, @ReasoningContent, @ToolCallsJson, @ToolCallId, @ErrorMessage, @ContentType, @IsActive, @VersionGroupId, @VersionIndex, @CreatedAtUtc, @LogicalDate);
               SELECT last_insert_rowid();", m);
         return id;
     }
@@ -31,13 +31,13 @@ public class MessageRepository
             new { SessionId = sessionId, Id = afterId });
     }
 
-    /// <summary>更新消息的版本激活状态与版本分组。</summary>
-    public async Task UpdateMessageVersionAsync(long id, bool isActive, string? versionGroupId)
+    /// <summary>更新消息的版本激活状态、版本分组与版本序号。</summary>
+    public async Task UpdateMessageVersionAsync(long id, bool isActive, string? versionGroupId, int versionIndex)
     {
         using var conn = new SqliteConnection(_db.ConnectionString);
         await conn.ExecuteAsync(
-            "UPDATE Messages SET IsActive = @IsActive, VersionGroupId = @GroupId WHERE Id = @Id",
-            new { Id = id, IsActive = isActive ? 1 : 0, GroupId = versionGroupId });
+            "UPDATE Messages SET IsActive = @IsActive, VersionGroupId = @GroupId, VersionIndex = @VersionIndex WHERE Id = @Id",
+            new { Id = id, IsActive = isActive ? 1 : 0, GroupId = versionGroupId, VersionIndex = versionIndex });
     }
 
     public async Task<List<Message>> GetBySessionAsync(string sessionId)

@@ -21,6 +21,9 @@ public class Message
     /// <summary>版本分组 ID；同一次提问的不同回复共享。</summary>
     public string? VersionGroupId { get; set; }
 
+    /// <summary>版本序号（同一次提问的第几个回答，从 1 开始；0 表示旧数据尚未写入）。</summary>
+    public int VersionIndex { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public string LogicalDate { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;

@@ -212,6 +212,16 @@ public class DatabaseInitializer
             // 列已存在，忽略
         }
 
+        try
+        {
+            // 0 表示旧数据：加载时按插入顺序补全版本序号。
+            conn.Execute("ALTER TABLE Messages ADD COLUMN VersionIndex INTEGER NOT NULL DEFAULT 0");
+        }
+        catch (SqliteException)
+        {
+            // 列已存在，忽略
+        }
+
         // 索引必须在列迁移之后创建，兼容已存在的旧数据库。
         conn.Execute("CREATE INDEX IF NOT EXISTS IX_Messages_VersionGroupId ON Messages(VersionGroupId)");
     }
@@ -263,6 +273,7 @@ public class DatabaseInitializer
             ContentType   TEXT NOT NULL DEFAULT 'text',
             IsActive      INTEGER NOT NULL DEFAULT 1,
             VersionGroupId TEXT,
+            VersionIndex  INTEGER NOT NULL DEFAULT 0,
             CreatedAtUtc  TEXT NOT NULL,
             LogicalDate   TEXT NOT NULL
         );
