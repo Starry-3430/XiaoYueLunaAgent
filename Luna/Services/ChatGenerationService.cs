@@ -311,8 +311,10 @@ public sealed class ChatGenerationService
         var index = messages.IndexOf(msg);
         if (index < 0 || msg.Role != "assistant") return;
 
-        // 目前只支持重写最后一条“激活”的回复，避免破坏其后的有效上下文。
-        if (messages.Skip(index + 1).Any(m => m.IsActive))
+        // 目前只支持重写最后一轮的回复；同一轮中最终回复之后可能还有 tool 消息，
+        // 它们会随本轮一起归入旧版本，不能因此拒绝重写。
+        if (!msg.IsFinalReply ||
+            messages.Skip(index + 1).Any(m => m.IsActive && m.Role == "user"))
         {
             _logger.LogWarning("目前仅支持重写最后一条 AI 回复");
             return;
@@ -485,6 +487,7 @@ public sealed class ChatGenerationService
         string? replyFinishReason = null;
         ChatMessage? lastAssistantMsg = null;
         ChatMessage? activeReply = null;
+        var cancelled = ct.IsCancellationRequested;
 
         try
         {
@@ -520,6 +523,14 @@ public sealed class ChatGenerationService
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var (content, reasoning, pendingToolCalls, finishReason) =
                     await StreamOneRoundAsync(uiReply, snapshot, activeGroups, ct);
+
+                // 流式读取在取消时可能正常结束（yield break），不会抛异常；
+                // 必须显式识别，否则会把半截内容当成正常回复，导致取消提示与操作按钮丢失。
+                if (ct.IsCancellationRequested)
+                {
+                    cancelled = true;
+                    break;
+                }
 
                 if (pendingToolCalls.Count == 0)
                 {
@@ -748,18 +759,16 @@ public sealed class ChatGenerationService
                     });
                 }
 
-                if (ct.IsCancellationRequested) break;
+                if (ct.IsCancellationRequested)
+                {
+                    cancelled = true;
+                    break;
+                }
             }
         }
         catch (OperationCanceledException)
         {
-            runtime.Status = LocalizationService.Instance["Common_Status_ReadyCanceled"];
-            if (activeReply is not null)
-            {
-                activeReply.IsStreaming = false;
-                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
-                    LocalizationService.Instance["Common_Canceled"], versionGroupId, versionIndex);
-            }
+            cancelled = true;
         }
         catch (Exception ex)
         {
@@ -786,6 +795,38 @@ public sealed class ChatGenerationService
             runtime.IsBusy = false;
             runtime.Cts?.Dispose();
             runtime.Cts = null;
+        }
+
+        if (cancelled)
+        {
+            runtime.Status = LocalizationService.Instance["Common_Status_ReadyCanceled"];
+            var cancelText = LocalizationService.Instance["Common_Canceled"];
+
+            // 取消时如果当前回复已经是本轮最后一条 assistant，直接把提示写在它上面；
+            // 如果它后面还有工具消息（取消发生在工具调用阶段），则在其后追加一条提示，
+            // 保证“最终回复”始终位于本轮末尾，复制/重写按钮不会消失。
+            var lastAssistant = messages.LastOrDefault(m => m.IsActive && m.Role == "assistant");
+            if (activeReply is { DbId: 0 } && ReferenceEquals(lastAssistant, activeReply))
+            {
+                activeReply.IsStreaming = false;
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, activeReply,
+                    cancelText, versionGroupId, versionIndex);
+            }
+            else
+            {
+                var notice = new ChatMessage
+                {
+                    Role = "assistant",
+                    Content = string.Empty,
+                    IsStreaming = false,
+                    VersionGroupId = versionGroupId,
+                    VersionIndex = versionIndex,
+                    TotalVersions = totalVersions,
+                };
+                messages.Add(notice);
+                await PersistNoticeAsync(sessionId, turnId, logicalDate, notice,
+                    cancelText, versionGroupId, versionIndex);
+            }
         }
 
         if (lastAssistantMsg is not null)
@@ -830,6 +871,7 @@ public sealed class ChatGenerationService
         await _sessionRepo.TouchAsync(sessionId);
         runtime.Status = LocalizationService.Instance["Common_Status_Ready"];
         WeakReferenceMessenger.Default.Send(new SessionUpdateMessage(sessionId));
+        MarkFinalReplies(messages);
         UpdateRewriteEligibility(messages);
         return lastAssistantMsg is not null && !string.IsNullOrWhiteSpace(lastAssistantMsg.Content);
     }
@@ -1037,9 +1079,10 @@ public sealed class ChatGenerationService
         foreach (var message in messages)
             message.IsFinalReply = false;
 
-        // 每轮用户消息之后，最后一个有正文或错误提示的激活 assistant 就是本轮最终回复。
+        // 每轮用户消息之后，最后一个激活 assistant 就是本轮最终回复。
         // 不能简单用“下一条激活消息是否为 user”判断：取消/出错时工具消息可能排在这条
         // 回复之后（同一版本的 tool 消息），那样会把最终回复误判为非最终，导致操作按钮消失。
+        // 也不要求必须有正文/错误：取消可能发生在首个 token 之前，此时仍是可重写的最终回复。
         ChatMessage? candidate = null;
         foreach (var message in messages)
         {
@@ -1052,9 +1095,7 @@ public sealed class ChatGenerationService
             }
 
             if (!message.IsActive || message.Role != "assistant") continue;
-
-            if (!string.IsNullOrEmpty(message.Content) || !string.IsNullOrEmpty(message.ErrorMessage))
-                candidate = message;
+            candidate = message;
         }
 
         if (candidate is not null)
