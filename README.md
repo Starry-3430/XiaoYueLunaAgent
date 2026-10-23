@@ -11,10 +11,10 @@
 ---
 
 ![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
+[![Version](https://img.shields.io/github/v/release/Starry-3430/XiaoYueLunaAgent?display_name=tag&sort=semver&label=Version&color=E38A20)](https://github.com/Starry-3430/XiaoYueLunaAgent/releases/latest)
+
 
 *当前仅支持 Windows*
-
-> 当前版本：**v0.1.0.0（公开测试版）**
 
 **Luna** 是一个基于 C# / WPF 开发的 Windows 桌面个人 AI 智能体。它以一个紧凑的胶囊窗口常驻屏幕顶部，通过全局快捷键或托盘图标随时呼出。你可以像聊天一样向它提问、让它完成实际任务。
 
@@ -101,7 +101,7 @@ Luna 内置了一套可扩展的工具框架，AI 会根据对话内容自主决
 
 | 包 | 说明 | 需要 |
 |----|------|------|
-| `Luna-v0.1.0.0-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
+| `Luna-vX.Y.Z-Setup.exe` | 安装版（推荐） | 无需安装 .NET 运行时；默认安装到 `%LOCALAPPDATA%\Programs\Luna` |
 | `Luna-win-x64.zip` | 自包含免安装版 | 无需安装 .NET 运行时，解压即用 |
 | `Luna-win-x64-fdd.zip` | 框架依赖免安装版 | 需安装 [.NET 10 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/10.0) |
 
