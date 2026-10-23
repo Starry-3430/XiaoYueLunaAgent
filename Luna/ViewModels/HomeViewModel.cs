@@ -247,6 +247,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 new ToolDefinition { Id = "web_search", NameKey = "Tool_WebSearch_DisplayName", DescriptionKey = "Tool_WebSearch_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "fetch_url", NameKey = "Tool_FetchUrl_DisplayName", DescriptionKey = "Tool_FetchUrl_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "read_clipboard", NameKey = "Tool_ReadClipboard_DisplayName", DescriptionKey = "Tool_ReadClipboard_Description", IsEnabled = true, IsAvailable = false },
+                // 冻结：新闻/日历未通过评审，暂不注册；工具页仍展示为“未实现”。
                 new ToolDefinition { Id = "news_calendar", NameKey = "Tool_NewsCalendar_DisplayName", DescriptionKey = "Tool_NewsCalendar_Description", IsEnabled = true, IsAvailable = false },
             }
         });
@@ -262,6 +263,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
                 new ToolDefinition { Id = "write_file", NameKey = "Tool_WriteFile_DisplayName", DescriptionKey = "Tool_WriteFile_Description", IsEnabled = true, IsAvailable = false, RequiresConfig = true, Risk = ToolRiskLevel.Medium },
                 new ToolDefinition { Id = "file_open", NameKey = "Tool_FileOpen_DisplayName", DescriptionKey = "Tool_FileOpen_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "screenshot", NameKey = "Tool_Screenshot_DisplayName", DescriptionKey = "Tool_Screenshot_Description", IsEnabled = true, IsAvailable = false },
+                // 冻结：窗口管理、音量/亮度未通过评审，暂不注册；工具页仍展示为“未实现”。
                 new ToolDefinition { Id = "window_manager", NameKey = "Tool_WindowManager_DisplayName", DescriptionKey = "Tool_WindowManager_Description", IsEnabled = true, IsAvailable = false },
                 new ToolDefinition { Id = "volume_brightness", NameKey = "Tool_VolumeBrightness_DisplayName", DescriptionKey = "Tool_VolumeBrightness_Description", IsEnabled = true, IsAvailable = false },
             }
