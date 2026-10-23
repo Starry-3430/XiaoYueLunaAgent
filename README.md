@@ -11,8 +11,7 @@
 ---
 
 ![Minimum OS](https://img.shields.io/static/v1?label=Minimum%20OS&message=Windows%2010%201809%2B&color=blue)
-[![Version](https://img.shields.io/github/v/release/Starry-3430/XiaoYueLunaAgent?display_name=tag&sort=semver&label=Version&color=E38A20)](https://github.com/Starry-3430/XiaoYueLunaAgent/releases/latest)
-
+[![Version](https://img.shields.io/github/v/release/Starry-3430/XiaoYueLunaAgent?display_name=tag&sort=semver&include_prereleases&label=Version&color=E38A20)](https://github.com/Starry-3430/XiaoYueLunaAgent/releases/latest)
 
 *当前仅支持 Windows*
 
