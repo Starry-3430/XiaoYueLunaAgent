@@ -7,7 +7,7 @@ namespace Luna.Services.Tools;
 
 public sealed class WindowManagerTool : ITool
 {
-    private const uint SwpNoZOrder = 0x0004, SwpNoActivate = 0x0010;
+    private const uint SwpNoSize = 0x0001, SwpNoMove = 0x0002, SwpNoZOrder = 0x0004, SwpNoActivate = 0x0010;
     private static readonly JsonElement Schema = ToolSchema.Parse("""{"type":"object","properties":{"action":{"type":"string","enum":["list","minimize","maximize","restore","move","resize","close"]},"title":{"type":"string","description":"窗口标题，支持包含匹配"},"hwnd":{"type":"string","description":"窗口句柄，支持十进制或 0x 十六进制"},"x":{"type":"integer"},"y":{"type":"integer"},"width":{"type":"integer"},"height":{"type":"integer"}},"required":[]}""");
     private readonly ILogger<WindowManagerTool> _logger;
     public WindowManagerTool(ILogger<WindowManagerTool> logger) => _logger = logger;
@@ -30,11 +30,13 @@ public sealed class WindowManagerTool : ITool
                 case "minimize": ShowWindow(hwnd, 6); break;
                 case "maximize": ShowWindow(hwnd, 3); break;
                 case "restore": ShowWindow(hwnd, 9); break;
-                case "close": PostMessage(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); break;
-                case "move": if (!TryGetInt(args, "x", out var x) || !TryGetInt(args, "y", out var y)) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_MoveArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
-                case "resize": if (!TryGetInt(args, "width", out var width) || !TryGetInt(args, "height", out var height) || width < 100 || height < 80) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_ResizeArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, 0, 0, width, height, SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
+                case "close":
+                    if (!PostMessage(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero)) throw LastError();
+                    break;
+                case "move": if (!TryGetInt(args, "x", out var x) || !TryGetInt(args, "y", out var y)) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_MoveArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SwpNoSize | SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
+                case "resize": if (!TryGetInt(args, "width", out var width) || !TryGetInt(args, "height", out var height) || width < 100 || height < 80) return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_ResizeArgs"))); if (!SetWindowPos(hwnd, IntPtr.Zero, 0, 0, width, height, SwpNoMove | SwpNoZOrder | SwpNoActivate)) throw LastError(); break;
             }
-            _logger.LogInformation("窗口操作已执行");
+            _logger.LogInformation("Window operation {Action} executed on {Hwnd}", action, hwnd);
             return Task.FromResult(ToolResult.Ok(ToolLocalization.Text("Tool_WindowManager_Msg_Done", action)));
         }
         catch (Exception ex) { _logger.LogError(ex, "Window operation failed"); return Task.FromResult(ToolResult.Error(ToolLocalization.Text("Tool_WindowManager_Msg_Failed", ex.Message))); }

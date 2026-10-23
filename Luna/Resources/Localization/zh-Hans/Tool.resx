@@ -161,6 +161,8 @@
   <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target 必须是 volume 或 brightness。</value></data>
   <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>无法访问默认音频输出设备。</value></data>
   <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>音量：{0:0.#}%；静音：{1}。</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Muted" xml:space="preserve"><value>是</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Unmuted" xml:space="preserve"><value>否</value></data>
   <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>brightness 设置需要 value（0-100）。</value></data>
   <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>亮度操作被取消。</value></data>
   <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>亮度设置失败，当前显示器可能不支持软件调节。</value></data>
@@ -450,7 +452,7 @@
 
   <!-- enable_tool_group -->
   <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>解锁工具组</value></data>
-  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：info（网络信息）、filesystem（文件操作）、system_dev（系统与开发：PowerShell/代码/Git）、memory_organize（记忆与待办修改）。</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>当当前可用工具无法完成任务时使用。解锁一个工具组，下一轮即可调用该组工具。可用组：info（网络信息、新闻与日历）、filesystem（文件操作与截图）、system_dev（系统与开发：PowerShell/代码/Git、窗口与音量/亮度控制）、memory_organize（记忆、待办与剪贴板历史）。</value></data>
   <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>需要解锁的工具组：info、filesystem、system_dev 或 memory_organize。</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>已解锁工具组：{0}。可用工具：{1}。请在下一轮直接使用。</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>未知工具组：{0}。</value></data>

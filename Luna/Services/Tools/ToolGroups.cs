@@ -28,15 +28,16 @@ public static class ToolGroups
             },
             [Info] = new(StringComparer.OrdinalIgnoreCase)
             {
-                "web_search", "fetch_url",
+                "web_search", "fetch_url", "news_calendar",
             },
             [SystemDev] = new(StringComparer.OrdinalIgnoreCase)
             {
-                "powershell", "code_execute", "git",
+                "powershell", "code_execute", "git", "window_manager", "volume_brightness",
             },
             [MemoryOrganize] = new(StringComparer.OrdinalIgnoreCase)
             {
                 "remember_fact", "forget_fact", "add_task", "complete_task", "delete_task",
+                "clipboard_history",
             },
         };
 
@@ -55,19 +56,26 @@ public static class ToolGroups
             [
                 "搜索", "搜一下", "搜一搜", "查找", "查一下", "查查", "帮我查", "帮我找",
                 "联网", "上网", "天气", "新闻", "网址", "网页", "链接",
+                "日期", "日历", "几号", "星期几", "今天",
                 "search", "searching", "web", "website", "websites", "url", "http",
                 "news", "weather", "look up", "google", "bing", "browse", "fetch", "download",
+                "date", "calendar", "today",
             ],
             [SystemDev] =
             [
                 "运行", "执行", "命令", "脚本", "代码", "终端",
+                "窗口", "最小化", "最大化", "移动窗口", "调整窗口", "关闭窗口",
+                "音量", "静音", "亮度",
                 "cmd", "powershell", "shell", "script", "scripts", "terminal",
                 "execute", "executing", "run ", "running", "git", "commit", "branch", "bash", "console",
+                "window", "minimize", "maximize", "move window", "resize window", "close window",
+                "volume", "mute", "brightness",
             ],
             [MemoryOrganize] =
             [
-                "记住", "忘掉", "忘记", "待办", "提醒", "任务",
+                "记住", "忘掉", "忘记", "待办", "提醒", "任务", "剪贴板", "剪贴板历史",
                 "remember", "forget", "todo", "task", "tasks", "remind", "reminders", "fact", "facts",
+                "clipboard", "clipboard history",
             ],
         };
 

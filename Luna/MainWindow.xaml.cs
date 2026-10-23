@@ -18,7 +18,6 @@ using Luna.Localization;
 using Luna.Models;
 using Luna.ViewModels;
 using Luna.Services;
-using Luna.ViewModels;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 

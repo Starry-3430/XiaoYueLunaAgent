@@ -14,7 +14,6 @@ public class BubbleContextMenu
 {
     private readonly Popup _popup;
     private readonly FrameworkElement _target;
-    private bool _isOpen;
     private bool _windowEventsAttached;
 
     public BubbleContextMenu(FrameworkElement target)
@@ -106,7 +105,6 @@ public class BubbleContextMenu
     private void CloseMenu()
     {
         _popup.IsOpen = false;
-        _isOpen = false;
     }
 
     private void OnPreviewRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -136,7 +134,6 @@ public class BubbleContextMenu
         _target.Dispatcher.BeginInvoke(new Action(() =>
         {
             _popup.IsOpen = true;
-            _isOpen = true;
         }), System.Windows.Threading.DispatcherPriority.Input);
     }
 

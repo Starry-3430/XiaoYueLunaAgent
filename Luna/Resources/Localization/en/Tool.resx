@@ -115,11 +115,11 @@
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
   <data name="Tool_FileOpen_AiDescription" xml:space="preserve"><value>Open a file or folder, or launch an application, using the Windows default program.</value></data>
+  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states; management actions require confirmation.</value></data>
+  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Read or adjust system volume, mute state and monitor brightness; setting changes require confirmation.</value></data>
+  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while this tool is enabled; entries stay in memory.</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>Capture the user's current screen. Use when you need to see the user's current interface or diagnose an error dialog.</value></data>
   <data name="Tool_Screenshot_AiDescription" xml:space="preserve"><value>Capture the virtual desktop and save it as a PNG file.</value></data>
-  <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
-  <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
-  <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
   <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
@@ -162,6 +162,8 @@
   <data name="Tool_VolumeBrightness_Msg_InvalidTarget" xml:space="preserve"><value>target must be volume or brightness.</value></data>
   <data name="Tool_VolumeBrightness_Msg_NoAudio" xml:space="preserve"><value>Cannot access the default audio output device.</value></data>
   <data name="Tool_VolumeBrightness_Msg_Volume" xml:space="preserve"><value>Volume: {0:0.#}%; muted: {1}.</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Muted" xml:space="preserve"><value>yes</value></data>
+  <data name="Tool_VolumeBrightness_Msg_Unmuted" xml:space="preserve"><value>no</value></data>
   <data name="Tool_VolumeBrightness_Msg_BrightnessRequired" xml:space="preserve"><value>Setting brightness requires value (0-100).</value></data>
   <data name="Tool_VolumeBrightness_Msg_Cancelled" xml:space="preserve"><value>Brightness operation cancelled.</value></data>
   <data name="Tool_VolumeBrightness_Msg_BrightnessUnsupported" xml:space="preserve"><value>Brightness adjustment failed; this monitor may not support software control.</value></data>
@@ -449,7 +451,7 @@ Its content will be lost.</value></data>
 
   <!-- enable_tool_group -->
   <data name="Tool_EnableToolGroup_DisplayName" xml:space="preserve"><value>Unlock Tool Group</value></data>
-  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information), filesystem (file operations), system_dev (system &amp; dev: PowerShell/code/Git), memory_organize (memory &amp; tasks).</value></data>
+  <data name="Tool_EnableToolGroup_AiDescription" xml:space="preserve"><value>Use when the currently available tools cannot complete the task. Unlocks a tool group for the next round. Groups: info (web information, news &amp; calendar), filesystem (file operations &amp; screenshots), system_dev (system &amp; dev: PowerShell/code/Git, window and volume/brightness control), memory_organize (memory, tasks &amp; clipboard history).</value></data>
   <data name="Tool_EnableToolGroup_Param_GroupName" xml:space="preserve"><value>The tool group to unlock: info, filesystem, system_dev, or memory_organize.</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unlocked" xml:space="preserve"><value>Tool group unlocked: {0}. Available tools: {1}. Use them in the next round.</value></data>
   <data name="Tool_EnableToolGroup_Msg_Unknown" xml:space="preserve"><value>Unknown tool group: {0}.</value></data>
