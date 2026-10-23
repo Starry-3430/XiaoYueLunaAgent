@@ -40,17 +40,33 @@ CloseApplicationsFilter={#MyAppExeName}
 RestartApplications=no
 SetupLogging=yes
 LicenseFile=..\LICENSE
-InfoBeforeFile=..\THIRD-PARTY-NOTICES.md
+InfoBeforeFile=..\licenses\THIRD-PARTY-NOTICES.txt
 VersionInfoVersion={#MyAppVersion}
 
 [Languages]
 Name: "chinesesimp"; MessagesFile: "ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+chinesesimp.PrivacyStatementTitle=隐私安全声明
+chinesesimp.PrivacyStatementDescription=请阅读以下隐私安全声明，勾选同意后继续安装。
+chinesesimp.PrivacyStatementAccept=我已阅读并同意上述隐私安全声明
+chinesesimp.PrivacyStatementRequired=请先勾选“我已阅读并同意上述隐私安全声明”后再继续。
+chinesesimp.PrivacyStatementFile=PrivacyStatement-ZH.txt
+english.PrivacyStatementTitle=Privacy and Security Statement
+english.PrivacyStatementDescription=Please read the privacy and security statement below, then check the box to continue.
+english.PrivacyStatementAccept=I have read and agree to the privacy and security statement above
+english.PrivacyStatementRequired=Please check "I have read and agree to the privacy and security statement above" to continue.
+english.PrivacyStatementFile=PrivacyStatement-EN.txt
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "..\publish\Luna-win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 隐私安全声明：编译进安装包，供自定义向导页按当前语言读取。
+Source: "..\publish\Luna-win-x64\licenses\Luna智能助手软件 V1.0 隐私和安全说明.txt"; DestDir: "{tmp}"; DestName: "PrivacyStatement-ZH.txt"; Flags: dontcopy
+Source: "..\publish\Luna-win-x64\licenses\Luna Smart Assistant Software V1.0 - Privacy and Security Statement (EN).txt"; DestDir: "{tmp}"; DestName: "PrivacyStatement-EN.txt"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\Luna"; Filename: "{app}\{#MyAppExeName}"
@@ -60,6 +76,83 @@ Name: "{autodesktop}\Luna"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopico
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,Luna}"; Flags: nowait postinstall
 
 [Code]
+var
+  PrivacyPage: TWizardPage;
+  PrivacyMemo: TNewMemo;
+  PrivacyCheckBox: TNewCheckBox;
+  PrivacyFileName: String;
+
+procedure PrivacyCheckBoxClick(Sender: TObject);
+begin
+  WizardForm.NextButton.Enabled := PrivacyCheckBox.Checked;
+end;
+
+procedure LoadPrivacyStatement;
+var
+  Lines: TArrayOfString;
+  I: Integer;
+  Content: String;
+begin
+  ExtractTemporaryFile(PrivacyFileName);
+
+  Content := '';
+  if LoadStringsFromFile(ExpandConstant('{tmp}\' + PrivacyFileName), Lines) then
+  begin
+    for I := 0 to GetArrayLength(Lines) - 1 do
+      Content := Content + Lines[I] + #13#10;
+  end;
+
+  PrivacyMemo.Text := Content;
+end;
+
+procedure InitializeWizard();
+begin
+  PrivacyFileName := ExpandConstant('{cm:PrivacyStatementFile}');
+
+  PrivacyPage := CreateCustomPage(wpLicense,
+    ExpandConstant('{cm:PrivacyStatementTitle}'),
+    ExpandConstant('{cm:PrivacyStatementDescription}'));
+
+  PrivacyMemo := TNewMemo.Create(PrivacyPage);
+  PrivacyMemo.Parent := PrivacyPage.Surface;
+  PrivacyMemo.Left := 0;
+  PrivacyMemo.Top := 0;
+  PrivacyMemo.Width := PrivacyPage.SurfaceWidth;
+  PrivacyMemo.Height := PrivacyPage.SurfaceHeight - 32;
+  PrivacyMemo.ReadOnly := True;
+  PrivacyMemo.ScrollBars := ssVertical;
+  PrivacyMemo.WordWrap := True;
+
+  PrivacyCheckBox := TNewCheckBox.Create(PrivacyPage);
+  PrivacyCheckBox.Parent := PrivacyPage.Surface;
+  PrivacyCheckBox.Left := 0;
+  PrivacyCheckBox.Top := PrivacyMemo.Height + 8;
+  PrivacyCheckBox.Width := PrivacyPage.SurfaceWidth;
+  PrivacyCheckBox.Caption := ExpandConstant('{cm:PrivacyStatementAccept}');
+  PrivacyCheckBox.OnClick := @PrivacyCheckBoxClick;
+
+  LoadPrivacyStatement;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if CurPageID = PrivacyPage.ID then
+  begin
+    if not PrivacyCheckBox.Checked then
+    begin
+      MsgBox(ExpandConstant('{cm:PrivacyStatementRequired}'), mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = PrivacyPage.ID then
+    WizardForm.NextButton.Enabled := PrivacyCheckBox.Checked;
+end;
+
 function InitializeUninstall(): Boolean;
 begin
   Result := True;

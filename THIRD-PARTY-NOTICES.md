@@ -1,12 +1,13 @@
 # 第三方组件声明 / Third-Party Notices
 
-本项目（Luna）在构建与运行时依赖以下第三方开源组件。各组件的版权归其各自作者所有，
-并按其原始许可证发布。完整的许可证文本可在对应项目的仓库或许可证链接中获取。
+本项目（Luna）在构建与运行时依赖以下第三方开源组件。各组件的版权归其各自作者所有，并按其原始许可证发布。完整的许可证文本可在对应项目的仓库或许可证链接中获取。
 
-## 运行时依赖
+This project (Luna) depends on the following third-party open-source components at build time and runtime. Copyright for each component belongs to its respective authors, and each component is distributed under its original license. Full license texts are available in the corresponding project repositories or license links.
 
-| 组件 | 许可证 | 版权 / 项目 |
-|------|--------|-------------|
+## 运行时依赖 / Runtime Dependencies
+
+| 组件 / Component | 许可证 / License | 版权 / 项目 / Copyright / Project |
+|------|------|-------------|
 | CommunityToolkit.Mvvm | MIT | Microsoft — https://github.com/CommunityToolkit/dotnet |
 | Microsoft.Extensions.DependencyInjection | MIT | Microsoft — https://github.com/dotnet/runtime |
 | Microsoft.Extensions.Hosting | MIT | Microsoft — https://github.com/dotnet/runtime |
@@ -23,14 +24,14 @@
 | Dapper | Apache-2.0 | Sam Saffron, Marc Gravell, Nick Craver — https://github.com/DapperLib/Dapper |
 | ManagedCode.MarkItDown | MIT | ManagedCode — https://github.com/managedcode/markitdown |
 
-## Markdown 渲染库（`lib/WpfMarkdownViewer`，MIT 分支）
+## Markdown 渲染库 / Markdown Rendering Library（`lib/WpfMarkdownViewer`，MIT 分支 / MIT Fork）
 
-`lib/WpfMarkdownViewer` 为 [QuickerOrg/WpfMarkdownViewer](https://github.com/QuickerOrg/WpfMarkdownViewer)
-的本地副本 / 分支，遵循其 MIT 许可证（版权归 CuiLiang 及 QuickerOrg 贡献者所有，
-详见 `lib/WpfMarkdownViewer/LICENSE`）。其自身依赖如下：
+`lib/WpfMarkdownViewer` 为 [QuickerOrg/WpfMarkdownViewer](https://github.com/QuickerOrg/WpfMarkdownViewer) 的本地副本 / 分支，遵循其 MIT 许可证（版权归 CuiLiang 及 QuickerOrg 贡献者所有，详见 `lib/WpfMarkdownViewer/LICENSE`）。其自身依赖如下：
 
-| 组件 | 许可证 | 版权 / 项目 |
-|------|--------|-------------|
+`lib/WpfMarkdownViewer` is a local copy / fork of [QuickerOrg/WpfMarkdownViewer](https://github.com/QuickerOrg/WpfMarkdownViewer) and is distributed under its MIT license (copyright held by CuiLiang and the QuickerOrg contributors; see `lib/WpfMarkdownViewer/LICENSE`). Its own dependencies are listed below:
+
+| 组件 / Component | 许可证 / License | 版权 / 项目 / Copyright / Project |
+|------|------|-------------|
 | Markdig | BSD-2-Clause | Alexandre Mutel — https://github.com/xoofx/markdig |
 | TextMateSharp | MIT | Daniel Peñalba — https://github.com/danipen/TextMateSharp |
 | TextMateSharp.Grammars | MIT | Daniel Peñalba — https://github.com/danipen/TextMateSharp |
@@ -39,14 +40,14 @@
 | Mostlylucid.Dagre | MIT | scottgal — https://github.com/scottgal/mostlylucid.dagre |
 | SharpVectors.Reloaded | BSD-3-Clause | Elinam LLC — https://github.com/ElinamLLC/SharpVectors |
 
-## 文档转换库（ManagedCode.MarkItDown，MIT）
+## 文档转换库 / Document Conversion Library（ManagedCode.MarkItDown，MIT）
 
-[ManagedCode.MarkItDown](https://github.com/managedcode/markitdown) 遵循 MIT 许可证（版权归 ManagedCode SAS 所有），
-用于把 PDF / Office Open XML / HTML / 文本等文档转换为 Markdown。其自身依赖如下
-（其中各云服务商的 OCR / 语音 SDK 仅在启用相应功能时才会实际使用）：
+[ManagedCode.MarkItDown](https://github.com/managedcode/markitdown) 遵循 MIT 许可证（版权归 ManagedCode SAS 所有），用于把 PDF / Office Open XML / HTML / 文本等文档转换为 Markdown。其自身依赖如下（其中各云服务商的 OCR / 语音 SDK 仅在启用相应功能时才会实际使用）：
 
-| 组件 | 许可证 | 版权 / 项目 |
-|------|--------|-------------|
+[ManagedCode.MarkItDown](https://github.com/managedcode/markitdown) is licensed under the MIT License (copyright ManagedCode SAS) and is used to convert PDF / Office Open XML / HTML / text documents to Markdown. Its own dependencies are listed below (the cloud providers' OCR / speech SDKs are only used when the corresponding features are enabled):
+
+| 组件 / Component | 许可证 / License | 版权 / 项目 / Copyright / Project |
+|------|------|-------------|
 | AngleSharp | MIT | AngleSharp contributors — https://github.com/AngleSharp/AngleSharp |
 | DocumentFormat.OpenXml | MIT | Microsoft — https://github.com/dotnet/Open-XML-SDK |
 | PdfPig | Apache-2.0 | UglyToad and contributors — https://github.com/UglyToad/PdfPig |
@@ -62,16 +63,18 @@
 | Azure.Identity / Azure.AI.FormRecognizer / Azure.AI.Vision.ImageAnalysis | MIT | Microsoft — https://github.com/Azure/azure-sdk-for-net |
 | Google.Cloud.DocumentAI.V1 / .Vision.V1 / .Speech.V1 | Apache-2.0 | Google — https://github.com/googleapis/google-cloud-dotnet |
 
-## 字体
+## 字体 / Fonts
 
-| 组件 | 许可证 | 版权 / 项目 |
-|------|--------|-------------|
+| 组件 / Component | 许可证 / License | 版权 / 项目 / Copyright / Project |
+|------|------|-------------|
 | Cascadia Mono（`Luna/Assets/CascadiaMono.ttf`） | SIL OFL 1.1 | Microsoft Corporation — https://github.com/microsoft/cascadia-code |
 
 完整许可证文本见 `licenses/CascadiaMono-OFL.txt`，随发布包一起分发。
 
-## 构建期依赖
+The full license text is available in `licenses/CascadiaMono-OFL.txt` and is distributed with release packages.
 
-| 组件 | 许可证 | 版权 / 项目 |
-|------|--------|-------------|
+## 构建期依赖 / Build-time Dependencies
+
+| 组件 / Component | 许可证 / License | 版权 / 项目 / Copyright / Project |
+|------|------|-------------|
 | Microsoft.SourceLink.GitHub | MIT | Microsoft — https://github.com/dotnet/sourcelink |
