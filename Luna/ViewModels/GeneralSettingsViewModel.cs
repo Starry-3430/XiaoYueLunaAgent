@@ -471,7 +471,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             new()
             {
                 Text = loc["Dialog_Button_Yes"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDangerSevere",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -497,7 +497,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             new()
             {
                 Text = loc["Settings_Import_RestartButton"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();
@@ -523,7 +523,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };
@@ -786,7 +786,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                IsPrimary = true,
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     result = UpdateChoice.Update;

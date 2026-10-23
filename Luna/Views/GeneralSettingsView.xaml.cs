@@ -221,7 +221,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_Yes"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -256,7 +256,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };
@@ -286,7 +286,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };
@@ -315,7 +315,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };
@@ -353,7 +353,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_Continue"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();
@@ -437,7 +437,7 @@ public partial class GeneralSettingsView : UserControl
             new()
             {
                 Text = loc["Dialog_Button_Continue"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDanger",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();

@@ -736,7 +736,7 @@ public partial class App : Application
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(dialog.Close),
             },
         };

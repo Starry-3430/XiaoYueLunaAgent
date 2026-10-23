@@ -148,7 +148,7 @@ public partial class WelcomeWindow : Window
             new()
             {
                 Text = loc["Dialog_Button_Continue"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();

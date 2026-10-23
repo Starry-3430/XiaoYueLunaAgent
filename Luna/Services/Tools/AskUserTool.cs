@@ -122,7 +122,7 @@ public class AskUserTool : ITool
                 new()
                 {
                     Text = LocalizationService.Instance["Dialog_Button_Cancel"],
-                    StyleKey = "StyleCancel",
+                    StyleKey = "StyleBeige",
                     Command = new RelayCommand(() =>
                     {
                         tcs.TrySetResult(ToolResult.Canceled(Text("Tool_AskUser_Msg_Cancelled")));
@@ -132,7 +132,7 @@ public class AskUserTool : ITool
                 new()
                 {
                     Text = LocalizationService.Instance["Dialog_Button_OK"],
-                    StyleKey = "StyleBeige",
+                    StyleKey = "StyleDark",
                     Command = new RelayCommand(() =>
                     {
                         var answer = (state.GetAnswer() ?? "").Trim();

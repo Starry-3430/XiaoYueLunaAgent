@@ -221,7 +221,7 @@ public class ToolPermissionService
             buttons.Add(new()
             {
                 Text = LocalizationService.Instance["Dialog_ToolPermission_Deny"],
-                StyleKey = "StyleCancel",
+                StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
                     decision = ToolPermissionDecision.Deny;
@@ -298,7 +298,7 @@ public class ToolPermissionService
             buttons.Add(new()
             {
                 Text = LocalizationService.Instance["Dialog_ToolPermission_Deny"],
-                StyleKey = "StyleCancel",
+                StyleKey = "StyleBeige",
                 Command = new RelayCommand(() =>
                 {
                     decision = ToolPermissionDecision.Deny;

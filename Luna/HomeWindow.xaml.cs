@@ -1125,7 +1125,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Dialog_Button_Continue"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDangerSevere",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -1158,7 +1158,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Settings_ClearDb_RestartButton"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     dialog.Close();
@@ -1203,7 +1203,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = loc["Dialog_Button_OK"],
-                StyleKey = "StyleBeige",
+                StyleKey = "StyleDark",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
@@ -1301,13 +1301,9 @@ public partial class HomeWindow : Window
         var box = new TextBox
         {
             Text = session.Title,
-            Width = 260,
-            FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            CaretBrush = new SolidColorBrush(Color.FromRgb(0x5B, 0x48, 0x33)),
-            Background = new SolidColorBrush(Color.FromRgb(0xD4, 0xD0, 0xBA)),
-            BorderThickness = new Thickness(0),
-            Padding = new Thickness(10, 8, 10, 8),
+            Width = double.NaN,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Style = (Style)FindResource("SettingsInput"),
         };
         box.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
 
@@ -1320,7 +1316,7 @@ public partial class HomeWindow : Window
         dialog.Buttons = new ObservableCollection<DialogButton>
         {
             new() { Text = LocalizationService.Instance["Dialog_Button_Cancel"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
-            new() { Text = LocalizationService.Instance["Dialog_Button_OK"], StyleKey = "StyleBeige", Command = new RelayCommand(dialog.Close) },
+            new() { Text = LocalizationService.Instance["Dialog_Button_OK"], StyleKey = "StyleDark", Command = new RelayCommand(dialog.Close) },
         };
         dialog.ShowDialog();
 
@@ -1367,7 +1363,7 @@ public partial class HomeWindow : Window
             new()
             {
                 Text = LocalizationService.Instance["Home_Session_DeleteButton"],
-                StyleKey = "StyleDangerSoft",
+                StyleKey = "StyleDanger",
                 Command = new RelayCommand(() =>
                 {
                     confirmed = true;
