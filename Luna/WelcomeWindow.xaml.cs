@@ -46,6 +46,7 @@ public partial class WelcomeWindow : Window
 
         Loaded += OnWindowLoaded;
         Deactivated += (_, _) => CloseDropdowns();
+        PreviewMouseDown += Window_PreviewMouseDown;
 
         Closed += (_, _) =>
         {
@@ -109,6 +110,25 @@ public partial class WelcomeWindow : Window
     {
         if (DataContext is WelcomeViewModel vm)
             vm.ApiKey = ApiKeyBox.Password;
+    }
+
+    /// <summary>按回车确认 API Key 后展示数据使用提示。</summary>
+    private void ApiKey_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        ShowPrivacyNoticeIfNeeded();
+    }
+
+    /// <summary>API Key 输入框失焦视为填写完毕，展示数据使用提示。</summary>
+    private void ApiKey_LostFocus(object sender, RoutedEventArgs e) => ShowPrivacyNoticeIfNeeded();
+
+    private void ShowPrivacyNoticeIfNeeded()
+    {
+        if (DataContext is not WelcomeViewModel vm) return;
+        if (!vm.TryBeginPrivacyNotice()) return;
+
+        PrivacyNoticeDialog.Show(this);
     }
 
     /// <summary>代理密码输入变化时同步到视图模型。</summary>
@@ -190,7 +210,21 @@ public partial class WelcomeWindow : Window
     }
 
     /// <summary>点击下拉框以外区域时，关闭所有下拉弹出层。</summary>
-    private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e) => CloseDropdowns();
+    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsDropdownToggle(e.OriginalSource as DependencyObject)) return;
+        CloseDropdowns();
+    }
+
+    private static bool IsDropdownToggle(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is FrameworkElement { Tag: SelectSetting }) return true;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
+    }
 
     private void CloseDropdowns()
     {
@@ -218,6 +252,7 @@ public partial class WelcomeWindow : Window
             setting.SelectOptionCommand.Execute(option);
     }
 
+    /// <summary>查找选项所在的 ItemsControl。</summary>
     private static ItemsControl? FindAncestorItemsControl(DependencyObject? child)
     {
         while (child != null)

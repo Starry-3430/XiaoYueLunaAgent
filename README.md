@@ -140,7 +140,7 @@ pwsh .\scripts\build-installer.ps1 -SkipPublish
 
 1. 启动 Luna，托盘出现图标。
 2. 按 `Ctrl + Alt + Y` 呼出胶囊窗口（可在设置中修改快捷键）。
-3. 打开「设置 → 聊天」，填入你的 AI 提供商信息（如 DeepSeek、OpenAI 等）。
+3. 打开「设置 → 聊天」，填入你的 AI 提供商信息（如 DeepSeek、Moonshot 等）。
 4. 保存后即可开始对话。
 
 > API Key 使用 Windows DPAPI（CryptProtectData）加密，仅当前 Windows 用户可解密，不会以明文写入配置文件。

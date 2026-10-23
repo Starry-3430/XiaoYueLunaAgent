@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Luna.Controls;
 using Luna.Models;
 using Luna.ViewModels;
 
@@ -41,16 +42,24 @@ public partial class AiConnectionView : UserControl
         DetachHostWindow();
         _hostWindow = window;
         _hostWindow.Deactivated += HostWindow_Deactivated;
+        _hostWindow.PreviewMouseDown += HostWindow_PreviewMouseDown;
     }
 
     private void DetachHostWindow()
     {
         if (_hostWindow is null) return;
         _hostWindow.Deactivated -= HostWindow_Deactivated;
+        _hostWindow.PreviewMouseDown -= HostWindow_PreviewMouseDown;
         _hostWindow = null;
     }
 
     private void HostWindow_Deactivated(object? sender, EventArgs e) => CloseDropdowns();
+
+    private void HostWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsDropdownToggle(e.OriginalSource as DependencyObject)) return;
+        CloseDropdowns();
+    }
 
     private void CloseDropdowns()
     {
@@ -65,6 +74,25 @@ public partial class AiConnectionView : UserControl
     {
         if (DataContext is AiConnectionViewModel vm)
             vm.ApiKey = ApiKeyBox.Password;
+    }
+
+    /// <summary>按回车确认 API Key 后展示数据使用提示。</summary>
+    private void ApiKey_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        ShowPrivacyNoticeIfNeeded();
+    }
+
+    /// <summary>API Key 输入框失焦视为填写完毕，展示数据使用提示。</summary>
+    private void ApiKey_LostFocus(object sender, RoutedEventArgs e) => ShowPrivacyNoticeIfNeeded();
+
+    private void ShowPrivacyNoticeIfNeeded()
+    {
+        if (DataContext is not AiConnectionViewModel vm) return;
+        if (!vm.TryBeginPrivacyNotice()) return;
+
+        PrivacyNoticeDialog.Show(Window.GetWindow(this));
     }
 
     /// <summary>温度输入框失焦时，校验并夹紧取值范围。</summary>
@@ -93,7 +121,21 @@ public partial class AiConnectionView : UserControl
     }
 
     /// <summary>点击下拉框以外区域时，关闭所有下拉弹出层。</summary>
-    private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e) => CloseDropdowns();
+    private void Root_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsDropdownToggle(e.OriginalSource as DependencyObject)) return;
+        CloseDropdowns();
+    }
+
+    private static bool IsDropdownToggle(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is FrameworkElement { Tag: SelectSetting }) return true;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
+    }
 
     /// <summary>点击下拉触发框：切换其弹出层的展开状态。</summary>
     private void SelectToggle_Click(object sender, MouseButtonEventArgs e)

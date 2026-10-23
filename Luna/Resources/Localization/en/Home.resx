@@ -14,6 +14,7 @@
   </resheader>
 
   <data name="Home_NewChat" xml:space="preserve"><value>New Chat</value></data>
+  <data name="Home_AI_Generated_Disclaimer" xml:space="preserve"><value>Conversations are AI-generated. Please verify important information.</value></data>
   <data name="Home_Nav_Diary" xml:space="preserve"><value>Diary</value></data>
   <data name="Home_Nav_Tools" xml:space="preserve"><value>Tools</value></data>
   <data name="Home_Nav_Settings" xml:space="preserve"><value>Settings</value></data>

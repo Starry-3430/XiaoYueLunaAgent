@@ -30,6 +30,14 @@
     <value>No</value>
   </data>
 
+  <!-- 数据使用提示 -->
+  <data name="Dialog_DataSharing_Title" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Dialog_DataSharing_Body" xml:space="preserve">
+    <value>Your conversations, attachments, diary entries, and other data you enter will be sent to the AI provider you configured (such as DeepSeek, GLM, etc.) to generate responses. The Luna developer does not collect any of your data.</value>
+  </data>
+
   <!-- 授权提权 -->
   <data name="Dialog_Elevation_Title" xml:space="preserve">
     <value>Authorization Required</value>

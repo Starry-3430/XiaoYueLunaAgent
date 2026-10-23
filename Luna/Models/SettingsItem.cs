@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -92,7 +93,7 @@ public partial class SelectSetting : SettingsItem
     [ObservableProperty]
     private bool _isOpen;
 
-    public List<SelectOption> Options { get; set; } = [];
+    public ObservableCollection<SelectOption> Options { get; set; } = [];
     public string DefaultValue { get; set; } = string.Empty;
 
     public string SelectedLabel => SelectedOption?.Label ?? "";

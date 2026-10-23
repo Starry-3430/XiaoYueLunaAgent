@@ -157,7 +157,6 @@ public partial class WelcomeViewModel : ObservableObject
 
             ProviderSetting.SelectedOption =
                 ProviderSetting.Options.FirstOrDefault(o => o.Value == settings.Provider)
-                ?? ProviderSetting.Options.FirstOrDefault(o => o.Value == "openai")
                 ?? ProviderSetting.Options.FirstOrDefault();
             ProxyTypeSetting.SelectedOption =
                 ProxyTypeSetting.Options.FirstOrDefault(o => o.Value == settings.ProxyType)
@@ -429,6 +428,17 @@ public partial class WelcomeViewModel : ObservableObject
     {
         SaveSettings();
         RequestClose?.Invoke(true);
+    }
+
+    /// <summary>用户确认 API Key 后，若尚未展示过数据使用提示，则标记为待展示。</summary>
+    public bool TryBeginPrivacyNotice()
+    {
+        if (_settings.PrivacyNoticeShown || string.IsNullOrWhiteSpace(ApiKey))
+            return false;
+
+        _settings.PrivacyNoticeShown = true;
+        _settings.ApiKey = ApiKey;
+        return true;
     }
 
     private void ApplyProxyToSettings()

@@ -30,6 +30,14 @@
     <value>否</value>
   </data>
 
+  <!-- 数据使用提示 -->
+  <data name="Dialog_DataSharing_Title" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Dialog_DataSharing_Body" xml:space="preserve">
+    <value>您输入的对话、附件、日记等数据将被发送至您配置的 AI 提供商（如 DeepSeek、GLM等）以生成回复。Luna 开发者不会收集您的任何数据。</value>
+  </data>
+
   <!-- 授权提权 -->
   <data name="Dialog_Elevation_Title" xml:space="preserve">
     <value>需要授权</value>

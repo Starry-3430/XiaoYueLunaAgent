@@ -14,6 +14,7 @@
   </resheader>
 
   <data name="Home_NewChat" xml:space="preserve"><value>新对话</value></data>
+  <data name="Home_AI_Generated_Disclaimer" xml:space="preserve"><value>对话内容为AI生成，请注意鉴别</value></data>
   <data name="Home_Nav_Diary" xml:space="preserve"><value>日记本</value></data>
   <data name="Home_Nav_Tools" xml:space="preserve"><value>工具</value></data>
   <data name="Home_Nav_Settings" xml:space="preserve"><value>设置</value></data>

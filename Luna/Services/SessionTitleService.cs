@@ -20,7 +20,7 @@ public class SessionTitleService
     private const int MaxTitleLength = 30;
 
     /// <summary>
-    /// 标题请求的输出上限。推理型模型（如 deepseek-flash）会先输出 reasoning_content，
+    /// 标题请求的输出上限。推理型模型（如 deepseek-pro）会先输出 reasoning_content，
     /// 64 token 会被思考过程全部吃掉，导致最终 content 为空、标题生成失败。
     /// </summary>
     private const int MaxTitleTokens = 512;

@@ -1133,6 +1133,12 @@
                                        TextAlignment="Center"
                                        TextWrapping="Wrap"
                                        HorizontalAlignment="Center"/>
+                            <TextBlock Text="{loc:Loc Home_AI_Generated_Disclaimer}"
+                                       Foreground="#8B7B6B"
+                                       FontSize="12"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,6,0,0"/>
                         </StackPanel>
                     </Grid>
 

@@ -28,7 +28,7 @@ public class AiSettings
     public const string DefaultStartupMode = "none"; // none / user / admin
     public const bool DefaultDiaryEnabled = true;
 
-    /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>
+    /// <summary>提供商标识（deepseek / moonshot / zhipu / qwen / custom）。</summary>
     public string Provider { get; set; } = DefaultProvider;
 
     [JsonIgnore]
@@ -36,6 +36,9 @@ public class AiSettings
 
     /// <summary>DPAPI 加密后的 API Key（Base64），持久化字段。</summary>
     public string ApiKeyProtected { get; set; } = string.Empty;
+
+    /// <summary>是否已向用户展示过“数据将发送至所配置 AI 提供商”的提示。</summary>
+    public bool PrivacyNoticeShown { get; set; }
 
     public string BaseUrl { get; set; } = DefaultBaseUrl;
     public string Model { get; set; } = DefaultModel;

@@ -404,6 +404,18 @@ public partial class AiConnectionViewModel : ObservableObject
         }
     }
 
+    /// <summary>用户确认 API Key 后，若尚未展示过数据使用提示，则标记并保存。</summary>
+    public bool TryBeginPrivacyNotice()
+    {
+        if (_settings.PrivacyNoticeShown || string.IsNullOrWhiteSpace(ApiKey))
+            return false;
+
+        _settings.PrivacyNoticeShown = true;
+        _settings.ApiKey = ApiKey;
+        Persist();
+        return true;
+    }
+
     [RelayCommand]
     private async Task TestConnectionAsync()
     {
