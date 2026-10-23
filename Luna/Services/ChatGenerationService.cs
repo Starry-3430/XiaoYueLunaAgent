@@ -1037,25 +1037,55 @@ public sealed class ChatGenerationService
         foreach (var message in messages)
             message.IsFinalReply = false;
 
-        var active = messages.Where(m => m.IsActive).ToList();
-        for (var i = 0; i < active.Count; i++)
+        // 每轮用户消息之后，最后一个有正文或错误提示的激活 assistant 就是本轮最终回复。
+        // 不能简单用“下一条激活消息是否为 user”判断：取消/出错时工具消息可能排在这条
+        // 回复之后（同一版本的 tool 消息），那样会把最终回复误判为非最终，导致操作按钮消失。
+        ChatMessage? candidate = null;
+        foreach (var message in messages)
         {
-            var m = active[i];
-            if (m.Role != "assistant") continue;
+            if (message.Role == "user")
+            {
+                if (candidate is not null)
+                    candidate.IsFinalReply = true;
+                candidate = null;
+                continue;
+            }
 
-            var isTurnEnd = i == active.Count - 1 || active[i + 1].Role == "user";
-            if (isTurnEnd && (!string.IsNullOrEmpty(m.Content) || !string.IsNullOrEmpty(m.ErrorMessage)))
-                m.IsFinalReply = true;
+            if (!message.IsActive || message.Role != "assistant") continue;
+
+            if (!string.IsNullOrEmpty(message.Content) || !string.IsNullOrEmpty(message.ErrorMessage))
+                candidate = message;
         }
+
+        if (candidate is not null)
+            candidate.IsFinalReply = true;
     }
 
     /// <summary>
     /// 只有“最后一条激活的最终 AI 回复”允许重写，避免历史消息上出现无效按钮。
+    /// 最终回复之后可能还有同一版本的 tool 消息，因此不能直接取最后一条激活消息。
     /// </summary>
     private static void UpdateRewriteEligibility(ObservableCollection<ChatMessage> messages)
     {
-        var lastActive = messages.LastOrDefault(m => m.IsActive);
-        var target = lastActive is { Role: "assistant", IsFinalReply: true } ? lastActive : null;
+        var lastUserIndex = -1;
+        for (var i = messages.Count - 1; i >= 0; i--)
+        {
+            if (messages[i].Role == "user")
+            {
+                lastUserIndex = i;
+                break;
+            }
+        }
+
+        ChatMessage? target = null;
+        for (var i = messages.Count - 1; i > lastUserIndex; i--)
+        {
+            if (messages[i].IsActive && messages[i].IsFinalReply)
+            {
+                target = messages[i];
+                break;
+            }
+        }
 
         foreach (var message in messages)
             message.CanRewrite = ReferenceEquals(message, target);
