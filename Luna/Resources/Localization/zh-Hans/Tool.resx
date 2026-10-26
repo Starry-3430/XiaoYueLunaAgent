@@ -108,7 +108,7 @@
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>抓取指定 URL 的网页内容并提取正文文本，用于阅读搜索到的网页详情</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>读取系统剪贴板中的文本内容</value></data>
   <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>获取 BBC 新闻摘要，或查询本地当前日期、时间和月份信息</value></data>
-  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）</value></data>
+  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>执行只读 PowerShell 命令（只读动词白名单 + 写操作黑名单，每次执行前确认）。常规模式超时 30 秒，完全访问模式 60 秒，pip 安装时 300 秒；pip install 会自动补上 --user 以安装到持久的用户级环境。</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>按文件名搜索文件，可指定目录（如桌面）。优先使用 Windows 搜索索引，未命中时回退目录扫描</value></data>
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>读取文件内容。文本/代码文件直接读取；PDF、Word、Excel、PPT、HTML 等文档会通过 MarkItDown 自动转换为 Markdown 后返回。大文本文件请用 keyword 搜索，或用 start_line/end_line 分段读取；不要为了读取文件内容而调用 PowerShell。</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>在设置的输出目录内写入文本文件（create/overwrite/append），禁止可执行与二进制类型</value></data>
@@ -117,7 +117,7 @@
   <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>查询或调节系统音量、静音状态和显示器亮度；设置操作需要确认</value></data>
   <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>查看、复制或清空 Luna 启用期间采集的文本剪贴板历史；仅保存在内存中</value></data>
   <data name="Tool_ReadScreen_AiDescription" xml:space="preserve"><value>截取当前用户的屏幕画面。当你需要看用户当前的界面、或者排查报错弹窗时调用。</value></data>
-  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；超时 10 秒、输出上限 100 KB）</value></data>
+  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>在独立进程中运行 Python 代码（尽力而为的沙箱，非绝对安全；常规模式超时 10 秒，完全访问模式 60 秒，检测到 pip 安装或 subprocess 时 300 秒；输出上限 100 KB）。安装 Python 库时必须使用 pip install --user（工具会自动补上 --user）或固定虚拟环境，不要安装到临时目录；若因依赖过大超时，可加上 -i https://pypi.tuna.tsinghua.edu.cn/simple 镜像后重试。</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>在仓库中执行 Git 操作：只读的 status/diff/log/show/branch/rev-parse，以及需确认的 add/commit</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>获取指定目录的文件树结构（支持深度与条目数限制）</value></data>
   <data name="Tool_DiarySearch_AiDescription" xml:space="preserve"><value>在历史日记中按关键词搜索。当用户问“我之前做过什么”、“上周聊过什么”、“那天的事”时调用。返回匹配的日期和内容片段，用于回忆过去的对话。</value></data>
@@ -216,6 +216,8 @@
   <data name="Tool_CodeExecute_Msg_ExitCode" xml:space="preserve"><value>退出码：</value></data>
   <data name="Tool_CodeExecute_Msg_TimedOut" xml:space="preserve"><value>（超时终止）</value></data>
   <data name="Tool_CodeExecute_Msg_Elapsed" xml:space="preserve"><value>耗时：</value></data>
+  <data name="Tool_CodeExecute_Msg_Timeout" xml:space="preserve"><value>执行超时（{0} 秒），已终止进程树。</value></data>
+  <data name="Tool_CodeExecute_Msg_InstallTimeout" xml:space="preserve"><value>执行超时（{0} 秒），可能是 pip 安装依赖过慢，请尝试使用国内镜像源（如 -i https://pypi.tuna.tsinghua.edu.cn/simple）后重试。</value></data>
   <data name="Tool_CodeExecute_Msg_Empty" xml:space="preserve"><value>（空）</value></data>
   <data name="Tool_CodeExecute_Msg_Truncated" xml:space="preserve"><value>…（输出已超过 100 KB，已截断）</value></data>
 
@@ -311,6 +313,7 @@
 问题段：{0}</value></data>
   <data name="Tool_Powershell_Msg_StartFailed" xml:space="preserve"><value>无法启动 powershell.exe：{0}</value></data>
   <data name="Tool_Powershell_Msg_Timeout" xml:space="preserve"><value>PowerShell 执行超时（{0} 秒），已终止进程树。</value></data>
+  <data name="Tool_Powershell_Msg_InstallTimeout" xml:space="preserve"><value>PowerShell 执行超时（{0} 秒），可能是 pip 安装依赖过慢，请尝试使用国内镜像源（如 -i https://pypi.tuna.tsinghua.edu.cn/simple）后重试。</value></data>
   <data name="Tool_Powershell_Msg_ResultHeader" xml:space="preserve"><value>执行结果：</value></data>
   <data name="Tool_Powershell_Msg_ExitCode" xml:space="preserve"><value>(退出码 {0})</value></data>
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>…（输出已截断）</value></data>

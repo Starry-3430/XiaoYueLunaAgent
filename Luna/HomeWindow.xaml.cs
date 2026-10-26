@@ -47,6 +47,7 @@ public partial class HomeWindow : Window
     private readonly DiaryService _diaryService;
     private readonly DiaryViewModel _diaryViewModel;
     private readonly AttachmentManagerViewModel _attachmentManagerViewModel;
+    private readonly FullAccessService _fullAccess;
     private readonly ILogger<HomeWindow> _logger;
     private const int ResizeBorder = 6;             // 最大化时留出的边距，防止内容贴边
     private const int MaxToasts = 6;                // 最多同时显示的通知数量
@@ -82,7 +83,8 @@ public partial class HomeWindow : Window
     public HomeWindow(HomeViewModel viewModel, AiConnectionViewModel aiConnectionViewModel,
         GeneralSettingsViewModel generalSettingsViewModel, Luna.Data.DatabaseService databaseService,
         DiaryService diaryService, DiaryViewModel diaryViewModel,
-        AttachmentManagerViewModel attachmentManagerViewModel, ILogger<HomeWindow> logger)
+        AttachmentManagerViewModel attachmentManagerViewModel, FullAccessService fullAccess,
+        ILogger<HomeWindow> logger)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -91,7 +93,12 @@ public partial class HomeWindow : Window
         _diaryService = diaryService;
         _diaryViewModel = diaryViewModel;
         _attachmentManagerViewModel = attachmentManagerViewModel;
+        _fullAccess = fullAccess;
         _logger = logger;
+
+        _fullAccess.Changed += OnFullAccessChanged;
+        LocalizationService.Instance.PropertyChanged += OnLocalizationChanged;
+        UpdateFullAccessIndicators();
 
         _renderScheduler = new MessageRenderScheduler(
             isActive: () => !_isSettingsMode && IsVisible,
@@ -192,9 +199,65 @@ public partial class HomeWindow : Window
             BindMessages();
     }
 
+    private void OnFullAccessChanged(object? sender, EventArgs e)
+        => Dispatcher.Invoke(UpdateFullAccessIndicators);
+
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is "Item[]" or nameof(LocalizationService.Culture))
+            UpdateFullAccessButtonText();
+    }
+
+    private void UpdateFullAccessIndicators()
+    {
+        UpdateFullAccessButtonText();
+        FullAccessWarning.Visibility = _fullAccess.IsEnabled
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void UpdateFullAccessButtonText()
+    {
+        FullAccessButton.Content = LocalizationService.Instance[
+            _fullAccess.IsEnabled
+                ? "Settings_DisableFullAccessButton"
+                : "Settings_EnableFullAccessButton"];
+    }
+
+    private void FullAccessButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_fullAccess.IsEnabled)
+        {
+            DisableFullAccess();
+            return;
+        }
+
+        if (!FullAccessDialogs.ConfirmEnable(this)) return;
+
+        _fullAccess.SetEnabled(true);
+        FullAccessDialogs.ShowEnabledRestart(this);
+
+        if (Application.Current is App app)
+            app.Restart();
+    }
+
+    private void FullAccessWarning_Click(object sender, RoutedEventArgs e) => DisableFullAccess();
+
+    private void DisableFullAccess()
+    {
+        if (!_fullAccess.IsEnabled) return;
+        if (!FullAccessDialogs.ConfirmDisable(this)) return;
+
+        _fullAccess.SetEnabled(false);
+        if (Application.Current is App app)
+            app.Restart();
+    }
+
     private void DetachBindings()
     {
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _fullAccess.Changed -= OnFullAccessChanged;
+        LocalizationService.Instance.PropertyChanged -= OnLocalizationChanged;
         if (_boundMessages is not null)
         {
             _boundMessages.CollectionChanged -= OnMessagesChanged;

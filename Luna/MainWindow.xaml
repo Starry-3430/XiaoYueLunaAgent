@@ -254,6 +254,15 @@
                            VerticalAlignment="Center"
                            Margin="8,0,0,0"
                            Visibility="Visible"/>
+                <TextBlock x:Name="FullAccessPlaceholder"
+                           Text="{loc:Loc Main_Placeholder_FullAccess}"
+                           Foreground="#FFFFB3B3"
+                           FontSize="13"
+                           IsHitTestVisible="False"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0"
+                           Visibility="Collapsed"/>
             </Grid>
 
             <!-- 胶囊悬停展开区：左侧计数；右侧“添加附件”与“全部删除”（导入后两者并存） -->
@@ -889,13 +898,26 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0"
                                Text="{Binding Status}"
                                Foreground="#88FFFFFF"
                                FontSize="11"
                                VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
+                    <Button x:Name="FullAccessWarning"
+                            Grid.Column="1"
+                            Content="{loc:Loc Main_FullAccessWarning}"
+                            Style="{StaticResource PillButton}"
+                            Background="Transparent"
+                            Foreground="#FFFFB3B3"
+                            FontSize="11"
+                            Padding="4,0"
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed"
+                            Click="FullAccessWarning_Click"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                                 Visibility="{Binding IsLoadingAttachments, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ProgressBar IsIndeterminate="True" Width="80" Height="5" VerticalAlignment="Center"
                                      Foreground="#88FFFFFF" Background="#33FFFFFF" BorderThickness="0"/>
@@ -904,7 +926,7 @@
                                 Foreground="#88FFFFFF" Background="#33FFFFFF"
                                 Command="{Binding CancelAttachmentLoadCommand}"/>
                     </StackPanel>
-                    <Button Grid.Column="2"
+                    <Button Grid.Column="3"
                             Style="{StaticResource ChatActionButton}"
                             Foreground="#88FFFFFF"
                             ToolTip="{loc:Loc Common_AddAttachment}"

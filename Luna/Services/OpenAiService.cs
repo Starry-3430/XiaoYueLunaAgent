@@ -415,6 +415,10 @@ public class OpenAiService : IAiService
             lower.Contains("thinking") || lower.Contains("reasoning"))
             return model;
 
+        // DeepSeek 两款模型均支持深度思考：保持当前模型
+        if (lower is "deepseek-flash" or "deepseek-pro")
+            return model;
+
         // OpenAI o 系列 / GPT-5：通过 reasoning_effort 控制思考强度
         if (lower.StartsWith("o1") || lower.StartsWith("o3") || lower.StartsWith("o4") || lower.Contains("gpt-5"))
         {
@@ -422,9 +426,9 @@ public class OpenAiService : IAiService
             return model;
         }
 
-        // DeepSeek 非推理模型：切换到推理模型
+        // 旧版 DeepSeek 模型：切换到支持深度思考的 flash
         if (lower.StartsWith("deepseek"))
-            return "deepseek-reasoner";
+            return "deepseek-flash";
 
         // 其他 OpenAI 兼容模型：尝试开启 reasoning_effort
         root["reasoning_effort"] = "high";

@@ -107,7 +107,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid x:Name="RootContent" Opacity="0" PreviewMouseDown="Root_PreviewMouseDown">
+    <Grid x:Name="RootContent" Opacity="0">
         <Grid.Triggers>
             <EventTrigger RoutedEvent="Loaded">
                 <BeginStoryboard>
@@ -323,6 +323,8 @@
                                                  Width="240"
                                                  Style="{StaticResource SettingsPassword}"
                                                  PasswordChanged="ApiKey_PasswordChanged"
+                                                 KeyDown="ApiKey_KeyDown"
+                                                 LostFocus="ApiKey_LostFocus"
                                                  VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>

@@ -48,16 +48,24 @@ public partial class GeneralSettingsView : UserControl
         DetachHostWindow();
         _hostWindow = window;
         _hostWindow.Deactivated += HostWindow_Deactivated;
+        _hostWindow.PreviewMouseDown += HostWindow_PreviewMouseDown;
     }
 
     private void DetachHostWindow()
     {
         if (_hostWindow is null) return;
         _hostWindow.Deactivated -= HostWindow_Deactivated;
+        _hostWindow.PreviewMouseDown -= HostWindow_PreviewMouseDown;
         _hostWindow = null;
     }
 
     private void HostWindow_Deactivated(object? sender, EventArgs e) => CloseDropdowns();
+
+    private void HostWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (IsDropdownToggle(e.OriginalSource as DependencyObject)) return;
+        CloseDropdowns();
+    }
 
     private void CloseDropdowns()
     {
@@ -102,8 +110,20 @@ public partial class GeneralSettingsView : UserControl
     {
         // 点击弹层内部（如滚动条）时不关闭
         if (IsInsidePopup(e.OriginalSource as DependencyObject)) return;
+        // 点击下拉触发框时交给 SelectToggle_Click 切换，避免先关闭又立即打开
+        if (IsDropdownToggle(e.OriginalSource as DependencyObject)) return;
 
         CloseDropdowns();
+    }
+
+    private static bool IsDropdownToggle(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is FrameworkElement { Tag: SelectSetting }) return true;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private static bool IsInsidePopup(DependencyObject? source)

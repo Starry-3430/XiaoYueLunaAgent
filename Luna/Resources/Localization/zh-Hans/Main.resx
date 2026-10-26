@@ -14,6 +14,8 @@
   </resheader>
 
   <data name="Main_Placeholder" xml:space="preserve"><value>在此处键入内容</value></data>
+  <data name="Main_Placeholder_FullAccess" xml:space="preserve"><value>键入内容（完全访问已开启）</value></data>
+  <data name="Main_FullAccessWarning" xml:space="preserve"><value>⚠完全访问</value></data>
   <data name="Main_ClearAttachments" xml:space="preserve"><value>全部删除</value></data>
   <data name="Main_Reminder" xml:space="preserve"><value>提醒</value></data>
   <data name="Main_Snooze" xml:space="preserve"><value>稍后</value></data>

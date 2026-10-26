@@ -113,6 +113,22 @@ public class WriteFileTool : ITool
         fullPath = string.Empty;
         error = string.Empty;
 
+        // 完全访问模式：取消输出目录与扩展名限制，允许写入任意位置。
+        if (_settings.FullAccessEnabled)
+        {
+            try
+            {
+                var candidate = Path.IsPathRooted(input) ? input : Path.Combine(FileSandbox.Root, input);
+                fullPath = Path.GetFullPath(candidate);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = Text("Tool_WriteFile_Msg_BadPath", ex.Message);
+                return false;
+            }
+        }
+
         var outputDirectory = _settings.OutputDirectory;
         if (string.IsNullOrWhiteSpace(outputDirectory))
         {

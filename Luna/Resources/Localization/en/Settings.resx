@@ -120,6 +120,9 @@
   <data name="Settings_Output_Browse" xml:space="preserve">
     <value>Browse…</value>
   </data>
+  <data name="Settings_Output_FullAccessWarning" xml:space="preserve">
+    <value>Full access is enabled; tool calls are no longer restricted by this.</value>
+  </data>
 
   <!-- 数据备份 -->
   <data name="Settings_Backup_Title" xml:space="preserve">
@@ -370,6 +373,65 @@ This is the final reminder 3/3</value>
   </data>
   <data name="Settings_Restart_ConfirmBody" xml:space="preserve">
     <value>Are you sure you want to restart?</value>
+  </data>
+
+  <!-- Full access -->
+  <data name="Settings_EnableFullAccessButton" xml:space="preserve">
+    <value>Enable Full Access</value>
+  </data>
+  <data name="Settings_DisableFullAccessButton" xml:space="preserve">
+    <value>Disable Full Access</value>
+  </data>
+  <data name="Settings_FullAccess_Title1" xml:space="preserve">
+    <value>Enable "Full Access" mode?</value>
+  </data>
+  <data name="Settings_FullAccess_Body1" xml:space="preserve">
+    <value>You are about to remove Luna's core security defenses. Once enabled:&#10;&#10;File write directory restrictions will be removed, and the AI can read and modify any file on your computer.&#10;Code and command execution will no longer be blocked by high-risk verb blacklists (such as delete or modify).&#10;The sandbox will be allowed to access the network.</value>
+  </data>
+  <data name="Settings_FullAccess_ContinueNext" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="Settings_FullAccess_Title2" xml:space="preserve">
+    <value>Extreme Risk Warning</value>
+  </data>
+  <data name="Settings_FullAccess_Body2" xml:space="preserve">
+    <value>If the AI misjudges, or if a webpage/file you read contains a malicious "prompt injection" attack, the following irreversible consequences may occur:&#10;&#10;System damage: The AI may mistakenly delete or tamper with critical system files, making the computer unbootable.&#10;&#10;Privacy leak: The AI may read your password vault, photos, and chat history, and send them to third parties over the network.&#10;&#10;Financial loss: It may run mining scripts or cause your API Key to be overcharged.&#10;&#10;Please note: Luna's developers cannot access your computer and therefore cannot be held responsible for any data loss or system damage.</value>
+  </data>
+  <data name="Settings_FullAccess_Acknowledge" xml:space="preserve">
+    <value>I understand, continue</value>
+  </data>
+  <data name="Settings_FullAccess_Abandon" xml:space="preserve">
+    <value>Abandon</value>
+  </data>
+  <data name="Settings_FullAccess_Title3" xml:space="preserve">
+    <value>Final Confirmation</value>
+  </data>
+  <data name="Settings_FullAccess_Body3" xml:space="preserve">
+    <value>This operation is extremely dangerous! If you are not a professional developer, or are not testing in a controlled virtual machine (VM), you are strongly advised to cancel now.&#10;If you insist on enabling it, type "{0}" in the box below to confirm.</value>
+  </data>
+  <data name="Settings_FullAccess_ConfirmKeyword" xml:space="preserve">
+    <value>I accept all consequences</value>
+  </data>
+  <data name="Settings_FullAccess_EnableConfirm" xml:space="preserve">
+    <value>Enable</value>
+  </data>
+  <data name="Settings_FullAccess_DisableTitle" xml:space="preserve">
+    <value>Disable Full Access</value>
+  </data>
+  <data name="Settings_FullAccess_DisableBody" xml:space="preserve">
+    <value>You are about to disable Full Access and return to normal mode. To continue, the application will restart. Continue?</value>
+  </data>
+  <data name="Settings_FullAccess_DisableRestart" xml:space="preserve">
+    <value>Yes, restart now</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledTitle" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledBody" xml:space="preserve">
+    <value>Full access mode has been enabled. The application will restart now.</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledRestart" xml:space="preserve">
+    <value>Restart</value>
   </data>
 
   <!-- About -->

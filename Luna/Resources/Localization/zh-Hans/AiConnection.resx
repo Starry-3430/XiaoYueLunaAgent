@@ -51,7 +51,7 @@
     <value>通义</value>
   </data>
   <data name="AiConnection_Provider_Custom" xml:space="preserve">
-    <value>自定义（OpenAI 兼容）</value>
+    <value>自定义（兼容接口）</value>
   </data>
 
   <!-- 模型 -->
@@ -184,6 +184,6 @@
     <value>后台任务模型</value>
   </data>
   <data name="AiConnection_BackgroundModel_Desc" xml:space="preserve">
-    <value>用于生成会话标题、轮次摘要、日记和每日早报。留空则使用主聊天模型。例如：gpt-4o-mini、deepseek-flash。</value>
+    <value>用于生成会话标题、轮次摘要、日记和每日早报。留空则使用主聊天模型。例如：deepseek-flash、deepseek-pro。</value>
   </data>
 </root>

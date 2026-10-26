@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $proj = Join-Path $root 'Luna\Luna.csproj'
 $complianceFiles = @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'README.md')
-$fontLicense = Join-Path $root 'licenses\CascadiaMono-OFL.txt'
+$licenseDirSource = Join-Path $root 'licenses'
 
 function Copy-ComplianceFiles {
     param([string]$OutDir)
@@ -20,10 +20,15 @@ function Copy-ComplianceFiles {
         Copy-Item -LiteralPath $source -Destination $OutDir -Force
     }
 
-    if (-not (Test-Path -LiteralPath $fontLicense)) { throw "缺少字体许可证: $fontLicense" }
+    if (-not (Test-Path -LiteralPath $licenseDirSource)) { throw "缺少许可证目录: $licenseDirSource" }
+    $licenseFiles = @(Get-ChildItem -LiteralPath $licenseDirSource -Filter *.txt -File)
+    if ($licenseFiles.Count -eq 0) { throw "许可证目录中没有可复制的文件: $licenseDirSource" }
+
     $licenseDir = Join-Path $OutDir 'licenses'
     New-Item -ItemType Directory -Path $licenseDir -Force | Out-Null
-    Copy-Item -LiteralPath $fontLicense -Destination $licenseDir -Force
+    foreach ($file in $licenseFiles) {
+        Copy-Item -LiteralPath $file.FullName -Destination $licenseDir -Force
+    }
 }
 
 function Publish-And-Zip {

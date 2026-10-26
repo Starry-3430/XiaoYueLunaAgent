@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using Luna.Models;
 using Luna.Services;
 using Microsoft.Extensions.Logging;
 using static Luna.Services.Tools.ToolLocalization;
@@ -49,6 +50,7 @@ public class ReadFileTool : ITool
     /// <summary>MarkItDown 转换失败时返回的友好文本前缀。</summary>
     private const string ConversionFailurePrefix = "> **文档转换失败**：";
 
+    private readonly AiSettings _settings;
     private readonly IDocumentConverterService _documentConverter;
     private readonly ILogger<ReadFileTool> _logger;
 
@@ -65,8 +67,10 @@ public class ReadFileTool : ITool
     /// <summary>文档转换可能较慢，给读文件工具更长的兜底时间。</summary>
     public TimeSpan ExecutionTimeout => TimeSpan.FromSeconds(120);
 
-    public ReadFileTool(IDocumentConverterService documentConverter, ILogger<ReadFileTool> logger)
+    public ReadFileTool(AiSettings settings, IDocumentConverterService documentConverter,
+        ILogger<ReadFileTool> logger)
     {
+        _settings = settings;
         _documentConverter = documentConverter;
         _logger = logger;
     }
@@ -97,8 +101,9 @@ public class ReadFileTool : ITool
             return ToolResult.Error(Text("Tool_ReadFile_Msg_Failed", ex.Message));
         }
 
-        // 普通文本一次性整文件读取仍限制在 1MB；更大的文本必须搜索或分段。
-        if (!isDocument && !hasSelector && length > FileSandbox.MaxBytes)
+        // 常规模式：普通文本一次性整文件读取限制在 1MB；更大的文本必须搜索或分段。
+        // 完全访问模式：解除 1MB 限制，允许直接读取超大日志（仍受 64MB 上限保护）。
+        if (!_settings.FullAccessEnabled && !isDocument && !hasSelector && length > FileSandbox.MaxBytes)
         {
             return ToolResult.Error(Text("Tool_ReadFile_Msg_TooLarge",
                 AttachmentHelper.FormatSize(length)));

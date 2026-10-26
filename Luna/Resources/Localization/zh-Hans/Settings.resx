@@ -92,7 +92,7 @@
     <value>密码</value>
   </data>
   <data name="Settings_Proxy_TestButton" xml:space="preserve">
-    <value>测试</value>
+    <value>测试代理</value>
   </data>
   <data name="Settings_Proxy_Testing" xml:space="preserve">
     <value>测试中…</value>
@@ -119,6 +119,9 @@
   </data>
   <data name="Settings_Output_Browse" xml:space="preserve">
     <value>浏览…</value>
+  </data>
+  <data name="Settings_Output_FullAccessWarning" xml:space="preserve">
+    <value>完全访问已启用，工具调用不再受此约束</value>
   </data>
 
   <!-- 数据备份 -->
@@ -370,6 +373,65 @@
   </data>
   <data name="Settings_Restart_ConfirmBody" xml:space="preserve">
     <value>确定要重新启动吗？</value>
+  </data>
+
+  <!-- 完全访问 -->
+  <data name="Settings_EnableFullAccessButton" xml:space="preserve">
+    <value>启用完全访问</value>
+  </data>
+  <data name="Settings_DisableFullAccessButton" xml:space="preserve">
+    <value>关闭完全访问</value>
+  </data>
+  <data name="Settings_FullAccess_Title1" xml:space="preserve">
+    <value>启用“完全访问”模式？</value>
+  </data>
+  <data name="Settings_FullAccess_Body1" xml:space="preserve">
+    <value>您即将解除 Luna 的核心安全防线。开启后：&#10;&#10;将取消对文件写入目录的限制，AI 可以读取和修改您电脑上的任何文件。&#10;代码执行和命令执行将取消高危动词（如删除、修改）的黑名单限制。&#10;沙箱环境将允许网络连接。</value>
+  </data>
+  <data name="Settings_FullAccess_ContinueNext" xml:space="preserve">
+    <value>继续下一步</value>
+  </data>
+  <data name="Settings_FullAccess_Title2" xml:space="preserve">
+    <value>极高风险警告</value>
+  </data>
+  <data name="Settings_FullAccess_Body2" xml:space="preserve">
+    <value>一旦 AI 发生误判，或您阅读的网页/文件中包含恶意“提示词注入”攻击，将会发生以下不可逆的后果：&#10;&#10;系统损坏：AI 可能误删或篡改系统关键文件，导致电脑无法启动。&#10;&#10;隐私泄露：AI 可能读取您的密码库、照片、聊天记录，并通过网络发送给第三方。&#10;&#10;财产损失：可能执行挖矿脚本，或导致您的 API Key 欠费。&#10;&#10;请注意：Luna 开发者无法访问您的电脑，因此无法为您承担任何数据丢失或系统损坏的责任。</value>
+  </data>
+  <data name="Settings_FullAccess_Acknowledge" xml:space="preserve">
+    <value>我已知晓，继续</value>
+  </data>
+  <data name="Settings_FullAccess_Abandon" xml:space="preserve">
+    <value>放弃</value>
+  </data>
+  <data name="Settings_FullAccess_Title3" xml:space="preserve">
+    <value>最终确认</value>
+  </data>
+  <data name="Settings_FullAccess_Body3" xml:space="preserve">
+    <value>此操作非常危险！如果您不是专业的开发者，或者不是在受控的虚拟机（VM）环境中测试，强烈建议您立即取消。&#10;如果您执意开启，请在下方输入框输入 “{0}” 以确认。</value>
+  </data>
+  <data name="Settings_FullAccess_ConfirmKeyword" xml:space="preserve">
+    <value>我承担一切后果</value>
+  </data>
+  <data name="Settings_FullAccess_EnableConfirm" xml:space="preserve">
+    <value>确认开启</value>
+  </data>
+  <data name="Settings_FullAccess_DisableTitle" xml:space="preserve">
+    <value>关闭完全访问</value>
+  </data>
+  <data name="Settings_FullAccess_DisableBody" xml:space="preserve">
+    <value>您即将关闭完全访问，这将使您回到常规模式。若要继续，应用将会重新启动。是否继续？</value>
+  </data>
+  <data name="Settings_FullAccess_DisableRestart" xml:space="preserve">
+    <value>是，立刻重启</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledTitle" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledBody" xml:space="preserve">
+    <value>您已开启完全访问模式，即将重新启动</value>
+  </data>
+  <data name="Settings_FullAccess_EnabledRestart" xml:space="preserve">
+    <value>重新启动</value>
   </data>
 
   <!-- 关于 -->

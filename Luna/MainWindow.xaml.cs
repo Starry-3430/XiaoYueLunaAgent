@@ -56,6 +56,7 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel _viewModel;
     private readonly ReminderService _reminderService;
+    private readonly FullAccessService _fullAccess;
     private readonly ILogger<MainWindow> _logger;
     private readonly Stopwatch _animationStopwatch = new();
     private bool _animating;
@@ -82,13 +83,17 @@ public partial class MainWindow : Window
 
     private enum CapsuleMode { Hidden, Compact, Expanded }
 
-    public MainWindow(MainViewModel viewModel, ReminderService reminderService, ILogger<MainWindow> logger)
+    public MainWindow(MainViewModel viewModel, ReminderService reminderService,
+        FullAccessService fullAccess, ILogger<MainWindow> logger)
     {
         InitializeComponent();
         DataContext = viewModel;
         _viewModel = viewModel;
         _reminderService = reminderService;
+        _fullAccess = fullAccess;
         _logger = logger;
+
+        _fullAccess.Changed += (_, _) => Dispatcher.Invoke(UpdateFullAccessIndicators);
 
         _renderScheduler = new MessageRenderScheduler(
             isActive: () => IsRenderActive,
@@ -138,6 +143,7 @@ public partial class MainWindow : Window
 
         Loaded += (_, _) =>
         {
+            UpdateFullAccessIndicators();
             UpdatePlaceholderVisibility();
             UpdateCompactInputSize();
         };
@@ -574,15 +580,36 @@ public partial class MainWindow : Window
 
     private void UpdatePlaceholderVisibility()
     {
-        // 输入为空时显示占位符
+        // 输入为空时显示占位符；完全访问模式使用浅红色提示。
         var isEmpty = string.IsNullOrEmpty(CompactInputBox.Text);
-        Placeholder.Visibility = isEmpty ? Visibility.Visible : Visibility.Collapsed;
+        var fullAccess = _fullAccess.IsEnabled;
+        Placeholder.Visibility = isEmpty && !fullAccess ? Visibility.Visible : Visibility.Collapsed;
+        FullAccessPlaceholder.Visibility = isEmpty && fullAccess ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateFullAccessIndicators()
+    {
+        var enabled = _fullAccess.IsEnabled;
+        FullAccessWarning.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePlaceholderVisibility();
+        UpdateCompactInputSize();
+    }
+
+    private void FullAccessWarning_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_fullAccess.IsEnabled) return;
+        if (!FullAccessDialogs.ConfirmDisable(this)) return;
+
+        _fullAccess.SetEnabled(false);
+        if (Application.Current is App app)
+            app.Restart();
     }
 
     private void UpdateCompactInputSize()
     {
         var text = CompactInputBox.Text;
-        var displayText = string.IsNullOrEmpty(text) ? Placeholder.Text : text;
+        var emptyPlaceholder = _fullAccess.IsEnabled ? FullAccessPlaceholder.Text : Placeholder.Text;
+        var displayText = string.IsNullOrEmpty(text) ? emptyPlaceholder : text;
 
         // 使用当前输入框字体测量显示文本宽度
         var typeface = new Typeface(

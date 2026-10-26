@@ -159,6 +159,7 @@ public partial class App : Application
                 services.AddSingleton(sp => sp.GetRequiredService<SettingsService>().Load());
                 services.AddSingleton<ToolSettingsService>();
                 services.AddSingleton<ToolPermissionService>();
+                services.AddSingleton<FullAccessService>();
                 services.AddSingleton<WindowsSearchService>();
                 services.AddSingleton<ClipboardHistoryService>();
                 services.AddSingleton<SettingsProxy>();

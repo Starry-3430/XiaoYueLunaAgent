@@ -297,6 +297,8 @@
                 <PasswordBox x:Name="ApiKeyBox" Grid.Column="1"
                              Style="{StaticResource SettingsPassword}"
                              PasswordChanged="ApiKey_PasswordChanged"
+                             KeyDown="ApiKey_KeyDown"
+                             LostFocus="ApiKey_LostFocus"
                              VerticalAlignment="Center"/>
             </Grid>
         </Border>

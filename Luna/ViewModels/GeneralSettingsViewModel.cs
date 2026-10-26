@@ -32,6 +32,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     private readonly ToolPermissionService _toolPermission;
     private readonly DataExportService _exportService;
     private readonly DataImportService _importService;
+    private readonly FullAccessService _fullAccess;
     private readonly HttpClient _httpClient;
     private readonly ILogger<GeneralSettingsViewModel> _logger;
     private bool _loading;
@@ -68,6 +69,9 @@ public partial class GeneralSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _outputDirectory = string.Empty;
+
+    [ObservableProperty]
+    private bool _isFullAccessEnabled;
 
     [ObservableProperty]
     private string _proxyTestStatus = string.Empty;
@@ -112,7 +116,7 @@ public partial class GeneralSettingsViewModel : ObservableObject
     public GeneralSettingsViewModel(AiSettings settings, SettingsService settingsService,
         HotkeyService hotkeyService, StartupService startupService,
         ToolPermissionService toolPermission, DataExportService exportService,
-        DataImportService importService, HttpClient httpClient,
+        DataImportService importService, FullAccessService fullAccess, HttpClient httpClient,
         ILogger<GeneralSettingsViewModel> logger)
     {
         _settings = settings;
@@ -122,8 +126,12 @@ public partial class GeneralSettingsViewModel : ObservableObject
         _toolPermission = toolPermission;
         _exportService = exportService;
         _importService = importService;
+        _fullAccess = fullAccess;
         _httpClient = httpClient;
         _logger = logger;
+
+        IsFullAccessEnabled = _fullAccess.IsEnabled;
+        _fullAccess.Changed += (_, _) => IsFullAccessEnabled = _fullAccess.IsEnabled;
 
         _saveStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
         _saveStatusTimer.Tick += (_, _) =>

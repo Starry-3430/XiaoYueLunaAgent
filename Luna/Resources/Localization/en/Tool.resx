@@ -108,7 +108,7 @@
   <data name="Tool_FetchUrl_AiDescription" xml:space="preserve"><value>Fetch a URL and extract its main text, for reading the details of a searched page.</value></data>
   <data name="Tool_ReadClipboard_AiDescription" xml:space="preserve"><value>Read the text content of the system clipboard.</value></data>
   <data name="Tool_NewsCalendar_AiDescription" xml:space="preserve"><value>Get BBC news summaries or the local current date, time and month information.</value></data>
-  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run).</value></data>
+  <data name="Tool_Powershell_AiDescription" xml:space="preserve"><value>Run read-only PowerShell commands (read-only verb allowlist + write-operation blocklist; confirmation required before each run). Timeout: 30s in normal mode, 60s in full access mode, 300s for pip install; pip install automatically gets --user so packages persist in the user environment.</value></data>
   <data name="Tool_SearchFiles_AiDescription" xml:space="preserve"><value>Search files by name, optionally within a directory (e.g. Desktop). Prefers the Windows Search index, falling back to a directory scan.</value></data>
   <data name="Tool_ReadFile_AiDescription" xml:space="preserve"><value>Read file contents. Text/code files are read directly; PDF, Word, Excel, PPT, HTML and similar documents are automatically converted to Markdown via MarkItDown. For large text files, use keyword search or start_line/end_line segments; do not use PowerShell just to read file contents.</value></data>
   <data name="Tool_WriteFile_AiDescription" xml:space="preserve"><value>Write a text file inside the configured output directory (create/overwrite/append); executable and binary types are blocked.</value></data>
@@ -118,7 +118,7 @@
   <data name="Tool_WindowManager_AiDescription" xml:space="preserve"><value>List and manage visible window positions, sizes and states.</value></data>
   <data name="Tool_VolumeBrightness_AiDescription" xml:space="preserve"><value>Adjust system volume, mute state or screen brightness.</value></data>
   <data name="Tool_ClipboardHistory_AiDescription" xml:space="preserve"><value>View, copy or clear text clipboard history captured while Luna is running.</value></data>
-  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout, 100 KB output limit).</value></data>
+  <data name="Tool_CodeExecute_AiDescription" xml:space="preserve"><value>Run Python code in a separate process (best-effort sandbox, not fully secure; 10s timeout in normal mode, 60s in full access mode, 300s when pip install or subprocess is detected; 100 KB output limit). When installing Python packages, always use pip install --user (the tool adds --user automatically) or a fixed virtual environment, never the temporary directory. If dependency installation times out, retry with the mirror -i https://pypi.tuna.tsinghua.edu.cn/simple.</value></data>
   <data name="Tool_Git_AiDescription" xml:space="preserve"><value>Run Git operations in a repository: read-only status/diff/log/show/branch/rev-parse, plus add/commit which require confirmation.</value></data>
   <data name="Tool_FileTree_AiDescription" xml:space="preserve"><value>Get the file tree of a directory (with depth and entry-count limits).</value></data>
   <data name="Tool_DiarySearch_AiDescription" xml:space="preserve"><value>Keyword search across past diary entries. Use when the user asks "what did I do before", "what did we talk about last week", or "that day". Returns matching dates and content excerpts for recalling past conversations.</value></data>
@@ -215,6 +215,8 @@ Note: this sandbox is best-effort, not fully secure.</value></data>
   <data name="Tool_CodeExecute_Msg_ExitCode" xml:space="preserve"><value>Exit code: </value></data>
   <data name="Tool_CodeExecute_Msg_TimedOut" xml:space="preserve"><value> (timeout)</value></data>
   <data name="Tool_CodeExecute_Msg_Elapsed" xml:space="preserve"><value>Elapsed: </value></data>
+  <data name="Tool_CodeExecute_Msg_Timeout" xml:space="preserve"><value>Execution timed out ({0} s); the process tree was terminated.</value></data>
+  <data name="Tool_CodeExecute_Msg_InstallTimeout" xml:space="preserve"><value>Execution timed out ({0} s). pip may be slow to install dependencies; try a mirror such as -i https://pypi.tuna.tsinghua.edu.cn/simple and retry.</value></data>
   <data name="Tool_CodeExecute_Msg_Empty" xml:space="preserve"><value>(empty)</value></data>
   <data name="Tool_CodeExecute_Msg_Truncated" xml:space="preserve"><value>… (output exceeded 100 KB and was truncated)</value></data>
 
@@ -310,6 +312,7 @@ Offending segment: {0}</value></data>
 Offending segment: {0}</value></data>
   <data name="Tool_Powershell_Msg_StartFailed" xml:space="preserve"><value>Cannot start powershell.exe: {0}</value></data>
   <data name="Tool_Powershell_Msg_Timeout" xml:space="preserve"><value>PowerShell timed out ({0} s); the process tree was terminated.</value></data>
+  <data name="Tool_Powershell_Msg_InstallTimeout" xml:space="preserve"><value>PowerShell timed out ({0} s). pip may be slow to install dependencies; try a mirror such as -i https://pypi.tuna.tsinghua.edu.cn/simple and retry.</value></data>
   <data name="Tool_Powershell_Msg_ResultHeader" xml:space="preserve"><value>Result: </value></data>
   <data name="Tool_Powershell_Msg_ExitCode" xml:space="preserve"><value>(exit code {0})</value></data>
   <data name="Tool_Powershell_Msg_Truncated" xml:space="preserve"><value>… (output truncated)</value></data>

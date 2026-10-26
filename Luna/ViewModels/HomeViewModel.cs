@@ -188,7 +188,7 @@ public partial class HomeViewModel : ObservableObject, IRecipient<SessionUpdateM
             greetings =
             [
                 "晚上好呀！\n今天过得还顺利吗？",
-                "傍晚好~ \n辛苦一天啦，好好放松一下！",
+                "天不早啦~ \n辛苦一天啦，好好放松一下！",
                 "天黑啦！\n想聊点什么，还是想安静一会儿？",
                 "晚上好！\n今天有没有发生什么有趣的事？",
             ];

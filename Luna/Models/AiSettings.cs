@@ -28,7 +28,7 @@ public class AiSettings
     public const string DefaultStartupMode = "none"; // none / user / admin
     public const bool DefaultDiaryEnabled = true;
 
-    /// <summary>提供商标识（deepseek / openai / anthropic / moonshot / zhipu / qwen / ollama / custom）。</summary>
+    /// <summary>提供商标识（deepseek / moonshot / zhipu / qwen / custom）。</summary>
     public string Provider { get; set; } = DefaultProvider;
 
     [JsonIgnore]
@@ -36,6 +36,9 @@ public class AiSettings
 
     /// <summary>DPAPI 加密后的 API Key（Base64），持久化字段。</summary>
     public string ApiKeyProtected { get; set; } = string.Empty;
+
+    /// <summary>是否已向用户展示过“数据将发送至所配置 AI 提供商”的提示。</summary>
+    public bool PrivacyNoticeShown { get; set; }
 
     public string BaseUrl { get; set; } = DefaultBaseUrl;
     public string Model { get; set; } = DefaultModel;
@@ -100,6 +103,12 @@ public class AiSettings
 
     /// <summary>是否启用日记本：关闭后不再自动整理日记，但轮次关键词与摘要照常生成。</summary>
     public bool DiaryEnabled { get; set; } = DefaultDiaryEnabled;
+
+    /// <summary>
+    /// 完全访问模式：解除文件写入目录、扩展名与代码/命令执行黑名单限制。
+    /// 默认关闭；关闭时恢复所有安全限制。
+    /// </summary>
+    public bool FullAccessEnabled { get; set; }
 }
 
 public class ChatCompletionRequest

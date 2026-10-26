@@ -51,7 +51,7 @@
     <value>Qwen (Tongyi)</value>
   </data>
   <data name="AiConnection_Provider_Custom" xml:space="preserve">
-    <value>Custom (OpenAI-compatible)</value>
+    <value>Custom (Compatible API)</value>
   </data>
 
   <!-- 模型 -->
@@ -184,6 +184,6 @@
     <value>Background model</value>
   </data>
   <data name="AiConnection_BackgroundModel_Desc" xml:space="preserve">
-    <value>Used for session titles, turn summaries, diary and daily briefings. Leave empty to use the main model. Examples: gpt-4o-mini, deepseek-flash.</value>
+    <value>Used for session titles, turn summaries, diary and daily briefings. Leave empty to use the main model. Examples: deepseek-flash, deepseek-pro.</value>
   </data>
 </root>
