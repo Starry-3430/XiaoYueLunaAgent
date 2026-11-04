@@ -1596,7 +1596,8 @@
                                 Style="{StaticResource PillButton}" Background="#D4D0BA"
                                 Command="{Binding CancelAttachmentLoadCommand}"/>
                     </StackPanel>
-                    <Button Grid.Column="3"
+                    <Button x:Name="AddAttachmentButton"
+                            Grid.Column="3"
                             Style="{StaticResource ChatActionButton}"
                             Command="{Binding AddAttachmentCommand}"
                             Foreground="#5B4833"

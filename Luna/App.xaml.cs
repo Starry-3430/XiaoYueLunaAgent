@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Markup;
 using CommunityToolkit.Mvvm.Input;
 using Luna.Controls;
+using Luna.Demo;
 using Luna.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using WpfMarkdownViewer;
@@ -36,6 +37,7 @@ public partial class App : Application
 {
     private readonly IHost _host = null!;              // 依赖注入与后台服务宿主
     private readonly bool _isStartupHelper;             // 是否为“管理员自启动”提权辅助进程
+    private readonly bool _isBubbleDemo;                // 是否为气泡演示模式
     private Mutex? _singleInstanceMutex;                // 单实例互斥体
     private EventWaitHandle? _showWindowEvent;          // 显示窗口事件
     private Win32Icon? _trayIconImage;                  // 托盘图标图像
@@ -53,6 +55,7 @@ public partial class App : Application
     private const int DoubleClickThresholdMs = 500;     // 双击判定阈值（毫秒）
     private const string MutexName = @"Global\Luna_SingleInstance_Mutex";
     private const string ShowEventName = @"Global\Luna_ShowWindow_Event";
+    private const string BubbleDemoArgument = "--bubble-demo";
 
     public App()
     {
@@ -63,7 +66,9 @@ public partial class App : Application
         // 管理员提权辅助进程：仅执行“管理员自启动”设置，不初始化日志/托盘/宿主与界面。
         _isStartupHelper = Environment.GetCommandLineArgs().Any(arg =>
             string.Equals(arg, StartupService.AdminHelperArgument, StringComparison.OrdinalIgnoreCase));
-        if (_isStartupHelper) return;
+        _isBubbleDemo = Environment.GetCommandLineArgs().Any(arg =>
+            string.Equals(arg, BubbleDemoArgument, StringComparison.OrdinalIgnoreCase));
+        if (_isStartupHelper || _isBubbleDemo) return;
 
         // 托盘菜单等早期 UI 在设置加载前即创建，先用默认语言初始化；启动时会按用户设置重新应用。
         LocalizationService.Instance.SetLanguage(AiSettings.DefaultUiLanguage);
@@ -474,6 +479,16 @@ public partial class App : Application
             return;
         }
 
+        if (_isBubbleDemo)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var demo = new BubbleDemoWindow();
+            demo.Closed += (_, _) => Shutdown();
+            demo.Show();
+            base.OnStartup(e);
+            return;
+        }
+
         // 开机自启动：带 --startup 参数时静默启动，不显示主窗口
         var launchedAtStartup = e.Args.Any(arg =>
             string.Equals(arg, StartupService.StartupArgument, StringComparison.OrdinalIgnoreCase));
@@ -770,8 +785,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // 提权辅助进程未初始化日志、宿主与单实例资源，直接退出。
-        if (_isStartupHelper)
+        // 提权辅助进程 / 气泡演示模式未初始化日志、宿主与单实例资源，直接退出。
+        if (_isStartupHelper || _isBubbleDemo)
         {
             base.OnExit(e);
             return;
