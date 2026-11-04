@@ -136,23 +136,10 @@ public sealed class DailyBriefingJob : IBackgroundJob
         ct.ThrowIfCancellationRequested();
 
         // 3. 调用模型生成早报；不加载工具定义，避免无谓的 token 消耗。
-        var prompt = $"""
-        现在是 {nowLocal:yyyy年MM月dd日 HH:mm}。
-        请以私人助手的身份，为用户生成一份简短、温馨的“今日早报”。
-
-        要求：
-        1. 语气轻松、温柔，符合你的人设。
-        2. 结合今日待办与昨天的日记（如果有），用 2-4 句话总结。
-        3. 如果今天没有紧急待办，就祝用户有轻松顺利的一天。
-        4. 不要编造天气、新闻或日程；没有的信息不要提。
-        5. 直接输出早报正文，不要使用 Markdown 标题。
-
-        今日待办：
-        {taskContext}
-
-        昨天的日记：
-        {diaryContext}
-        """;
+        var prompt = DefaultPrompts.DailyBriefingPrompt
+            .Replace("{time}", nowLocal.ToString("yyyy年MM月dd日 HH:mm"))
+            .Replace("{tasks}", taskContext)
+            .Replace("{diary}", diaryContext);
 
         var reply = await _aiService.ChatAsync(
             new[] { new ChatMessage { Role = "user", Content = prompt } },

@@ -6,7 +6,7 @@ October 26, 2026
 
 I. Purpose of the Document
 
-    This document is intended to describe the design principles, implementation mechanisms, and user rights protection measures of the Luna desktop agent software (hereinafter referred to as "Luna" or "this software") in the areas of personal information processing, data storage, network transmission, and permission control.
+    This document is intended to describe the design principles, implementation mechanisms, and user rights protection measures of the Luna intelligent assistant software (hereinafter referred to as "Luna" or "this software") in the areas of personal information processing, data storage, network transmission, and permission control.
 
 
 II. Software Overview

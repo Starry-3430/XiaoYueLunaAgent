@@ -1,0 +1,76 @@
+<Window x:Class="Luna.Controls.BubbleTipWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="{x:Null}"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        ResizeMode="NoResize"
+        SizeToContent="Manual"
+        WindowStartupLocation="Manual">
+    <Grid Background="{x:Null}">
+        <Canvas x:Name="ShapeLayer">
+            <Canvas.Effect>
+                <DropShadowEffect Color="#4A3A30"
+                                  BlurRadius="16"
+                                  ShadowDepth="3"
+                                  Direction="270"
+                                  Opacity="0.30"/>
+            </Canvas.Effect>
+            <Path x:Name="Tail" Fill="#F6EEDC"/>
+            <Border x:Name="Body"
+                    MinWidth="140"
+                    MaxWidth="200"
+                    CornerRadius="12"
+                    Background="#F6EEDC"
+                    Padding="13,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="MessageText"
+                               Grid.Column="0"
+                               TextWrapping="Wrap"
+                               FontSize="13"
+                               LineHeight="19"
+                               Foreground="#5A4A42"/>
+                    <Border x:Name="CloseButton"
+                            Grid.Column="1"
+                            Width="16"
+                            Height="16"
+                            Margin="6,-2,-2,0"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Right"
+                            MouseLeftButtonDown="CloseButton_MouseLeftButtonDown">
+                        <Viewbox Width="10" Height="10">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M18 6 L6 18 M6 6 L18 18"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Stroke" Value="#8A7A6A"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}"
+                                                             Value="True">
+                                                    <Setter Property="Stroke" Value="#5A4A42"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Canvas>
+                        </Viewbox>
+                    </Border>
+                </Grid>
+            </Border>
+        </Canvas>
+    </Grid>
+</Window>

@@ -19,6 +19,7 @@ using Luna.Models;
 using Luna.Services;
 using Luna.ViewModels;
 using Microsoft.Extensions.Logging;
+using ShapePath = System.Windows.Shapes.Path;
 
 namespace Luna;
 
@@ -56,6 +57,8 @@ public partial class HomeWindow : Window
     private const double AnimDuration = 0.3;        // 动画持续时间
     private bool _isSettingsMode;                   // 当前是否处于设置/日记/工具模式
     private Button? _activeSideButton;               // 当前激活的底部侧边按钮
+    private BubbleTipWindow? _adminAttachHint;       // 管理员权限下的附件导入提示气泡
+    private static bool _adminAttachHintShown;       // 本次进程是否已经提示过（只在首次打开主界面时提示）
     private ObservableCollection<ChatMessage>? _boundMessages; // 当前绑定自动滚动的消息集合
     private DispatcherTimer? _scrollThrottle;                  // 流式滚动节流计时器
     private readonly MessageRenderScheduler _renderScheduler;  // 延迟按“最新→最旧”渲染 Markdown
@@ -166,6 +169,8 @@ public partial class HomeWindow : Window
             EditorContextMenu.AttachTree(SettingsContent);
             EditorContextMenu.AttachTree(DiaryContent);
 
+            ShowAdminAttachHint();
+
             _viewModel.UpdateWelcomeGreeting();
 
             // 主界面可能在胶囊窗生成过程中才被打开：立即刷新会话列表，
@@ -190,7 +195,11 @@ public partial class HomeWindow : Window
         MessageScrollViewer.ScrollChanged += (_, _) => UpdateScrollToBottomButton();
 
         // 窗口是 transient（关闭后重建），关闭时把挂到单例 VM / 运行期集合上的监听解绑，避免泄漏与陈旧窗口干扰。
-        Closed += (_, _) => DetachBindings();
+        Closed += (_, _) =>
+        {
+            HideAdminAttachHint();
+            DetachBindings();
+        };
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -424,6 +433,7 @@ public partial class HomeWindow : Window
     private void ShowSideContent(Grid contentGrid, string title)
     {
         _isSettingsMode = true;
+        HideAdminAttachHint();
         ChatTitle.Text = title;
         MessageArea.Visibility = Visibility.Collapsed;
         SettingsContent.Visibility = contentGrid == SettingsContent ? Visibility.Visible : Visibility.Collapsed;
@@ -463,6 +473,33 @@ public partial class HomeWindow : Window
         // 聊天区可见：唤醒延迟渲染泵（按最新→最旧补齐），并重新评估滚动按钮
         _renderScheduler.Wake();
         UpdateScrollToBottomButton();
+        ShowAdminAttachHint();
+    }
+
+    private void ShowAdminAttachHint()
+    {
+        if (!IsLoaded
+            || _isSettingsMode
+            || _adminAttachHintShown
+            || !StartupService.IsRunningAsAdministrator()
+            || _adminAttachHint is { IsVisible: true })
+        {
+            return;
+        }
+
+        _adminAttachHint?.Close();
+        _adminAttachHint = new BubbleTipWindow(
+            "管理员权限下，拖拽导入文件不可用。请使用“导入附件”按钮",
+            AddAttachmentButton,
+            BubbleSide.Bottom);
+        _adminAttachHintShown = true;
+        _adminAttachHint.ShowFor(TimeSpan.FromSeconds(5));
+    }
+
+    private void HideAdminAttachHint()
+    {
+        _adminAttachHint?.Close();
+        _adminAttachHint = null;
     }
 
     // ===== 工具页：Tavily API Key =====
@@ -965,12 +1002,37 @@ public partial class HomeWindow : Window
         const double toastLineHeight = 18; // 单行高度
         const int maxToastLines = 5;       // 最多显示 5 行
 
-        var closeBlock = new TextBlock
+        // 关闭按钮：使用 Assets/icons/WindowUI/close.svg 中的叉号路径
+        var closePath = new ShapePath
         {
-            // 关闭按钮
-            Text = "✕",
-            Style = TryFindResource("ToastClose") as Style,
+            Data = Geometry.Parse("M18 6 L6 18 M6 6 L18 18"),
+            Stroke = new SolidColorBrush(Color.FromArgb(0x88, 0xFF, 0xFF, 0xFF)),
+            StrokeThickness = 2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            Stretch = Stretch.Uniform,
+            Width = 12,
+            Height = 12,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
+
+        var closeHost = new Border
+        {
+            Width = 16,
+            Height = 16,
+            Background = Brushes.Transparent,
+            Cursor = Cursors.Hand,
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Top,
+            Child = closePath,
+        };
+
+        var closeStroke = closePath.Stroke;
+        closeHost.MouseEnter += (_, _) => closePath.Stroke = Brushes.White;
+        closeHost.MouseLeave += (_, _) => closePath.Stroke = closeStroke;
+        closeHost.MouseLeftButtonDown += (_, _) => onClose(id);
 
         // 内部布局：文本区（可滚动）+ 关闭按钮
         var innerGrid = new Grid();
@@ -995,8 +1057,8 @@ public partial class HomeWindow : Window
         scrollViewer.Content = textBlock;
         Grid.SetColumn(scrollViewer, 0);
         innerGrid.Children.Add(scrollViewer);
-        Grid.SetColumn(closeBlock, 1);
-        innerGrid.Children.Add(closeBlock);
+        Grid.SetColumn(closeHost, 1);
+        innerGrid.Children.Add(closeHost);
 
         // 外层 Border，使用 ToastBorder 样式并设置背景色
         var toast = new Border
@@ -1008,8 +1070,6 @@ public partial class HomeWindow : Window
             RenderTransformOrigin = new Point(0.5, 0.5),
             Opacity = 0, // 初始透明，由动画淡入
         };
-        // 点击关闭按钮时触发回调
-        closeBlock.MouseLeftButtonDown += (_, _) => onClose(id);
 
         return toast;
     }
